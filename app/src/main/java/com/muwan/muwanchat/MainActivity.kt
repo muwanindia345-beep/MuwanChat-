@@ -1,9 +1,12 @@
 package com.muwan.muwanchat
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -15,7 +18,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,8 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
 data class Message(
@@ -32,7 +41,8 @@ data class Message(
     val text: String,
     val sent: Boolean,
     val time: String,
-    val replyTo: Message? = null
+    val replyTo: Message? = null,
+    val imageUri: Uri? = null
 )
 
 val DarkBg = Color(0xFF1a1a2e)
@@ -46,6 +56,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             MuwanChatApp()
         }
@@ -67,11 +78,43 @@ fun MuwanChatApp() {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
+    // Photo picker
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            messages.add(
+                Message(
+                    id = messages.size + 1,
+                    text = "",
+                    sent = true,
+                    time = "now",
+                    imageUri = it
+                )
+            )
+            scope.launch { listState.animateScrollToItem(messages.size - 1) }
+        }
+    }
+
+    // Keyboard padding
+    val view = LocalView.current
+    var imeHeight by remember { mutableStateOf(0) }
+    DisposableEffect(view) {
+        val listener = ViewCompat.setOnApplyWindowInsetsListener(view) { _, insets ->
+            imeHeight = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            insets
+        }
+        onDispose {
+            ViewCompat.setOnApplyWindowInsetsListener(view, null)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
             .systemBarsPadding()
+            .imePadding()
     ) {
         // Header
         Row(
@@ -98,12 +141,25 @@ fun MuwanChatApp() {
                     Text("Online", color = Color(0xFF888888), fontSize = 12.sp)
                 }
             }
+            Row {
+                IconButton(onClick = {}) {
+                    Icon(Icons.Filled.VideoCall, contentDescription = "Video", tint = DarkAccent)
+                }
+                IconButton(onClick = {}) {
+                    Icon(Icons.Filled.Call, contentDescription = "Call", tint = DarkAccent)
+                }
+                IconButton(onClick = {}) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = DarkAccent)
+                }
+            }
         }
 
         // Messages
         LazyColumn(
             state = listState,
-            modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             items(messages, key = { it.id }) { msg ->
@@ -132,14 +188,10 @@ fun MuwanChatApp() {
                 ) {
                     Column {
                         Text("↩ Reply", color = DarkAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            reply.text.take(50),
-                            color = Color(0xFF888888),
-                            fontSize = 13.sp
-                        )
+                        Text(reply.text.take(50), color = Color(0xFF888888), fontSize = 13.sp)
                     }
-                    TextButton(onClick = { replyTo = null }) {
-                        Text("✕", color = Color(0xFF888888), fontSize = 16.sp)
+                    IconButton(onClick = { replyTo = null }) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color(0xFF888888))
                     }
                 }
             }
@@ -149,26 +201,54 @@ fun MuwanChatApp() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(DarkInputBg)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .background(DarkBg)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            TextField(
-                value = input,
-                onValueChange = { input = it },
-                placeholder = { Text("Message likho...", color = Color(0xFF888888)) },
-                modifier = Modifier.weight(1f),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = DarkHeader,
-                    unfocusedContainerColor = DarkHeader,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                shape = RoundedCornerShape(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(DarkHeader)
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Emoji icon
+                IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.EmojiEmotions, contentDescription = "Emoji", tint = Color(0xFF888888), modifier = Modifier.size(22.dp))
+                }
+
+                // Text input
+                TextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    placeholder = { Text("Message likho...", color = Color(0xFF888888), fontSize = 14.sp) },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    singleLine = false,
+                    maxLines = 4,
+                )
+
+                // Photo picker icon
+                IconButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.Image, contentDescription = "Photo", tint = Color(0xFF888888), modifier = Modifier.size(22.dp))
+                }
+
+                // Camera icon
+                IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = Color(0xFF888888), modifier = Modifier.size(22.dp))
+                }
+            }
+
+            // Mic / Send FAB
             FloatingActionButton(
                 onClick = {
                     if (input.isNotBlank()) {
@@ -183,16 +263,18 @@ fun MuwanChatApp() {
                         )
                         input = ""
                         replyTo = null
-                        scope.launch {
-                            listState.animateScrollToItem(messages.size - 1)
-                        }
+                        scope.launch { listState.animateScrollToItem(messages.size - 1) }
                     }
                 },
                 containerColor = DarkAccent,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(50.dp),
                 shape = CircleShape
             ) {
-                Icon(Icons.Filled.Send, contentDescription = "Send", tint = Color.White)
+                if (input.isBlank()) {
+                    Icon(Icons.Filled.Mic, contentDescription = "Mic", tint = Color.White)
+                } else {
+                    Icon(Icons.Filled.Send, contentDescription = "Send", tint = Color.White)
+                }
             }
         }
     }
@@ -234,7 +316,10 @@ fun MessageBubble(message: Message, onSwipeReply: (Message) -> Unit) {
                     )
                 )
                 .background(if (message.sent) DarkBubbleSent else DarkBubbleReceived)
-                .padding(horizontal = 14.dp, vertical = 10.dp)
+                .padding(
+                    horizontal = if (message.imageUri != null) 4.dp else 14.dp,
+                    vertical = if (message.imageUri != null) 4.dp else 10.dp
+                )
         ) {
             Column {
                 message.replyTo?.let { reply ->
@@ -245,15 +330,28 @@ fun MessageBubble(message: Message, onSwipeReply: (Message) -> Unit) {
                             .background(DarkInputBg)
                             .padding(8.dp)
                     ) {
-                        Text(
-                            "↩ ${reply.text.take(40)}",
-                            color = Color(0xFF888888),
-                            fontSize = 12.sp
-                        )
+                        Text("↩ ${reply.text.take(40)}", color = Color(0xFF888888), fontSize = 12.sp)
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                 }
-                Text(message.text, color = Color.White, fontSize = 15.sp)
+
+                // Image message
+                message.imageUri?.let { uri ->
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = "Image",
+                        modifier = Modifier
+                            .widthIn(max = 260.dp)
+                            .clip(RoundedCornerShape(14.dp)),
+                        contentScale = ContentScale.FillWidth
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                if (message.text.isNotBlank()) {
+                    Text(message.text, color = Color.White, fontSize = 15.sp)
+                }
+
                 Text(
                     message.time,
                     color = Color(0xAAFFFFFF),
@@ -264,3 +362,4 @@ fun MessageBubble(message: Message, onSwipeReply: (Message) -> Unit) {
         }
     }
 }
+
