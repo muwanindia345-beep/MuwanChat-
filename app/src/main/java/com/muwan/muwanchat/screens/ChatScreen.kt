@@ -1,5 +1,11 @@
 package com.muwan.muwanchat.screens
 
+import com.muwan.muwanchat.DarkBg
+import com.muwan.muwanchat.DarkAccent
+import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkInputBg
+import com.muwan.muwanchat.DarkBubbleSent
+import com.muwan.muwanchat.DarkBubbleReceived
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult

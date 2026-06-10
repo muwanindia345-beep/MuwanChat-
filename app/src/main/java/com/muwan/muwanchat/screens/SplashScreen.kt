@@ -1,5 +1,7 @@
 package com.muwan.muwanchat.screens
 
+import com.muwan.muwanchat.DarkBg
+import com.muwan.muwanchat.DarkAccent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
