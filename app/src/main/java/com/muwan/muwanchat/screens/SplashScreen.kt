@@ -19,9 +19,6 @@ import com.muwan.muwanchat.navigation.Screen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
-val DarkBg = Color(0xFF1a1a2e)
-val DarkAccent = Color(0xFFff6b35)
-
 @Composable
 fun SplashScreen(navController: NavController) {
     val context = LocalContext.current

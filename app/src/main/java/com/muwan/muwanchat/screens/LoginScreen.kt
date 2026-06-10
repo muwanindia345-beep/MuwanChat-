@@ -24,9 +24,6 @@ import com.muwan.muwanchat.network.LoginRequest
 import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.launch
 
-val DarkHeader = Color(0xFF16213e)
-val DarkInputBg = Color(0xFF0f3460)
-
 @Composable
 fun LoginScreen(navController: NavController) {
     val context = LocalContext.current
