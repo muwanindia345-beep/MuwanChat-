@@ -27,12 +27,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -78,34 +76,18 @@ fun MuwanChatApp() {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // Photo picker
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            messages.add(
-                Message(
-                    id = messages.size + 1,
-                    text = "",
-                    sent = true,
-                    time = "now",
-                    imageUri = it
-                )
-            )
+            messages.add(Message(
+                id = messages.size + 1,
+                text = "",
+                sent = true,
+                time = "now",
+                imageUri = it
+            ))
             scope.launch { listState.animateScrollToItem(messages.size - 1) }
-        }
-    }
-
-    // Keyboard padding
-    val view = LocalView.current
-    var imeHeight by remember { mutableStateOf(0) }
-    DisposableEffect(view) {
-        val listener = ViewCompat.setOnApplyWindowInsetsListener(view) { _, insets ->
-            imeHeight = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-            insets
-        }
-        onDispose {
-            ViewCompat.setOnApplyWindowInsetsListener(view, null)
         }
     }
 
@@ -121,7 +103,7 @@ fun MuwanChatApp() {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(DarkHeader)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -143,13 +125,13 @@ fun MuwanChatApp() {
             }
             Row {
                 IconButton(onClick = {}) {
-                    Icon(Icons.Filled.VideoCall, contentDescription = "Video", tint = DarkAccent)
+                    Icon(Icons.Filled.VideoCall, contentDescription = "Video", tint = DarkAccent, modifier = Modifier.size(22.dp))
                 }
                 IconButton(onClick = {}) {
-                    Icon(Icons.Filled.Call, contentDescription = "Call", tint = DarkAccent)
+                    Icon(Icons.Filled.Call, contentDescription = "Call", tint = DarkAccent, modifier = Modifier.size(22.dp))
                 }
                 IconButton(onClick = {}) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = DarkAccent)
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = DarkAccent, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -167,10 +149,7 @@ fun MuwanChatApp() {
                     visible = true,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn()
                 ) {
-                    MessageBubble(
-                        message = msg,
-                        onSwipeReply = { replyTo = it }
-                    )
+                    MessageBubble(message = msg, onSwipeReply = { replyTo = it })
                 }
             }
         }
@@ -186,12 +165,12 @@ fun MuwanChatApp() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text("↩ Reply", color = DarkAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(reply.text.take(50), color = Color(0xFF888888), fontSize = 13.sp)
+                        Text(reply.text.take(50), color = Color(0xFF888888), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     IconButton(onClick = { replyTo = null }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color(0xFF888888))
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color(0xFF888888), modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -209,21 +188,21 @@ fun MuwanChatApp() {
             Row(
                 modifier = Modifier
                     .weight(1f)
+                    .heightIn(min = 44.dp, max = 120.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(DarkHeader)
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Emoji icon
-                IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.EmojiEmotions, contentDescription = "Emoji", tint = Color(0xFF888888), modifier = Modifier.size(22.dp))
+                IconButton(onClick = {}, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.EmojiEmotions, contentDescription = "Emoji", tint = Color(0xFF888888), modifier = Modifier.size(20.dp))
                 }
-
-                // Text input
                 TextField(
                     value = input,
                     onValueChange = { input = it },
-                    placeholder = { Text("Message likho...", color = Color(0xFF888888), fontSize = 14.sp) },
+                    placeholder = {
+                        Text("Message likho...", color = Color(0xFF888888), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    },
                     modifier = Modifier.weight(1f),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -236,44 +215,37 @@ fun MuwanChatApp() {
                     singleLine = false,
                     maxLines = 4,
                 )
-
-                // Photo picker icon
-                IconButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.Image, contentDescription = "Photo", tint = Color(0xFF888888), modifier = Modifier.size(22.dp))
+                IconButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Image, contentDescription = "Photo", tint = Color(0xFF888888), modifier = Modifier.size(20.dp))
                 }
-
-                // Camera icon
-                IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = Color(0xFF888888), modifier = Modifier.size(22.dp))
+                IconButton(onClick = {}, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = Color(0xFF888888), modifier = Modifier.size(20.dp))
                 }
             }
 
-            // Mic / Send FAB
             FloatingActionButton(
                 onClick = {
                     if (input.isNotBlank()) {
-                        messages.add(
-                            Message(
-                                id = messages.size + 1,
-                                text = input.trim(),
-                                sent = true,
-                                time = "now",
-                                replyTo = replyTo
-                            )
-                        )
+                        messages.add(Message(
+                            id = messages.size + 1,
+                            text = input.trim(),
+                            sent = true,
+                            time = "now",
+                            replyTo = replyTo
+                        ))
                         input = ""
                         replyTo = null
                         scope.launch { listState.animateScrollToItem(messages.size - 1) }
                     }
                 },
                 containerColor = DarkAccent,
-                modifier = Modifier.size(50.dp),
+                modifier = Modifier.size(46.dp),
                 shape = CircleShape
             ) {
                 if (input.isBlank()) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Mic", tint = Color.White)
+                    Icon(Icons.Filled.Mic, contentDescription = "Mic", tint = Color.White, modifier = Modifier.size(20.dp))
                 } else {
-                    Icon(Icons.Filled.Send, contentDescription = "Send", tint = Color.White)
+                    Icon(Icons.Filled.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -308,13 +280,11 @@ fun MessageBubble(message: Message, onSwipeReply: (Message) -> Unit) {
                     )
                 }
                 .widthIn(max = 280.dp)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 18.dp, topEnd = 18.dp,
-                        bottomEnd = if (message.sent) 4.dp else 18.dp,
-                        bottomStart = if (message.sent) 18.dp else 4.dp
-                    )
-                )
+                .clip(RoundedCornerShape(
+                    topStart = 18.dp, topEnd = 18.dp,
+                    bottomEnd = if (message.sent) 4.dp else 18.dp,
+                    bottomStart = if (message.sent) 18.dp else 4.dp
+                ))
                 .background(if (message.sent) DarkBubbleSent else DarkBubbleReceived)
                 .padding(
                     horizontal = if (message.imageUri != null) 4.dp else 14.dp,
@@ -334,8 +304,6 @@ fun MessageBubble(message: Message, onSwipeReply: (Message) -> Unit) {
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                 }
-
-                // Image message
                 message.imageUri?.let { uri ->
                     AsyncImage(
                         model = uri,
@@ -347,11 +315,9 @@ fun MessageBubble(message: Message, onSwipeReply: (Message) -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
-
                 if (message.text.isNotBlank()) {
                     Text(message.text, color = Color.White, fontSize = 15.sp)
                 }
-
                 Text(
                     message.time,
                     color = Color(0xAAFFFFFF),
@@ -362,4 +328,3 @@ fun MessageBubble(message: Message, onSwipeReply: (Message) -> Unit) {
         }
     }
 }
-
