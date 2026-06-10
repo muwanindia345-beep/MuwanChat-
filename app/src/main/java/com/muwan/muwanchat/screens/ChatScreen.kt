@@ -40,11 +40,6 @@ data class Message(
     val imageUri: Uri? = null
 )
 
-val DarkHeader = Color(0xFF16213e)
-val DarkBubbleSent = Color(0xFFff6b35)
-val DarkBubbleReceived = Color(0xFF16213e)
-val DarkInputBg = Color(0xFF0f3460)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen() {
