@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import com.muwan.muwanchat.screens.ChatScreen
 import com.muwan.muwanchat.screens.LoginScreen
 import com.muwan.muwanchat.screens.OTPScreen
+import com.muwan.muwanchat.screens.PhoneOTPScreen
 import com.muwan.muwanchat.screens.RegisterScreen
 import com.muwan.muwanchat.screens.SplashScreen
 
@@ -17,6 +18,9 @@ sealed class Screen(val route: String) {
     object Register : Screen("register")
     object OTP : Screen("otp/{email}") {
         fun createRoute(email: String) = "otp/$email"
+    }
+    object PhoneOTP : Screen("phone_otp/{phone}") {
+        fun createRoute(phone: String) = "phone_otp/$phone"
     }
     object Chat : Screen("chat")
 }
@@ -41,6 +45,10 @@ fun NavGraph() {
         composable(Screen.OTP.route) { backStack ->
             val email = backStack.arguments?.getString("email") ?: ""
             OTPScreen(navController, email)
+        }
+        composable(Screen.PhoneOTP.route) { backStack ->
+            val phone = backStack.arguments?.getString("phone") ?: ""
+            PhoneOTPScreen(navController, phone)
         }
         composable(Screen.Chat.route) {
             ChatScreen()

@@ -24,6 +24,15 @@ data class ResendRequest(
     val email: String
 )
 
+data class PhoneSendRequest(
+    val phone: String
+)
+
+data class PhoneVerifyRequest(
+    val phone: String,
+    val otp: String
+)
+
 data class AuthResponse(
     val success: Boolean?,
     val token: String?,
@@ -53,4 +62,10 @@ interface AuthApi {
 
     @POST("auth/email/resend")
     suspend fun resend(@Body request: ResendRequest): Response<AuthResponse>
+
+    @POST("auth/phone/send")
+    suspend fun phoneSend(@Body request: PhoneSendRequest): Response<AuthResponse>
+
+    @POST("auth/phone/verify")
+    suspend fun phoneVerify(@Body request: PhoneVerifyRequest): Response<AuthResponse>
 }
