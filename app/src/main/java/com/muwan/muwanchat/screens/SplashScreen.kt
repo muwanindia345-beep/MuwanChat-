@@ -42,8 +42,8 @@ fun SplashScreen(navController: NavController) {
 
     LaunchedEffect(Unit) {
         delay(2000)
-        val token = AuthDataStore.getToken(context).first()
-        if (!token.isNullOrEmpty()) {
+        val loggedIn = AuthDataStore.isLoggedIn(context).first()
+        if (loggedIn) {
             navController.navigate(Screen.Chat.route) {
                 popUpTo(Screen.Splash.route) { inclusive = true }
             }

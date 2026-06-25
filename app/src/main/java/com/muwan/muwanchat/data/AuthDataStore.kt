@@ -12,28 +12,55 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth")
 
 object AuthDataStore {
-    private val TOKEN_KEY = stringPreferencesKey("jwt_token")
-    private val USERNAME_KEY = stringPreferencesKey("username")
-    private val EMAIL_KEY = stringPreferencesKey("email")
-    private val UID_KEY = stringPreferencesKey("uid")
 
-    suspend fun saveAuth(context: Context, token: String, username: String, email: String, uid: String) {
+    private val USERNAME_KEY  = stringPreferencesKey("username")
+    private val EMAIL_KEY     = stringPreferencesKey("email")
+    private val ANON_KEY      = stringPreferencesKey("anon_key")
+    private val SECRET_KEY    = stringPreferencesKey("secret_key")
+    private val DB_NAME_KEY   = stringPreferencesKey("db_name")
+    private val LOGIN_TYPE_KEY = stringPreferencesKey("login_type") // "email" | "phone" | "google"
+
+    suspend fun saveAuth(
+        context: Context,
+        username: String,
+        email: String,
+        anonKey: String,
+        secretKey: String,
+        dbName: String,
+        loginType: String
+    ) {
         context.dataStore.edit { prefs ->
-            prefs[TOKEN_KEY] = token
-            prefs[USERNAME_KEY] = username
-            prefs[EMAIL_KEY] = email
-            prefs[UID_KEY] = uid
+            prefs[USERNAME_KEY]   = username
+            prefs[EMAIL_KEY]      = email
+            prefs[ANON_KEY]       = anonKey
+            prefs[SECRET_KEY]     = secretKey
+            prefs[DB_NAME_KEY]    = dbName
+            prefs[LOGIN_TYPE_KEY] = loginType
         }
     }
-
-    fun getToken(context: Context): Flow<String?> =
-        context.dataStore.data.map { it[TOKEN_KEY] }
 
     fun getUsername(context: Context): Flow<String?> =
         context.dataStore.data.map { it[USERNAME_KEY] }
 
     fun getEmail(context: Context): Flow<String?> =
         context.dataStore.data.map { it[EMAIL_KEY] }
+
+    fun getAnonKey(context: Context): Flow<String?> =
+        context.dataStore.data.map { it[ANON_KEY] }
+
+    fun getSecretKey(context: Context): Flow<String?> =
+        context.dataStore.data.map { it[SECRET_KEY] }
+
+    fun getDbName(context: Context): Flow<String?> =
+        context.dataStore.data.map { it[DB_NAME_KEY] }
+
+    fun getLoginType(context: Context): Flow<String?> =
+        context.dataStore.data.map { it[LOGIN_TYPE_KEY] }
+
+    fun isLoggedIn(context: Context): Flow<Boolean> =
+        context.dataStore.data.map {
+            !it[ANON_KEY].isNullOrEmpty()
+        }
 
     suspend fun clearAuth(context: Context) {
         context.dataStore.edit { it.clear() }
