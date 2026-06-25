@@ -134,8 +134,8 @@ fun LoginScreen(navController: NavController) {
                     val body = regRes.body()!!
                     AuthDataStore.saveAuth(
                         context, nameG, emailG,
-                        body.anonKeymkdir -p app/src/main/java/com/muwan/muwanchat/screens, body.secretKey!!,
-                        body.dbNamemkdir -p app/src/main/java/com/muwan/muwanchat/screens, "google"
+                        body.anonKey, body.secretKey!!,
+                        body.dbName, "google"
                     )
                     navController.navigate(Screen.Chat.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
@@ -152,8 +152,8 @@ fun LoginScreen(navController: NavController) {
                 val body = loginRes.body()!!
                 AuthDataStore.saveAuth(
                     context, nameG, emailG,
-                    body.anonKeymkdir -p app/src/main/java/com/muwan/muwanchat/screens, body.secretKey!!,
-                    body.dbNamemkdir -p app/src/main/java/com/muwan/muwanchat/screens, "google"
+                    body.anonKey, body.secretKey!!,
+                    body.dbName, "google"
                 )
                 navController.navigate(Screen.Chat.route) {
                     popUpTo(Screen.Login.route) { inclusive = true }
@@ -192,8 +192,8 @@ fun LoginScreen(navController: NavController) {
                 val body = regRes.body()!!
                 AuthDataStore.saveAuth(
                     context, muwanUsername, email,
-                    body.anonKeymkdir -p app/src/main/java/com/muwan/muwanchat/screens, body.secretKey!!,
-                    body.dbNamemkdir -p app/src/main/java/com/muwan/muwanchat/screens, "email"
+                    body.anonKey, body.secretKey!!,
+                    body.dbName, "email"
                 )
                 navController.navigate(Screen.Chat.route) {
                     popUpTo(Screen.Login.route) { inclusive = true }
@@ -210,8 +210,8 @@ fun LoginScreen(navController: NavController) {
                 val body = loginRes.body()!!
                 AuthDataStore.saveAuth(
                     context, muwanUsername, email,
-                    body.anonKeymkdir -p app/src/main/java/com/muwan/muwanchat/screens, body.secretKey!!,
-                    body.dbNamemkdir -p app/src/main/java/com/muwan/muwanchat/screens, "email"
+                    body.anonKey, body.secretKey!!,
+                    body.dbName, "email"
                 )
                 navController.navigate(Screen.Chat.route) {
                     popUpTo(Screen.Login.route) { inclusive = true }
