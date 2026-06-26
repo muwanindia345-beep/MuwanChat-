@@ -7,7 +7,6 @@ import com.muwan.muwanchat.DarkInputBg
 import com.muwan.muwanchat.DarkBubbleSent
 import com.muwan.muwanchat.DarkBubbleReceived
 import android.net.Uri
-import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -33,9 +32,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
-import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
+import androidx.navigation.NavController
 
 data class Message(
     val id: Int,
@@ -48,7 +47,12 @@ data class Message(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen() {
+fun ChatScreen(
+    navController: NavController,
+    receiverUid: String,
+    receiverUsername: String,
+    roomId: String
+) {
     val messages = remember {
         mutableStateListOf(
             Message(1, "Hey MuwanChat mein welcome hai! 🔥", false, "12:00"),
@@ -88,23 +92,31 @@ fun ChatScreen() {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(DarkHeader)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                }
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
                         .background(DarkAccent),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("M", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(
+                        receiverUsername.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
-                    Text("MuwanChat", color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(receiverUsername, color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("Online", color = Color(0xFF888888), fontSize = 12.sp)
                 }
             }
@@ -114,9 +126,6 @@ fun ChatScreen() {
                 }
                 IconButton(onClick = {}) {
                     Icon(Icons.Filled.Call, contentDescription = "Call", tint = DarkAccent, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = DarkAccent, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -202,9 +211,6 @@ fun ChatScreen() {
                 )
                 IconButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Filled.Image, contentDescription = "Photo", tint = Color(0xFF888888), modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = {}, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = Color(0xFF888888), modifier = Modifier.size(20.dp))
                 }
             }
 

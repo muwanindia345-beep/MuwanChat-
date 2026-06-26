@@ -2,36 +2,16 @@ package com.muwan.muwanchat.network
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 
-data class RegisterRequest(
-    val username: String,
-    val email: String,
-    val password: String
-)
-
-data class LoginRequest(
-    val email: String,
-    val password: String
-)
-
-data class VerifyRequest(
-    val email: String,
-    val otp: String
-)
-
-data class ResendRequest(
-    val email: String
-)
-
-data class PhoneSendRequest(
-    val phone: String
-)
-
-data class PhoneVerifyRequest(
-    val phone: String,
-    val otp: String
-)
+data class RegisterRequest(val username: String, val email: String, val password: String)
+data class LoginRequest(val email: String, val password: String)
+data class VerifyRequest(val email: String, val otp: String)
+data class ResendRequest(val email: String)
+data class PhoneSendRequest(val phone: String)
+data class PhoneVerifyRequest(val phone: String, val otp: String)
 
 data class AuthResponse(
     val success: Boolean?,
@@ -63,7 +43,6 @@ interface AuthApi {
     @POST("auth/email/resend")
     suspend fun resend(@Body request: ResendRequest): Response<AuthResponse>
 
-    @POST("auth/phone/send")
     @GET("auth/me")
     suspend fun me(@Header("Authorization") token: String): Response<AuthResponse>
 
