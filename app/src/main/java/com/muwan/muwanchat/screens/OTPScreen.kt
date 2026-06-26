@@ -166,10 +166,12 @@ fun OTPScreen(navController: NavController, email: String) {
                                 val body = res.body()!!
                                 AuthDataStore.saveAuth(
                                     context,
-                                    body.token!!,
-                                    body.user!!.username,
-                                    body.user.email,
-                                    body.user.uid
+                                    body.user?.username ?: "",
+                                    body.user?.email ?: "",
+                                    "",
+                                    "",
+                        "",
+                        "phone"
                                 )
                                 navController.navigate(Screen.Chat.route) {
                                     popUpTo(Screen.Login.route) { inclusive = true }
