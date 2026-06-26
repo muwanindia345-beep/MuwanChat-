@@ -10,9 +10,6 @@ sealed class Screen(val route: String) {
     object Splash          : Screen("splash")
     object Login           : Screen("login")
     object Register        : Screen("register")
-    object OTP             : Screen("otp/{email}") {
-        fun createRoute(email: String) = "otp/$email"
-    }
     object PhoneOTP        : Screen("phone_otp/{phone}") {
         fun createRoute(phone: String) = "phone_otp/$phone"
     }
@@ -35,9 +32,6 @@ fun NavGraph() {
         composable(Screen.Splash.route) { SplashScreen(navController) }
         composable(Screen.Login.route) { LoginScreen(navController) }
         composable(Screen.Register.route) { RegisterScreen(navController) }
-        composable(Screen.OTP.route) { back ->
-            OTPScreen(navController, back.arguments?.getString("email") ?: "")
-        }
         composable(Screen.PhoneOTP.route) { back ->
             PhoneOTPScreen(navController, back.arguments?.getString("phone") ?: "")
         }
