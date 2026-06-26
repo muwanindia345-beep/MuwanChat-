@@ -152,7 +152,9 @@ fun RegisterScreen(navController: NavController) {
                                 RegisterRequest(username.trim(), email.trim(), password)
                             )
                             if (res.isSuccessful && res.body()?.success == true) {
-                                navController.navigate(Screen.OTP.createRoute(email.trim()))
+                                navController.navigate(Screen.ConversationList.route) {
+                                    popUpTo(Screen.Register.route) { inclusive = true }
+                                }
                             } else {
                                 errorMsg = res.body()?.error ?: "Registration failed"
                             }

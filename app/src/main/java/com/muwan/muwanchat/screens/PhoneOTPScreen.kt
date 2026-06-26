@@ -147,14 +147,15 @@ fun PhoneOTPScreen(navController: NavController, phone: String) {
                                 val body = res.body()!!
                                 AuthDataStore.saveAuth(
                                     context,
-                                    body.user?.username ?: "",
-                                    body.user?.email ?: "",
-                                    "",
-                                    "",
-                        "",
-                        "phone"
+                                    username  = body.user?.username ?: "",
+                                    email     = body.user?.email ?: "",
+                                    token     = body.token ?: "",
+                                    anonKey   = "",
+                                    secretKey = "",
+                                    dbName    = "",
+                                    loginType = "phone"
                                 )
-                                navController.navigate(Screen.Chat.route) {
+                                navController.navigate(Screen.ConversationList.route) {
                                     popUpTo(Screen.Login.route) { inclusive = true }
                                 }
                             } else {
