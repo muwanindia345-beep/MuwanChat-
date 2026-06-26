@@ -1,0 +1,62 @@
+package com.muwan.muwanchat.network
+
+import retrofit2.Response
+import retrofit2.http.*
+
+data class ChatRequest(
+    val id: String,
+    val sender_uid: String,
+    val receiver_uid: String,
+    val status: String,
+    val created_at: String,
+    val username: String,
+    val avatar: String?
+)
+
+data class RequestsResponse(
+    val requests: List<ChatRequest>
+)
+
+data class SendRequestBody(
+    val receiver_uid: String
+)
+
+data class SendRequestResponse(
+    val success: Boolean,
+    val id: String?,
+    val error: String?
+)
+
+data class SimpleResponse(
+    val success: Boolean
+)
+
+interface RequestsApi {
+    @POST("requests/send")
+    suspend fun sendRequest(
+        @Header("Authorization") token: String,
+        @Body body: SendRequestBody
+    ): Response<SendRequestResponse>
+
+    @GET("requests/incoming")
+    suspend fun getIncoming(
+        @Header("Authorization") token: String
+    ): Response<RequestsResponse>
+
+    @GET("requests/sent")
+    suspend fun getSent(
+        @Header("Authorization") token: String
+    ): Response<RequestsResponse>
+
+    @PUT("requests/{id}/accept")
+    suspend fun acceptRequest(
+        @Header("Authorization") token: String,
+        @Path("id") id: String
+    ): Response<SimpleResponse>
+
+    @PUT("requests/{id}/reject")
+    suspend fun rejectRequest(
+        @Header("Authorization") token: String,
+        @Path("id") id: String
+    ): Response<SimpleResponse>
+}

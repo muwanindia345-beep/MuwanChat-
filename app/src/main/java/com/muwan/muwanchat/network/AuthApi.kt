@@ -64,6 +64,10 @@ interface AuthApi {
     suspend fun resend(@Body request: ResendRequest): Response<AuthResponse>
 
     @POST("auth/phone/send")
+    @GET("auth/me")
+    suspend fun me(@Header("Authorization") token: String): Response<AuthResponse>
+
+    @POST("auth/phone/send")
     suspend fun phoneSend(@Body request: PhoneSendRequest): Response<AuthResponse>
 
     @POST("auth/phone/verify")

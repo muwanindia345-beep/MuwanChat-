@@ -44,7 +44,7 @@ fun SplashScreen(navController: NavController) {
         delay(2000)
         val loggedIn = AuthDataStore.isLoggedIn(context).first()
         if (loggedIn) {
-            navController.navigate(Screen.Chat.route) {
+            navController.navigate(Screen.ConversationList.route) {
                 popUpTo(Screen.Splash.route) { inclusive = true }
             }
         } else {

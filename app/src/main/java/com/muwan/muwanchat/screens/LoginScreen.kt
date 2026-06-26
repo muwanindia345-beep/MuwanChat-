@@ -62,7 +62,7 @@ fun LoginScreen(navController: NavController) {
                         dbName    = "",
                         loginType = "email"
                     )
-                    navController.navigate(Screen.Chat.route) {
+                    navController.navigate(Screen.ConversationList.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 } else {
