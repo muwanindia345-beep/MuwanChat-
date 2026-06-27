@@ -67,4 +67,16 @@ interface ChatApi {
         @Header("Authorization") token: String,
         @Path("roomId") roomId: String
     ): Response<Map<String, Boolean>>
+
+    @DELETE("chat/message/{id}")
+    suspend fun deleteMsgById(
+        @Header("Authorization") token: String,
+        @Path("id") id: String
+    ): Response<Map<String, Boolean>>
+
+    @DELETE("chat/conversation/{roomId}")
+    suspend fun deleteConversation(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String
+    ): Response<Map<String, Boolean>>
 }
