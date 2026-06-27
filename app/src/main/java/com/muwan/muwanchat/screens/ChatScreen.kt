@@ -269,7 +269,7 @@ fun ChatScreen(
 
     // Load history + Socket
     LaunchedEffect(Unit) {
-        val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
+        val token = AuthDataStore.getToken(context).first() ?: run { isLoading = false; return@LaunchedEffect }
         myToken = token
 
         try {
