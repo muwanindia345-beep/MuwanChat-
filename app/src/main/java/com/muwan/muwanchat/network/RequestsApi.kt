@@ -9,12 +9,12 @@ data class ChatRequest(
     val receiver_uid: String,
     val status: String,
     val created_at: String,
-    val username: String,
-    val avatar: String?
+    val username: String = "Unknown",
+    val avatar: String? = null
 )
 
 data class RequestsResponse(
-    val requests: List<ChatRequest>
+    val requests: List<ChatRequest> = emptyList()
 )
 
 data class SendRequestBody(
