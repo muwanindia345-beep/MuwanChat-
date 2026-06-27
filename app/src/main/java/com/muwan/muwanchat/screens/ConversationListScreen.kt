@@ -113,7 +113,9 @@ fun ConversationListScreen(navController: NavController) {
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Search chats...", color = Color(0xFF888888)) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color(0xFF888888)) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = DarkAccent,
                     unfocusedBorderColor = Color(0xFF333355),
@@ -166,7 +168,10 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(50.dp).clip(CircleShape).background(DarkAccent),
+            modifier = Modifier
+                .size(50.dp)
+                .clip(CircleShape)
+                .background(DarkAccent),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -176,12 +181,16 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(conv.username, color = Color.White, fontWeight = FontWeight.Bold,
-                fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                conv.username, color = Color.White, fontWeight = FontWeight.Bold,
+                fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
             Spacer(modifier = Modifier.height(2.dp))
-            Text(conv.lastMessage.ifBlank { "Say hi! 👋" },
+            Text(
+                conv.lastMessage.ifBlank { "Say hi! 👋" },
                 color = Color(0xFF888888), fontSize = 13.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
         }
         Spacer(modifier = Modifier.width(8.dp))
         Text(conv.lastTime.take(10), color = Color(0xFF666688), fontSize = 11.sp)
