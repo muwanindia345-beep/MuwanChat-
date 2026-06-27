@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -339,7 +340,7 @@ fun ChatScreen(
     }
 
     // Delete message
-    fun deleteMessage(msg: ChatMessage) {
+    fun deleteChatMessage(msg: ChatMessage) {
         scope.launch {
             try {
                 val res = RetrofitClient.chatApi.deleteMessage("Bearer $myToken", msg.id)
@@ -530,7 +531,7 @@ fun ChatScreen(
     fullscreenImage?.let { FullscreenImageViewer(it) { fullscreenImage = null } }
     deleteTarget?.let { msg ->
         DeleteMessageDialog(
-            onConfirm = { deleteMessage(msg); deleteTarget = null },
+            onConfirm = { deleteChatMessage(msg); deleteTarget = null },
             onDismiss = { deleteTarget = null }
         )
     }
