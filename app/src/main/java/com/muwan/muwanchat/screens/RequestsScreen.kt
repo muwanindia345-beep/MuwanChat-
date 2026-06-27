@@ -51,7 +51,10 @@ fun RequestsScreen(navController: NavController) {
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@launch
                 val res = RetrofitClient.requestsApi.acceptRequest("Bearer $token", req.id)
-                if (res.isSuccessful) handled.add(req.id)
+                if (res.isSuccessful) {
+                    handled.add(req.id)
+                    navController.popBackStack()
+                }
             } catch (_: Exception) {}
         }
     }

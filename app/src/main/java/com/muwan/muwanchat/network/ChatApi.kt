@@ -4,16 +4,12 @@ import retrofit2.Response
 import retrofit2.http.*
 
 data class ConversationItem(
-    val id: Int,
-    val sender_uid: String,
-    val receiver_uid: String,
     val room_id: String,
-    val content: String,
-    val type: String,
-    val seen: Int,
-    val created_at: String,
+    val uid: String,
     val username: String,
-    val avatar: String?
+    val avatar: String?,
+    val lastMessage: String,
+    val lastTime: String
 )
 
 data class ConversationsResponse(
@@ -33,7 +29,7 @@ data class MessageItem(
     val type: String,
     val seen: Int,
     val created_at: String,
-    val username: String,
+    val username: String?,
     val avatar: String?
 )
 
