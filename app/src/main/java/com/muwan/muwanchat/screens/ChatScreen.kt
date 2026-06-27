@@ -343,7 +343,7 @@ fun ChatScreen(
     fun deleteChatMessage(msg: ChatMessage) {
         scope.launch {
             try {
-                val res = RetrofitClient.chatApi.deleteMessage("Bearer $myToken", msg.id)
+                val res = RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", msg.id)
                 if (res.isSuccessful) {
                     val idx = messages.indexOfFirst { it.id == msg.id }
                     if (idx >= 0) messages.removeAt(idx)
