@@ -21,7 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
@@ -43,9 +42,8 @@ fun ConversationListScreen(navController: NavController) {
     var searchQuery by remember { mutableStateOf("") }
     var incomingCount by remember { mutableStateOf(0) }
 
-    val backStackEntry by navController.currentBackStackEntryAsState()
 
-    LaunchedEffect(backStackEntry) {
+    LaunchedEffect(Unit) {
         isLoading = true
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         try {
