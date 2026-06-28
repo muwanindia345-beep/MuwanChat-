@@ -32,7 +32,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -234,7 +233,6 @@ fun ChatScreen(
 
     var myUid by remember { mutableStateOf("") }
     var myToken by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(true) }
 
     // Dialog states
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
@@ -263,62 +261,62 @@ fun ChatScreen(
 
     // ── Load history + init socket ────────────────────────────────────────────
     LaunchedEffect(Unit) {
-        val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
-        myToken = token
-
-        // Get my uid
         try {
-            val me = RetrofitClient.authApi.me("Bearer $token")
-            myUid = me.body()?.user?.uid ?: ""
-        } catch (_: Exception) {}
+            val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
+            myToken = token
 
-        // Load message history
-        try {
-            val res = RetrofitClient.chatApi.getMessages("Bearer $token", roomId)
-            if (res.isSuccessful) {
-                val history = res.body()?.messages ?: emptyList()
-                messages.addAll(history.map { it.toChatMessage(myUid) })
-                if (messages.isNotEmpty())
-                    listState.scrollToItem(messages.size - 1)
-            }
-        } catch (_: Exception) {}
+            // Get my uid
+            try {
+                val me = RetrofitClient.authApi.me("Bearer $token")
+                myUid = me.body()?.user?.uid ?: ""
+            } catch (_: Exception) {}
 
-        isLoading = false
-
-        // Socket.IO connect
-        try {
-            val opts = IO.Options().apply {
-                auth = mapOf("token" to token)
-                transports = arrayOf("websocket")
-            }
-            val s = IO.socket(BACKEND_URL, opts)
-
-            s.on(Socket.EVENT_CONNECT) {
-                s.emit("join_room", roomId)
-            }
-
-            s.on("new_message") { args ->
-                val json = args[0] as? JSONObject ?: return@on
-                val senderId = json.optString("sender_uid")
-                // avoid duplicate if we sent it
-                val msgId = json.optString("id")
-                if (messages.any { it.id == msgId }) return@on
-
-                val msg = ChatMessage(
-                    id = msgId,
-                    text = json.optString("content"),
-                    sent = senderId == myUid,
-                    time = json.optString("created_at").take(16).replace("T", " ")
-                        .ifBlank { nowTime() }
-                )
-                scope.launch {
-                    messages.add(msg)
-                    listState.animateScrollToItem(messages.size - 1)
+            // Load message history silently
+            try {
+                val res = RetrofitClient.chatApi.getMessages("Bearer $token", roomId)
+                if (res.isSuccessful) {
+                    val history = res.body()?.messages ?: emptyList()
+                    messages.addAll(history.map { it.toChatMessage(myUid) })
+                    if (messages.isNotEmpty())
+                        listState.scrollToItem(messages.size - 1)
                 }
-            }
+            } catch (_: Exception) {}
 
-            s.connect()
-            socket = s
+            // Socket.IO connect
+            try {
+                val opts = IO.Options().apply {
+                    auth = mapOf("token" to token)
+                    transports = arrayOf("websocket")
+                }
+                val s = IO.socket(BACKEND_URL, opts)
+
+                s.on(Socket.EVENT_CONNECT) {
+                    s.emit("join_room", roomId)
+                }
+
+                s.on("new_message") { args ->
+                    val json = args[0] as? JSONObject ?: return@on
+                    val senderId = json.optString("sender_uid")
+                    val msgId = json.optString("id")
+                    if (messages.any { it.id == msgId }) return@on
+
+                    val msg = ChatMessage(
+                        id = msgId,
+                        text = json.optString("content"),
+                        sent = senderId == myUid,
+                        time = json.optString("created_at").take(16).replace("T", " ")
+                            .ifBlank { nowTime() }
+                    )
+                    scope.launch {
+                        messages.add(msg)
+                        listState.animateScrollToItem(messages.size - 1)
+                    }
+                }
+
+                s.connect()
+                socket = s
+            } catch (_: Exception) {}
+
         } catch (_: Exception) {}
     }
 
@@ -417,13 +415,8 @@ fun ChatScreen(
             }
         }
 
-        // Messages
-        if (isLoading) {
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = DarkAccent)
-            }
-        } else {
-            LazyColumn(
+        // Messages — direct load, no spinner
+        LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
@@ -443,7 +436,6 @@ fun ChatScreen(
                     }
                 }
             }
-        }
 
         // Reply Preview
         AnimatedVisibility(visible = replyTo != null) {
