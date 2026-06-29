@@ -28,8 +28,26 @@ import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.RetrofitClient
+import io.socket.client.IO
+import io.socket.client.Socket
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.*
+
+private fun formatConvTime(raw: String): String {
+    return try {
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
+        val date = sdf.parse(raw.take(16)) ?: return raw.take(10)
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val msgDay = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
+        if (msgDay == today)
+            SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+        else
+            SimpleDateFormat("dd MMM", Locale.getDefault()).format(date)
+    } catch (_: Exception) { raw.take(10) }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +59,7 @@ fun ConversationListScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
     var incomingCount by remember { mutableStateOf(0) }
-
+    var socket by remember { mutableStateOf<Socket?>(null) }
 
     LaunchedEffect(Unit) {
         isLoading = true
@@ -53,6 +71,34 @@ fun ConversationListScreen(navController: NavController) {
             if (req.isSuccessful) incomingCount = req.body()?.requests?.size ?: 0
         } catch (_: Exception) {}
         isLoading = false
+
+        // Socket — new message pe conversation preview update karo
+        try {
+            val opts = IO.Options().apply {
+                auth = mapOf("token" to token)
+                transports = arrayOf("websocket")
+            }
+            val s = IO.socket(BACKEND_URL, opts)
+            s.on("new_message") { args ->
+                val json = args[0] as? JSONObject ?: return@on
+                val senderUid = json.optString("sender_uid")
+                val content = json.optString("content")
+                val roomId = json.optString("room_id")
+                scope.launch {
+                    conversations = conversations.map { conv ->
+                        if (conv.room_id == roomId)
+                            conv.copy(lastMessage = content, lastTime = "just now")
+                        else conv
+                    }
+                }
+            }
+            s.connect()
+            socket = s
+        } catch (_: Exception) {}
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { socket?.disconnect() }
     }
 
     val filtered = if (searchQuery.isBlank()) conversations
@@ -191,6 +237,6 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Text(conv.lastTime.take(10), color = Color(0xFF666688), fontSize = 11.sp)
+        Text(formatConvTime(conv.lastTime), color = Color(0xFF666688), fontSize = 11.sp)
     }
 }
