@@ -458,6 +458,7 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .imePadding()
+                    .navigationBarsPadding()
         ) {
             LazyColumn(
                 state = listState,
