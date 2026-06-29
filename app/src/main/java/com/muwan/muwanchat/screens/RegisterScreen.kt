@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.RegisterRequest
 import com.muwan.muwanchat.network.RetrofitClient
@@ -57,7 +58,6 @@ fun RegisterScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Username
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it; errorMsg = "" },
@@ -77,7 +77,6 @@ fun RegisterScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Email
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it; errorMsg = "" },
@@ -98,7 +97,6 @@ fun RegisterScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it; errorMsg = "" },

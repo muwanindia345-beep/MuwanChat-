@@ -38,8 +38,6 @@ import java.util.*
 
 private const val BACKEND_URL = "https://muwan-chat-backend-production.up.railway.app"
 
-private const val BACKEND_URL = "https://muwan-chat-backend-production.up.railway.app"
-
 private fun formatConvTime(raw: String): String {
     return try {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
@@ -76,7 +74,6 @@ fun ConversationListScreen(navController: NavController) {
         } catch (_: Exception) {}
         isLoading = false
 
-        // Socket — new message pe conversation preview update karo
         try {
             val opts = IO.Options().apply {
                 auth = mapOf("token" to token)
@@ -85,7 +82,6 @@ fun ConversationListScreen(navController: NavController) {
             val s = IO.socket(BACKEND_URL, opts)
             s.on("new_message") { args ->
                 val json = args[0] as? JSONObject ?: return@on
-                val senderUid = json.optString("sender_uid")
                 val content = json.optString("content")
                 val roomId = json.optString("room_id")
                 scope.launch {
