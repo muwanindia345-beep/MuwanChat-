@@ -42,7 +42,7 @@ fun NavGraph() {
             ChatScreen(
                 navController = navController,
                 receiverUid = back.arguments?.getString("uid") ?: "",
-                receiverName = back.arguments?.getString("username") ?: "",
+                receiverUsername = back.arguments?.getString("username") ?: "",
                 roomId = back.arguments?.getString("roomId") ?: ""
             )
         }

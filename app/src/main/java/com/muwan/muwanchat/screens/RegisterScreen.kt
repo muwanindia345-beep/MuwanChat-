@@ -152,6 +152,17 @@ fun RegisterScreen(navController: NavController) {
                                 RegisterRequest(username.trim(), email.trim(), password)
                             )
                             if (res.isSuccessful && res.body()?.success == true) {
+                                val body = res.body()!!
+                                AuthDataStore.saveAuth(
+                                    context,
+                                    username  = body.user?.username ?: username.trim(),
+                                    email     = email.trim(),
+                                    token     = body.token ?: "",
+                                    anonKey   = "",
+                                    secretKey = "",
+                                    dbName    = "",
+                                    loginType = "email"
+                                )
                                 navController.navigate(Screen.ConversationList.route) {
                                     popUpTo(Screen.Register.route) { inclusive = true }
                                 }

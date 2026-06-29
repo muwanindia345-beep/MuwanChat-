@@ -36,6 +36,10 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 
+private const val BACKEND_URL = "https://muwan-chat-backend-production.up.railway.app"
+
+private const val BACKEND_URL = "https://muwan-chat-backend-production.up.railway.app"
+
 private fun formatConvTime(raw: String): String {
     return try {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
