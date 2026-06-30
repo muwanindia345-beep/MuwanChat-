@@ -30,4 +30,10 @@ interface UsersApi {
         @Header("Authorization") token: String,
         @Path("uid") uid: String
     ): Response<UserResponse>
+
+    @POST("users/fcm-token")
+    suspend fun updateFcmToken(
+        @Header("Authorization") token: String,
+        @Body body: Map<String, String>
+    ): Response<Unit>
 }
