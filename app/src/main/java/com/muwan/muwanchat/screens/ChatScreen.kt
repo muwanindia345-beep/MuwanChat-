@@ -126,6 +126,11 @@ fun ChatScreen(
                 scope.launch {
                     messages.add(msg)
                     listState.animateScrollToItem(messages.size - 1)
+                    if (senderUid != myUid) {
+                        try {
+                            RetrofitClient.chatApi.markSeen("Bearer $myToken", roomId)
+                        } catch (_: Exception) {}
+                    }
                 }
             },
             onPresenceChange = { _, online ->
@@ -151,6 +156,10 @@ fun ChatScreen(
                 if (messages.isNotEmpty())
                     listState.scrollToItem(messages.size - 1)
             }
+        } catch (_: Exception) {}
+
+        try {
+            RetrofitClient.chatApi.markSeen("Bearer $token", roomId)
         } catch (_: Exception) {}
     }
 
