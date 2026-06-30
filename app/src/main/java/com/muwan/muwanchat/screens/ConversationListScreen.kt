@@ -62,13 +62,26 @@ fun ConversationListScreen(navController: NavController) {
     var searchQuery by remember { mutableStateOf("") }
     var incomingCount by remember { mutableStateOf(0) }
     var socket by remember { mutableStateOf<Socket?>(null) }
+    var myUid by remember { mutableStateOf("") }
+
+    suspend fun reloadConversations(token: String) {
+        try {
+            val res = RetrofitClient.chatApi.getConversations("Bearer $token")
+            if (res.isSuccessful) conversations = res.body()?.conversations ?: emptyList()
+        } catch (_: Exception) {}
+    }
 
     LaunchedEffect(Unit) {
         isLoading = true
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
+
         try {
-            val res = RetrofitClient.chatApi.getConversations("Bearer $token")
-            if (res.isSuccessful) conversations = res.body()?.conversations ?: emptyList()
+            val me = RetrofitClient.authApi.me("Bearer $token")
+            myUid = me.body()?.user?.uid ?: ""
+        } catch (_: Exception) {}
+
+        reloadConversations(token)
+        try {
             val req = RetrofitClient.requestsApi.getIncoming("Bearer $token")
             if (req.isSuccessful) incomingCount = req.body()?.requests?.size ?: 0
         } catch (_: Exception) {}
@@ -84,10 +97,17 @@ fun ConversationListScreen(navController: NavController) {
                 val json = args[0] as? JSONObject ?: return@on
                 val content = json.optString("content")
                 val roomId = json.optString("room_id")
+                val senderUid = json.optString("sender_uid")
                 scope.launch {
                     conversations = conversations.map { conv ->
                         if (conv.room_id == roomId)
-                            conv.copy(lastMessage = content, lastTime = "just now")
+                            conv.copy(
+                                lastMessage = content,
+                                lastTime = "just now",
+                                lastSenderUid = senderUid,
+                                unreadCount = if (senderUid != myUid)
+                                    conv.unreadCount + 1 else conv.unreadCount
+                            )
                         else conv
                     }
                 }
@@ -113,6 +133,12 @@ fun ConversationListScreen(navController: NavController) {
             s.connect()
             socket = s
         } catch (_: Exception) {}
+    }
+
+    // Refresh unread counts every time this screen comes back into view
+    LaunchedEffect(navController.currentBackStackEntry) {
+        val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
+        reloadConversations(token)
     }
 
     DisposableEffect(Unit) {
@@ -208,6 +234,10 @@ fun ConversationListScreen(navController: NavController) {
                 LazyColumn {
                     items(filtered) { conv ->
                         ConversationRow(conv = conv, onClick = {
+                            // Optimistically clear unread badge on tap
+                            conversations = conversations.map {
+                                if (it.room_id == conv.room_id) it.copy(unreadCount = 0) else it
+                            }
                             navController.navigate(
                                 Screen.Chat.createRoute(conv.uid, conv.username, conv.room_id)
                             )
@@ -222,6 +252,8 @@ fun ConversationListScreen(navController: NavController) {
 
 @Composable
 fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
+    val hasUnread = conv.unreadCount > 0
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -250,7 +282,9 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 conv.lastMessage.ifBlank { "Say hi! 👋" },
-                color = Color(0xFF888888), fontSize = 13.sp,
+                color = if (hasUnread) Color.White else Color(0xFF888888),
+                fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal,
+                fontSize = 13.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
@@ -258,12 +292,28 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
         Column(horizontalAlignment = Alignment.End) {
             Text(formatConvTime(conv.lastTime), color = Color(0xFF666688), fontSize = 11.sp)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                if (conv.isOnline) "Online" else "Offline",
-                color = if (conv.isOnline) Color(0xFF4CD964) else Color(0xFFFF3B30),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold
-            )
+            if (hasUnread) {
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(DarkAccent)
+                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        if (conv.unreadCount > 9) "9+" else "${conv.unreadCount}",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                Text(
+                    if (conv.isOnline) "Online" else "Offline",
+                    color = if (conv.isOnline) Color(0xFF4CD964) else Color(0xFFFF3B30),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

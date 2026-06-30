@@ -10,7 +10,9 @@ data class ConversationItem(
     val avatar: String?,
     val lastMessage: String,
     val lastTime: String,
-    val isOnline: Boolean = false
+    val isOnline: Boolean = false,
+    val unreadCount: Int = 0,
+    val lastSenderUid: String = ""
 )
 
 data class ConversationsResponse(
