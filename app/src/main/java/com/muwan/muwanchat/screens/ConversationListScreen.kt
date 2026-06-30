@@ -92,6 +92,24 @@ fun ConversationListScreen(navController: NavController) {
                     }
                 }
             }
+            s.on("user_online") { args ->
+                val json = args[0] as? JSONObject ?: return@on
+                val uid = json.optString("uid")
+                scope.launch {
+                    conversations = conversations.map { conv ->
+                        if (conv.uid == uid) conv.copy(isOnline = true) else conv
+                    }
+                }
+            }
+            s.on("user_offline") { args ->
+                val json = args[0] as? JSONObject ?: return@on
+                val uid = json.optString("uid")
+                scope.launch {
+                    conversations = conversations.map { conv ->
+                        if (conv.uid == uid) conv.copy(isOnline = false) else conv
+                    }
+                }
+            }
             s.connect()
             socket = s
         } catch (_: Exception) {}
@@ -237,6 +255,15 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Text(formatConvTime(conv.lastTime), color = Color(0xFF666688), fontSize = 11.sp)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(formatConvTime(conv.lastTime), color = Color(0xFF666688), fontSize = 11.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                if (conv.isOnline) "Online" else "Offline",
+                color = if (conv.isOnline) Color(0xFF4CD964) else Color(0xFFFF3B30),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
