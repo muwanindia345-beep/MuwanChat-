@@ -6,7 +6,7 @@ import retrofit2.http.*
 data class UserItem(
     val uid: String,
     val username: String,
-    val email: String,
+    val email: String?
     val avatar: String?
 )
 
