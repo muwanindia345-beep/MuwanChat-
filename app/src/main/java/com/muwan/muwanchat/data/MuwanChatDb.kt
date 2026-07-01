@@ -5,9 +5,14 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [MessageEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [MessageEntity::class, ConversationEntity::class],
+    version = 2,
+    exportSchema = false
+)
 abstract class MuwanChatDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
+    abstract fun conversationDao(): ConversationDao
 
     companion object {
         @Volatile
@@ -19,7 +24,10 @@ abstract class MuwanChatDb : RoomDatabase() {
                     context.applicationContext,
                     MuwanChatDb::class.java,
                     "muwanchat_db"
-                ).build().also { INSTANCE = it }
+                )
+                    // Trial project hai, koi migration data important nahi — fresh schema pe reset kar do
+                    .fallbackToDestructiveMigration()
+                    .build().also { INSTANCE = it }
             }
         }
     }

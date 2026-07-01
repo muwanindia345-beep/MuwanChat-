@@ -1,9 +1,14 @@
 package com.muwan.muwanchat.data
 
 import androidx.room.*
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MessageDao {
+
+    // Reactive: ChatScreen isko collect karega, Room khud UI update karega
+    @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt ASC")
+    fun observeMessages(roomId: String): Flow<List<MessageEntity>>
 
     @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt ASC")
     suspend fun getMessages(roomId: String): List<MessageEntity>
