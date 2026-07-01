@@ -26,7 +26,6 @@ class ChatSocketManager(
 
             s.on(Socket.EVENT_CONNECT) {
                 s.emit("join_room", roomId)
-                // Ask backend for current presence of the other user
                 s.emit("check_presence", receiverUid)
             }
 
@@ -40,7 +39,6 @@ class ChatSocketManager(
                 )
             }
 
-            // Backend should emit: { "uid": "xxxx", "online": true/false }
             s.on("user_online") { args ->
                 val json = args[0] as? JSONObject ?: return@on
                 val uid = json.optString("uid")
@@ -53,7 +51,6 @@ class ChatSocketManager(
                 if (uid == receiverUid) onPresenceChange(uid, false)
             }
 
-            // Optional: backend can respond to check_presence with initial state
             s.on("presence_status") { args ->
                 val json = args[0] as? JSONObject ?: return@on
                 val uid = json.optString("uid")
@@ -66,9 +63,12 @@ class ChatSocketManager(
         } catch (_: Exception) {}
     }
 
-    fun sendMessage(content: String) {
+    // FIX: ab id bhi bhejte hain taaki apna hi bheja message backend se milne wale
+    // history sync ke waqt Room mein duplicate na bane (same id match ho)
+    fun sendMessage(id: String, content: String) {
         socket?.let { s ->
             val json = JSONObject().apply {
+                put("id", id)
                 put("receiver_uid", receiverUid)
                 put("content", content)
                 put("type", "text")

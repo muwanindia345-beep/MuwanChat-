@@ -6,9 +6,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ConversationDao {
 
-    // Reactive: Room khud emit karega jab bhi table change ho
     @Query("SELECT * FROM conversations ORDER BY lastTime DESC")
     fun observeConversations(): Flow<List<ConversationEntity>>
+
+    @Query("SELECT * FROM conversations WHERE roomId = :roomId LIMIT 1")
+    suspend fun getByRoomId(roomId: String): ConversationEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(conversations: List<ConversationEntity>)

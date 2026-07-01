@@ -25,6 +25,8 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.ChatRepository
+import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.RetrofitClient
@@ -56,30 +58,59 @@ private fun formatConvTime(raw: String): String {
 fun ConversationListScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val db = remember { MuwanChatDb.get(context) }
 
-    var conversations by remember { mutableStateOf<List<ConversationItem>>(emptyList()) }
+    // Room hi single source of truth — instant render, offline bhi
+    val conversationEntities by db.conversationDao().observeConversations().collectAsState(initial = emptyList())
+    var onlineStatus by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+
+    val conversations = remember(conversationEntities, onlineStatus) {
+        conversationEntities.map { e ->
+            ConversationItem(
+                room_id = e.roomId,
+                uid = e.uid,
+                username = e.username,
+                avatar = e.avatar,
+                lastMessage = e.lastMessage,
+                lastTime = e.lastTime,
+                isOnline = onlineStatus[e.uid] ?: false,
+                unreadCount = e.unreadCount,
+                lastSenderUid = e.lastSenderUid
+            )
+        }
+    }
+
     var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
     var incomingCount by remember { mutableStateOf(0) }
     var socket by remember { mutableStateOf<Socket?>(null) }
     var myUid by remember { mutableStateOf("") }
+    var myToken by remember { mutableStateOf("") }
 
     suspend fun reloadConversations(token: String) {
         try {
             val res = RetrofitClient.chatApi.getConversations("Bearer $token")
-            if (res.isSuccessful) conversations = res.body()?.conversations ?: emptyList()
+            if (res.isSuccessful) {
+                ChatRepository.syncConversations(db, res.body()?.conversations ?: emptyList())
+            }
         } catch (_: Exception) {}
     }
 
+    // Room mein data aate hi loading hata do — spinner sirf tab jab cache bhi khaali ho
+    LaunchedEffect(conversationEntities) {
+        if (conversationEntities.isNotEmpty()) isLoading = false
+    }
+
     LaunchedEffect(Unit) {
-        isLoading = true
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
+        myToken = token
 
         try {
             val me = RetrofitClient.authApi.me("Bearer $token")
             myUid = me.body()?.user?.uid ?: ""
         } catch (_: Exception) {}
 
+        // Chup-chaap background sync — Room already list dikha chuka hai isse pehle
         reloadConversations(token)
         try {
             val req = RetrofitClient.requestsApi.getIncoming("Bearer $token")
@@ -93,49 +124,43 @@ fun ConversationListScreen(navController: NavController) {
                 transports = arrayOf("websocket")
             }
             val s = IO.socket(BACKEND_URL, opts)
+
             s.on("new_message") { args ->
                 val json = args[0] as? JSONObject ?: return@on
                 val content = json.optString("content")
                 val roomId = json.optString("room_id")
                 val senderUid = json.optString("sender_uid")
+                val msgId = json.optString("id")
+                val createdAt = json.optString("created_at").ifBlank { nowIso() }
                 scope.launch {
-                    conversations = conversations.map { conv ->
-                        if (conv.room_id == roomId)
-                            conv.copy(
-                                lastMessage = content,
-                                lastTime = "just now",
-                                lastSenderUid = senderUid,
-                                unreadCount = if (senderUid != myUid)
-                                    conv.unreadCount + 1 else conv.unreadCount
-                            )
-                        else conv
+                    val existing = db.conversationDao().getByRoomId(roomId)
+                    if (existing == null) {
+                        // Bilkul naya conversation — poori list refresh karo taaki username mil jaye
+                        reloadConversations(myToken)
+                    } else {
+                        ChatRepository.recordMessage(
+                            db = db, id = msgId, roomId = roomId, senderUid = senderUid,
+                            receiverUid = myUid, content = content, type = "text",
+                            createdAt = createdAt, myUid = myUid
+                        )
                     }
                 }
             }
             s.on("user_online") { args ->
                 val json = args[0] as? JSONObject ?: return@on
                 val uid = json.optString("uid")
-                scope.launch {
-                    conversations = conversations.map { conv ->
-                        if (conv.uid == uid) conv.copy(isOnline = true) else conv
-                    }
-                }
+                onlineStatus = onlineStatus + (uid to true)
             }
             s.on("user_offline") { args ->
                 val json = args[0] as? JSONObject ?: return@on
                 val uid = json.optString("uid")
-                scope.launch {
-                    conversations = conversations.map { conv ->
-                        if (conv.uid == uid) conv.copy(isOnline = false) else conv
-                    }
-                }
+                onlineStatus = onlineStatus + (uid to false)
             }
             s.connect()
             socket = s
         } catch (_: Exception) {}
     }
 
-    // Refresh unread counts every time this screen comes back into view
     LaunchedEffect(navController.currentBackStackEntry) {
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         reloadConversations(token)
@@ -232,12 +257,9 @@ fun ConversationListScreen(navController: NavController) {
                 }
             } else {
                 LazyColumn {
-                    items(filtered) { conv ->
+                    items(filtered, key = { it.room_id }) { conv ->
                         ConversationRow(conv = conv, onClick = {
-                            // Optimistically clear unread badge on tap
-                            conversations = conversations.map {
-                                if (it.room_id == conv.room_id) it.copy(unreadCount = 0) else it
-                            }
+                            scope.launch { ChatRepository.clearUnread(db, conv.room_id) }
                             navController.navigate(
                                 Screen.Chat.createRoute(conv.uid, conv.username, conv.room_id)
                             )

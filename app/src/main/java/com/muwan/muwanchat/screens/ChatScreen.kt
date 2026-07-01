@@ -28,6 +28,8 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkInputBg
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.ChatRepository
+import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import kotlinx.coroutines.flow.first
@@ -45,15 +47,25 @@ fun ChatScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val db = remember { MuwanChatDb.get(context) }
 
-    val messages = remember { mutableStateListOf<ChatMessage>() }
-    var input by remember { mutableStateOf("") }
-    var replyTo by remember { mutableStateOf<ChatMessage?>(null) }
-    val listState = rememberLazyListState()
+    // Room hi single source of truth — yahi se list render hoti hai, offline bhi
+    val messageEntities by db.messageDao().observeMessages(roomId).collectAsState(initial = emptyList())
 
     var myUid by remember { mutableStateOf("") }
     var myToken by remember { mutableStateOf("") }
     var isReceiverOnline by remember { mutableStateOf(false) }
+
+    // Sirf image placeholder jaisi cheezein jo abhi Room mein persist nahi hoti (upload flow baad mein aayega)
+    val localOnlyMessages = remember { mutableStateListOf<ChatMessage>() }
+
+    val messages = remember(messageEntities, localOnlyMessages.size, myUid) {
+        messageEntities.map { it.toChatMessage(myUid) } + localOnlyMessages
+    }
+
+    var input by remember { mutableStateOf("") }
+    var replyTo by remember { mutableStateOf<ChatMessage?>(null) }
+    val listState = rememberLazyListState()
 
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
     var fullscreenImage by remember { mutableStateOf<Uri?>(null) }
@@ -65,36 +77,44 @@ fun ChatScreen(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            messages.add(ChatMessage(
+            localOnlyMessages.add(ChatMessage(
                 id = UUID.randomUUID().toString(),
                 text = "",
                 sent = true,
                 time = nowTime(),
                 imageUri = it
             ))
-            scope.launch { listState.animateScrollToItem(messages.size - 1) }
         }
     }
 
     fun sendMessage() {
         val text = input.trim()
         if (text.isBlank()) return
-
-        val tempMsg = ChatMessage(
-            id = UUID.randomUUID().toString(),
-            text = text,
-            sent = true,
-            time = nowTime(),
-            replyTo = replyTo
-        )
-        messages.add(tempMsg)
+        val id = UUID.randomUUID().toString()
+        val createdAt = nowIso()
         input = ""
         replyTo = null
-        scope.launch { listState.animateScrollToItem(messages.size - 1) }
+
+        // Room mein turant insert — offline pe bhi apna hi bheja message dikhega, aur
+        // conversation list ka lastMessage bhi isi se sync ho jaata hai
+        scope.launch {
+            ChatRepository.recordMessage(
+                db = db,
+                id = id,
+                roomId = roomId,
+                senderUid = myUid,
+                receiverUid = receiverUid,
+                content = text,
+                type = "text",
+                createdAt = createdAt,
+                myUid = myUid,
+                otherUsername = receiverUsername
+            )
+        }
 
         val mgr = socketManager
         if (mgr?.socket != null) {
-            mgr.sendMessage(text)
+            mgr.sendMessage(id, text)
         } else {
             scope.launch {
                 try {
@@ -107,29 +127,43 @@ fun ChatScreen(
         }
     }
 
+    // Naya message (Room se ho ya socket se) aate hi list badhegi, tab scroll karo
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+    }
+
     LaunchedEffect(Unit) {
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         myToken = token
+
+        try {
+            val me = RetrofitClient.authApi.me("Bearer $token")
+            myUid = me.body()?.user?.uid ?: ""
+        } catch (_: Exception) {}
 
         val mgr = ChatSocketManager(
             token = token,
             roomId = roomId,
             receiverUid = receiverUid,
             onNewMessage = { id, senderUid, content, createdAt ->
-                if (messages.any { it.id == id }) return@ChatSocketManager
-                val msg = ChatMessage(
-                    id = id,
-                    text = content,
-                    sent = senderUid == myUid,
-                    time = createdAt.take(16).replace("T", " ").ifBlank { nowTime() }
-                )
                 scope.launch {
-                    messages.add(msg)
-                    listState.animateScrollToItem(messages.size - 1)
+                    ChatRepository.recordMessage(
+                        db = db,
+                        id = id,
+                        roomId = roomId,
+                        senderUid = senderUid,
+                        receiverUid = if (senderUid == myUid) receiverUid else myUid,
+                        content = content,
+                        type = "text",
+                        createdAt = createdAt.ifBlank { nowIso() },
+                        myUid = myUid,
+                        otherUsername = receiverUsername
+                    )
                     if (senderUid != myUid) {
                         try {
                             RetrofitClient.chatApi.markSeen("Bearer $myToken", roomId)
                         } catch (_: Exception) {}
+                        ChatRepository.clearUnread(db, roomId)
                     }
                 }
             },
@@ -140,26 +174,17 @@ fun ChatScreen(
         mgr.connect()
         socketManager = mgr
 
-        try {
-            val me = RetrofitClient.authApi.me("Bearer $token")
-            myUid = me.body()?.user?.uid ?: ""
-        } catch (_: Exception) {}
-
+        // Chup-chaap background sync — Room already screen dikha chuka hai isse pehle
         try {
             val res = RetrofitClient.chatApi.getMessages("Bearer $token", roomId)
             if (res.isSuccessful) {
-                val history = res.body()?.messages ?: emptyList()
-                val existingIds = messages.map { it.id }.toSet()
-                val newOnes = history.map { it.toChatMessage(myUid) }
-                    .filter { it.id !in existingIds }
-                messages.addAll(0, newOnes)
-                if (messages.isNotEmpty())
-                    listState.scrollToItem(messages.size - 1)
+                ChatRepository.syncMessages(db, res.body()?.messages ?: emptyList())
             }
         } catch (_: Exception) {}
 
         try {
             RetrofitClient.chatApi.markSeen("Bearer $token", roomId)
+            ChatRepository.clearUnread(db, roomId)
         } catch (_: Exception) {}
     }
 

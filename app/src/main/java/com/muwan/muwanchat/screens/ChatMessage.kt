@@ -1,6 +1,7 @@
 package com.muwan.muwanchat.screens
 
 import android.net.Uri
+import com.muwan.muwanchat.data.MessageEntity
 import com.muwan.muwanchat.network.MessageItem
 import java.text.SimpleDateFormat
 import java.util.*
@@ -22,7 +23,21 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     imageUri = null
 )
 
+fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
+    id = id,
+    text = content,
+    sent = senderUid == myUid,
+    time = createdAt.take(16).replace("T", " "),
+    imageUri = null
+)
+
 fun nowTime(): String {
     val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+    return sdf.format(Date())
+}
+
+fun nowIso(): String {
+    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
     return sdf.format(Date())
 }
