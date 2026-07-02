@@ -9,6 +9,9 @@ interface ConversationDao {
     @Query("SELECT * FROM conversations ORDER BY lastTime DESC")
     fun observeConversations(): Flow<List<ConversationEntity>>
 
+    @Query("SELECT * FROM conversations")
+    suspend fun getAll(): List<ConversationEntity>
+
     @Query("SELECT * FROM conversations WHERE roomId = :roomId LIMIT 1")
     suspend fun getByRoomId(roomId: String): ConversationEntity?
 

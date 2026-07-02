@@ -27,9 +27,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkInputBg
+import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatRepository
 import com.muwan.muwanchat.data.MuwanChatDb
+import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import kotlinx.coroutines.flow.first
@@ -71,8 +73,6 @@ fun ChatScreen(
     var fullscreenImage by remember { mutableStateOf<Uri?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
 
-    var socketManager by remember { mutableStateOf<ChatSocketManager?>(null) }
-
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -112,9 +112,8 @@ fun ChatScreen(
             )
         }
 
-        val mgr = socketManager
-        if (mgr?.socket != null) {
-            mgr.sendMessage(id, text)
+        if (AppSocketManager.isConnected) {
+            AppSocketManager.sendMessage(id, receiverUid, text)
         } else {
             scope.launch {
                 try {
@@ -141,38 +140,11 @@ fun ChatScreen(
             myUid = me.body()?.user?.uid ?: ""
         } catch (_: Exception) {}
 
-        val mgr = ChatSocketManager(
-            token = token,
-            roomId = roomId,
-            receiverUid = receiverUid,
-            onNewMessage = { id, senderUid, content, createdAt ->
-                scope.launch {
-                    ChatRepository.recordMessage(
-                        db = db,
-                        id = id,
-                        roomId = roomId,
-                        senderUid = senderUid,
-                        receiverUid = if (senderUid == myUid) receiverUid else myUid,
-                        content = content,
-                        type = "text",
-                        createdAt = createdAt.ifBlank { nowIso() },
-                        myUid = myUid,
-                        otherUsername = receiverUsername
-                    )
-                    if (senderUid != myUid) {
-                        try {
-                            RetrofitClient.chatApi.markSeen("Bearer $myToken", roomId)
-                        } catch (_: Exception) {}
-                        ChatRepository.clearUnread(db, roomId)
-                    }
-                }
-            },
-            onPresenceChange = { _, online ->
-                isReceiverOnline = online
-            }
-        )
-        mgr.connect()
-        socketManager = mgr
+        // Same app-wide socket jo ConversationListScreen bhi use karti hai —
+        // koi alag connection nahi banta, isliye online/unread dono jagah consistent
+        AppSocketManager.connect(token)
+        AppSocketManager.joinRoom(roomId)
+        AppSocketManager.checkPresence(receiverUid)
 
         // Chup-chaap background sync — Room already screen dikha chuka hai isse pehle
         try {
@@ -188,8 +160,45 @@ fun ChatScreen(
         } catch (_: Exception) {}
     }
 
-    DisposableEffect(Unit) {
-        onDispose { socketManager?.disconnect() }
+    // Global socket ke events sunte raho, sirf isi room/user se related events pakdo
+    LaunchedEffect(myUid) {
+        if (myUid.isBlank()) return@LaunchedEffect
+        AppSocketManager.events.collect { event ->
+            when (event) {
+                is SocketEvent.NewMessage -> {
+                    if (event.roomId == roomId) {
+                        ChatRepository.recordMessage(
+                            db = db,
+                            id = event.id,
+                            roomId = roomId,
+                            senderUid = event.senderUid,
+                            receiverUid = if (event.senderUid == myUid) receiverUid else myUid,
+                            content = event.content,
+                            type = "text",
+                            createdAt = event.createdAt.ifBlank { nowIso() },
+                            myUid = myUid,
+                            otherUsername = receiverUsername
+                        )
+                        if (event.senderUid != myUid) {
+                            try {
+                                RetrofitClient.chatApi.markSeen("Bearer $myToken", roomId)
+                            } catch (_: Exception) {}
+                            ChatRepository.clearUnread(db, roomId)
+                        }
+                    }
+                }
+                is SocketEvent.UserOnline -> {
+                    if (event.uid == receiverUid) isReceiverOnline = true
+                }
+                is SocketEvent.UserOffline -> {
+                    if (event.uid == receiverUid) isReceiverOnline = false
+                }
+                is SocketEvent.PresenceStatus -> {
+                    if (event.uid == receiverUid) isReceiverOnline = event.online
+                }
+                else -> {}
+            }
+        }
     }
 
     Column(

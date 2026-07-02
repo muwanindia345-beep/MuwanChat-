@@ -117,6 +117,12 @@ fun ConversationListScreen(navController: NavController) {
             if (req.isSuccessful) incomingCount = req.body()?.requests?.size ?: 0
         } catch (_: Exception) {}
         isLoading = false
+
+        // Sabhi known contacts ka presence turant maango — list accurate dikhe
+        // bina chat kholay, isi single socket se (koi alag connection nahi)
+        db.conversationDao().getAll().forEach { conv ->
+            AppSocketManager.checkPresence(conv.uid)
+        }
     }
 
     // Global socket ke events sunte raho — jab tak screen composed hai
