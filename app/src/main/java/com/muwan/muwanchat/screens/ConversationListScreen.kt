@@ -24,21 +24,18 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatRepository
 import com.muwan.muwanchat.data.MuwanChatDb
+import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.RetrofitClient
-import io.socket.client.IO
-import io.socket.client.Socket
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
-
-private const val BACKEND_URL = "https://muwan-chat-backend-production.up.railway.app"
 
 private fun formatConvTime(raw: String): String {
     return try {
@@ -83,7 +80,6 @@ fun ConversationListScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
     var incomingCount by remember { mutableStateOf(0) }
-    var socket by remember { mutableStateOf<Socket?>(null) }
     var myUid by remember { mutableStateOf("") }
     var myToken by remember { mutableStateOf("") }
 
@@ -101,6 +97,7 @@ fun ConversationListScreen(navController: NavController) {
         if (conversationEntities.isNotEmpty()) isLoading = false
     }
 
+    // Ek baar setup: token/uid nikaalo, global socket connect karo, background sync karo
     LaunchedEffect(Unit) {
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         myToken = token
@@ -110,6 +107,9 @@ fun ConversationListScreen(navController: NavController) {
             myUid = me.body()?.user?.uid ?: ""
         } catch (_: Exception) {}
 
+        // Global socket — app-wide single connection, disconnect sirf logout par
+        AppSocketManager.connect(token)
+
         // Chup-chaap background sync — Room already list dikha chuka hai isse pehle
         reloadConversations(token)
         try {
@@ -117,57 +117,49 @@ fun ConversationListScreen(navController: NavController) {
             if (req.isSuccessful) incomingCount = req.body()?.requests?.size ?: 0
         } catch (_: Exception) {}
         isLoading = false
+    }
 
-        try {
-            val opts = IO.Options().apply {
-                auth = mapOf("token" to token)
-                transports = arrayOf("websocket")
-            }
-            val s = IO.socket(BACKEND_URL, opts)
-
-            s.on("new_message") { args ->
-                val json = args[0] as? JSONObject ?: return@on
-                val content = json.optString("content")
-                val roomId = json.optString("room_id")
-                val senderUid = json.optString("sender_uid")
-                val msgId = json.optString("id")
-                val createdAt = json.optString("created_at").ifBlank { nowIso() }
-                scope.launch {
-                    val existing = db.conversationDao().getByRoomId(roomId)
+    // Global socket ke events sunte raho — jab tak screen composed hai
+    LaunchedEffect(myUid) {
+        AppSocketManager.events.collect { event ->
+            when (event) {
+                is SocketEvent.NewMessage -> {
+                    val existing = db.conversationDao().getByRoomId(event.roomId)
                     if (existing == null) {
                         // Bilkul naya conversation — poori list refresh karo taaki username mil jaye
-                        reloadConversations(myToken)
+                        if (myToken.isNotBlank()) reloadConversations(myToken)
                     } else {
                         ChatRepository.recordMessage(
-                            db = db, id = msgId, roomId = roomId, senderUid = senderUid,
-                            receiverUid = myUid, content = content, type = "text",
-                            createdAt = createdAt, myUid = myUid
+                            db = db,
+                            id = event.id,
+                            roomId = event.roomId,
+                            senderUid = event.senderUid,
+                            receiverUid = myUid,
+                            content = event.content,
+                            type = "text",
+                            createdAt = event.createdAt.ifBlank { nowIso() },
+                            myUid = myUid
                         )
                     }
                 }
+                is SocketEvent.UserOnline -> {
+                    onlineStatus = onlineStatus + (event.uid to true)
+                }
+                is SocketEvent.UserOffline -> {
+                    onlineStatus = onlineStatus + (event.uid to false)
+                }
+                is SocketEvent.PresenceStatus -> {
+                    onlineStatus = onlineStatus + (event.uid to event.online)
+                }
+                else -> {}
             }
-            s.on("user_online") { args ->
-                val json = args[0] as? JSONObject ?: return@on
-                val uid = json.optString("uid")
-                onlineStatus = onlineStatus + (uid to true)
-            }
-            s.on("user_offline") { args ->
-                val json = args[0] as? JSONObject ?: return@on
-                val uid = json.optString("uid")
-                onlineStatus = onlineStatus + (uid to false)
-            }
-            s.connect()
-            socket = s
-        } catch (_: Exception) {}
+        }
     }
 
+    // Screen par wapas aane par bhi ek halka background refresh — safety net
     LaunchedEffect(navController.currentBackStackEntry) {
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         reloadConversations(token)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { socket?.disconnect() }
     }
 
     val filtered = if (searchQuery.isBlank()) conversations
@@ -210,6 +202,7 @@ fun ConversationListScreen(navController: NavController) {
                     }
                     IconButton(onClick = {
                         scope.launch {
+                            AppSocketManager.disconnect()
                             AuthDataStore.clearAuth(context)
                             navController.navigate(Screen.Login.route) {
                                 popUpTo(Screen.ConversationList.route) { inclusive = true }

@@ -1,0 +1,153 @@
+package com.muwan.muwanchat.data
+
+import io.socket.client.IO
+import io.socket.client.Socket
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import org.json.JSONObject
+
+private const val CHAT_BACKEND_URL = "https://muwan-chat-backend-production.up.railway.app"
+
+sealed class SocketEvent {
+    data class NewMessage(
+        val id: String,
+        val roomId: String,
+        val senderUid: String,
+        val content: String,
+        val createdAt: String
+    ) : SocketEvent()
+
+    data class UserOnline(val uid: String) : SocketEvent()
+    data class UserOffline(val uid: String) : SocketEvent()
+    data class PresenceStatus(val uid: String, val online: Boolean) : SocketEvent()
+
+    data class Typing(val uid: String, val roomId: String) : SocketEvent()
+    data class StopTyping(val uid: String) : SocketEvent()
+
+    data class MessagesSeen(val roomId: String, val seenBy: String) : SocketEvent()
+}
+
+// Poore app ke liye EK hi socket connection. Login ke baad connect hota hai,
+// tab tak zinda rehta hai jab tak logout na ho. Har screen isi se events
+// sunta hai — apna alag socket nahi banata, isse events miss nahi hote aur
+// screen ke beech aane-jaane par reconnect/reload ki zaroorat nahi padti.
+object AppSocketManager {
+
+    private var socket: Socket? = null
+    private var currentToken: String? = null
+
+    private val _events = MutableSharedFlow<SocketEvent>(extraBufferCapacity = 64)
+    val events = _events.asSharedFlow()
+
+    val isConnected: Boolean
+        get() = socket?.connected() == true
+
+    fun connect(token: String) {
+        // Same token se pehle se connected hai to dobara connect mat karo
+        if (socket != null && currentToken == token && socket?.connected() == true) return
+
+        // Naya login / token badla — purana socket saaf karke naya banao
+        if (socket != null) disconnect()
+
+        currentToken = token
+        try {
+            val opts = IO.Options().apply {
+                auth = mapOf("token" to token)
+                transports = arrayOf("websocket")
+                reconnection = true
+            }
+            val s = IO.socket(CHAT_BACKEND_URL, opts)
+
+            s.on("new_message") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.NewMessage(
+                        id = json.optString("id"),
+                        roomId = json.optString("room_id"),
+                        senderUid = json.optString("sender_uid"),
+                        content = json.optString("content"),
+                        createdAt = json.optString("created_at")
+                    )
+                )
+            }
+
+            s.on("user_online") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(SocketEvent.UserOnline(json.optString("uid")))
+            }
+
+            s.on("user_offline") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(SocketEvent.UserOffline(json.optString("uid")))
+            }
+
+            s.on("presence_status") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.PresenceStatus(json.optString("uid"), json.optBoolean("online", false))
+                )
+            }
+
+            s.on("typing") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(SocketEvent.Typing(json.optString("uid"), json.optString("room_id")))
+            }
+
+            s.on("stop_typing") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(SocketEvent.StopTyping(json.optString("uid")))
+            }
+
+            s.on("messages_seen") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.MessagesSeen(json.optString("room_id"), json.optString("seen_by"))
+                )
+            }
+
+            s.connect()
+            socket = s
+        } catch (_: Exception) {}
+    }
+
+    fun joinRoom(roomId: String) {
+        socket?.emit("join_room", roomId)
+    }
+
+    fun checkPresence(uid: String) {
+        socket?.emit("check_presence", uid)
+    }
+
+    fun sendMessage(id: String, receiverUid: String, content: String) {
+        socket?.let { s ->
+            val json = JSONObject().apply {
+                put("id", id)
+                put("receiver_uid", receiverUid)
+                put("content", content)
+                put("type", "text")
+            }
+            s.emit("send_message", json)
+        }
+    }
+
+    fun sendTyping(roomId: String, receiverUid: String) {
+        val json = JSONObject().apply {
+            put("room_id", roomId)
+            put("receiver_uid", receiverUid)
+        }
+        socket?.emit("typing", json)
+    }
+
+    fun sendStopTyping(receiverUid: String) {
+        val json = JSONObject().apply { put("receiver_uid", receiverUid) }
+        socket?.emit("stop_typing", json)
+    }
+
+    // Sirf logout par call karo — normal screen navigation par NAHI
+    fun disconnect() {
+        socket?.off()
+        socket?.disconnect()
+        socket = null
+        currentToken = null
+    }
+}
