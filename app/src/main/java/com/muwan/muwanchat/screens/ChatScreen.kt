@@ -34,6 +34,8 @@ import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.*
@@ -57,6 +59,8 @@ fun ChatScreen(
     var myUid by remember { mutableStateOf("") }
     var myToken by remember { mutableStateOf("") }
     var isReceiverOnline by remember { mutableStateOf(false) }
+    var isReceiverTyping by remember { mutableStateOf(false) }
+    var typingJob by remember { mutableStateOf<Job?>(null) }
 
     // Sirf image placeholder jaisi cheezein jo abhi Room mein persist nahi hoti (upload flow baad mein aayega)
     val localOnlyMessages = remember { mutableStateListOf<ChatMessage>() }
@@ -94,6 +98,12 @@ fun ChatScreen(
         val createdAt = nowIso()
         input = ""
         replyTo = null
+
+        // Message bhejte hi typing signal band karo
+        typingJob?.cancel()
+        if (AppSocketManager.isConnected) {
+            AppSocketManager.sendStopTyping(receiverUid)
+        }
 
         // Room mein turant insert — offline pe bhi apna hi bheja message dikhega, aur
         // conversation list ka lastMessage bhi isi se sync ho jaata hai
@@ -180,6 +190,7 @@ fun ChatScreen(
                             otherUsername = receiverUsername
                         )
                         if (event.senderUid != myUid) {
+                            isReceiverTyping = false
                             try {
                                 RetrofitClient.chatApi.markSeen("Bearer $myToken", roomId)
                             } catch (_: Exception) {}
@@ -191,10 +202,19 @@ fun ChatScreen(
                     if (event.uid == receiverUid) isReceiverOnline = true
                 }
                 is SocketEvent.UserOffline -> {
-                    if (event.uid == receiverUid) isReceiverOnline = false
+                    if (event.uid == receiverUid) {
+                        isReceiverOnline = false
+                        isReceiverTyping = false
+                    }
                 }
                 is SocketEvent.PresenceStatus -> {
                     if (event.uid == receiverUid) isReceiverOnline = event.online
+                }
+                is SocketEvent.Typing -> {
+                    if (event.uid == receiverUid && event.roomId == roomId) isReceiverTyping = true
+                }
+                is SocketEvent.StopTyping -> {
+                    if (event.uid == receiverUid) isReceiverTyping = false
                 }
                 else -> {}
             }
@@ -211,6 +231,7 @@ fun ChatScreen(
         ChatHeader(
             receiverUsername = receiverUsername,
             isOnline = isReceiverOnline,
+            isTyping = isReceiverTyping,
             onBack = { navController.popBackStack() },
             onVideoCall = { comingSoonFeature = "📹 Video Call" },
             onVoiceCall = { comingSoonFeature = "📞 Voice Call" }
@@ -269,6 +290,20 @@ fun ChatScreen(
             onInputChange = {
                 input = it
                 if (showEmojiPicker) showEmojiPicker = false
+
+                if (AppSocketManager.isConnected) {
+                    if (it.isNotBlank()) {
+                        AppSocketManager.sendTyping(roomId, receiverUid)
+                        typingJob?.cancel()
+                        typingJob = scope.launch {
+                            delay(2500)
+                            AppSocketManager.sendStopTyping(receiverUid)
+                        }
+                    } else {
+                        typingJob?.cancel()
+                        AppSocketManager.sendStopTyping(receiverUid)
+                    }
+                }
             },
             showEmojiPicker = showEmojiPicker,
             onToggleEmojiPicker = {

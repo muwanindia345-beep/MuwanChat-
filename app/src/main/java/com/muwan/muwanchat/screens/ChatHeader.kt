@@ -25,6 +25,7 @@ import com.muwan.muwanchat.DarkHeader
 fun ChatHeader(
     receiverUsername: String,
     isOnline: Boolean,
+    isTyping: Boolean = false,
     onBack: () -> Unit,
     onVideoCall: () -> Unit,
     onVoiceCall: () -> Unit
@@ -56,11 +57,17 @@ fun ChatHeader(
             Spacer(Modifier.width(10.dp))
             Column {
                 Text(receiverUsername, color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(
-                    if (isOnline) "Online" else "Offline",
-                    color = if (isOnline) Color(0xFF4CD964) else Color(0xFF888888),
-                    fontSize = 12.sp
-                )
+                val statusText = when {
+                    isTyping -> "typing..."
+                    isOnline -> "Online"
+                    else -> "Offline"
+                }
+                val statusColor = when {
+                    isTyping -> DarkAccent
+                    isOnline -> Color(0xFF4CD964)
+                    else -> Color(0xFF888888)
+                }
+                Text(statusText, color = statusColor, fontSize = 12.sp)
             }
         }
         Row {
