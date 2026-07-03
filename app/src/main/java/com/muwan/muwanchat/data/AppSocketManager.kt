@@ -58,7 +58,13 @@ object AppSocketManager {
         get() = socket?.connected() == true
 
     fun connect(token: String) {
-        if (socket != null && currentToken == token && socket?.connected() == true) return
+        if (socket != null && currentToken == token) {
+            // Same session ka socket already bana hua hai — agar abhi disconnect
+            // hai to socket.io khud reconnect karega (reconnection=true), naya
+            // banane ki zaroorat nahi, warna har screen switch pe delay aata hai
+            if (socket?.connected() != true) socket?.connect()
+            return
+        }
 
         if (socket != null) disconnect()
 
