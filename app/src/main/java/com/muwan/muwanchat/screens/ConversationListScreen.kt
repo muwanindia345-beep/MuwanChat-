@@ -60,8 +60,9 @@ fun ConversationListScreen(navController: NavController) {
     // Room hi single source of truth — instant render, offline bhi
     val conversationEntities by db.conversationDao().observeConversations().collectAsState(initial = emptyList())
     var onlineStatus by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var typingStatus by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
-    val conversations = remember(conversationEntities, onlineStatus) {
+    val conversations = remember(conversationEntities, onlineStatus, typingStatus) {
         conversationEntities.map { e ->
             ConversationItem(
                 room_id = e.roomId,
@@ -72,7 +73,8 @@ fun ConversationListScreen(navController: NavController) {
                 lastTime = e.lastTime,
                 isOnline = onlineStatus[e.uid] ?: false,
                 unreadCount = e.unreadCount,
-                lastSenderUid = e.lastSenderUid
+                lastSenderUid = e.lastSenderUid,
+                isTyping = typingStatus[e.uid] ?: false
             )
         }
     }
@@ -130,6 +132,7 @@ fun ConversationListScreen(navController: NavController) {
         AppSocketManager.events.collect { event ->
             when (event) {
                 is SocketEvent.NewMessage -> {
+                    typingStatus = typingStatus + (event.senderUid to false)
                     val existing = db.conversationDao().getByRoomId(event.roomId)
                     if (existing == null) {
                         // Bilkul naya conversation — poori list refresh karo taaki username mil jaye
@@ -153,9 +156,28 @@ fun ConversationListScreen(navController: NavController) {
                 }
                 is SocketEvent.UserOffline -> {
                     onlineStatus = onlineStatus + (event.uid to false)
+                    typingStatus = typingStatus + (event.uid to false)
                 }
                 is SocketEvent.PresenceStatus -> {
                     onlineStatus = onlineStatus + (event.uid to event.online)
+                }
+                is SocketEvent.Typing -> {
+                    typingStatus = typingStatus + (event.uid to true)
+                }
+                is SocketEvent.StopTyping -> {
+                    typingStatus = typingStatus + (event.uid to false)
+                }
+                is SocketEvent.NewRequest -> {
+                    incomingCount += 1
+                }
+                is SocketEvent.RequestAccepted -> {
+                    ChatRepository.addConversationPlaceholder(
+                        db = db,
+                        roomId = event.roomId,
+                        uid = event.uid,
+                        username = event.username,
+                        avatar = event.avatar
+                    )
                 }
                 else -> {}
             }
@@ -202,7 +224,10 @@ fun ConversationListScreen(navController: NavController) {
                     BadgedBox(badge = {
                         if (incomingCount > 0) Badge { Text("$incomingCount") }
                     }) {
-                        IconButton(onClick = { navController.navigate(Screen.Requests.route) }) {
+                        IconButton(onClick = {
+                            incomingCount = 0
+                            navController.navigate(Screen.Requests.route)
+                        }) {
                             Icon(Icons.Filled.Notifications, contentDescription = "Requests", tint = DarkAccent)
                         }
                     }
@@ -302,9 +327,10 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                conv.lastMessage.ifBlank { "Say hi! 👋" },
-                color = if (hasUnread) Color.White else Color(0xFF888888),
-                fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal,
+                if (conv.isTyping) "typing..." else conv.lastMessage.ifBlank { "Say hi! 👋" },
+                color = if (conv.isTyping) DarkAccent
+                        else if (hasUnread) Color.White else Color(0xFF888888),
+                fontWeight = if (conv.isTyping || hasUnread) FontWeight.Bold else FontWeight.Normal,
                 fontSize = 13.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
