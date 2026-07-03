@@ -3,7 +3,11 @@ package com.muwan.muwanchat.data
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import org.json.JSONObject
 
 private const val CHAT_BACKEND_URL = "https://muwan-chat-backend-production.up.railway.app"
@@ -54,6 +58,17 @@ object AppSocketManager {
     private val _events = MutableSharedFlow<SocketEvent>(extraBufferCapacity = 64)
     val events = _events.asSharedFlow()
 
+    // Global online/typing state — singleton mein rehta hai isliye screen
+    // dispose hone par (jaise ConversationListScreen jab ChatScreen khulne
+    // par backstack mein chali jaati hai) ye reset nahi hota. Wapas aane par
+    // turant sahi status dikhta hai, koi delay ya "sab offline" flash nahi.
+    private val _onlineUids = MutableStateFlow<Set<String>>(emptySet())
+    val onlineUids: StateFlow<Set<String>> = _onlineUids.asStateFlow()
+
+    // uid -> jis roomId mein wo abhi type kar raha hai
+    private val _typingUsers = MutableStateFlow<Map<String, String>>(emptyMap())
+    val typingUsers: StateFlow<Map<String, String>> = _typingUsers.asStateFlow()
+
     val isConnected: Boolean
         get() = socket?.connected() == true
 
@@ -92,29 +107,40 @@ object AppSocketManager {
 
             s.on("user_online") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
-                _events.tryEmit(SocketEvent.UserOnline(json.optString("uid")))
+                val uid = json.optString("uid")
+                _onlineUids.update { it + uid }
+                _events.tryEmit(SocketEvent.UserOnline(uid))
             }
 
             s.on("user_offline") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
-                _events.tryEmit(SocketEvent.UserOffline(json.optString("uid")))
+                val uid = json.optString("uid")
+                _onlineUids.update { it - uid }
+                _typingUsers.update { it - uid }
+                _events.tryEmit(SocketEvent.UserOffline(uid))
             }
 
             s.on("presence_status") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
-                _events.tryEmit(
-                    SocketEvent.PresenceStatus(json.optString("uid"), json.optBoolean("online", false))
-                )
+                val uid = json.optString("uid")
+                val online = json.optBoolean("online", false)
+                _onlineUids.update { if (online) it + uid else it - uid }
+                _events.tryEmit(SocketEvent.PresenceStatus(uid, online))
             }
 
             s.on("typing") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
-                _events.tryEmit(SocketEvent.Typing(json.optString("uid"), json.optString("room_id")))
+                val uid = json.optString("uid")
+                val roomId = json.optString("room_id")
+                _typingUsers.update { it + (uid to roomId) }
+                _events.tryEmit(SocketEvent.Typing(uid, roomId))
             }
 
             s.on("stop_typing") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
-                _events.tryEmit(SocketEvent.StopTyping(json.optString("uid")))
+                val uid = json.optString("uid")
+                _typingUsers.update { it - uid }
+                _events.tryEmit(SocketEvent.StopTyping(uid))
             }
 
             s.on("messages_seen") { args ->
@@ -197,5 +223,7 @@ object AppSocketManager {
         socket?.disconnect()
         socket = null
         currentToken = null
+        _onlineUids.value = emptySet()
+        _typingUsers.value = emptyMap()
     }
 }

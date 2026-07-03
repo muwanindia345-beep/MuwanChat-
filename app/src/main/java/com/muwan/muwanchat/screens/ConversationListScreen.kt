@@ -59,9 +59,13 @@ fun ConversationListScreen(navController: NavController) {
 
     // Room hi single source of truth — instant render, offline bhi
     val conversationEntities by db.conversationDao().observeConversations().collectAsState(initial = emptyList())
-    var onlineStatus by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
-    val conversations = remember(conversationEntities, onlineStatus) {
+    // Global singleton state — screen dispose/recompose hone par reset nahi hota,
+    // isliye ChatScreen se wapas aane par turant sahi online/typing status dikhta hai
+    val onlineUids by AppSocketManager.onlineUids.collectAsState()
+    val typingUsers by AppSocketManager.typingUsers.collectAsState()
+
+    val conversations = remember(conversationEntities, onlineUids) {
         conversationEntities.map { e ->
             ConversationItem(
                 room_id = e.roomId,
@@ -70,7 +74,7 @@ fun ConversationListScreen(navController: NavController) {
                 avatar = e.avatar,
                 lastMessage = e.lastMessage,
                 lastTime = e.lastTime,
-                isOnline = onlineStatus[e.uid] ?: false,
+                isOnline = onlineUids.contains(e.uid),
                 unreadCount = e.unreadCount,
                 lastSenderUid = e.lastSenderUid
             )
@@ -126,6 +130,8 @@ fun ConversationListScreen(navController: NavController) {
     }
 
     // Global socket ke events sunte raho — jab tak screen composed hai
+    // (online/typing ab AppSocketManager StateFlow se aata hai, yahan sirf
+    // message/request events handle karne hain)
     LaunchedEffect(myUid) {
         AppSocketManager.events.collect { event ->
             when (event) {
@@ -147,15 +153,6 @@ fun ConversationListScreen(navController: NavController) {
                             myUid = myUid
                         )
                     }
-                }
-                is SocketEvent.UserOnline -> {
-                    onlineStatus = onlineStatus + (event.uid to true)
-                }
-                is SocketEvent.UserOffline -> {
-                    onlineStatus = onlineStatus + (event.uid to false)
-                }
-                is SocketEvent.PresenceStatus -> {
-                    onlineStatus = onlineStatus + (event.uid to event.online)
                 }
                 is SocketEvent.NewRequest -> {
                     // Koi nayi request aayi — badge turant badhao, koi refetch nahi chahiye
@@ -275,7 +272,8 @@ fun ConversationListScreen(navController: NavController) {
             } else {
                 LazyColumn {
                     items(filtered, key = { it.room_id }) { conv ->
-                        ConversationRow(conv = conv, onClick = {
+                        val isTyping = typingUsers[conv.uid] == conv.room_id
+                        ConversationRow(conv = conv, isTyping = isTyping, onClick = {
                             scope.launch { ChatRepository.clearUnread(db, conv.room_id) }
                             navController.navigate(
                                 Screen.Chat.createRoute(conv.uid, conv.username, conv.room_id)
@@ -290,7 +288,7 @@ fun ConversationListScreen(navController: NavController) {
 }
 
 @Composable
-fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
+fun ConversationRow(conv: ConversationItem, isTyping: Boolean = false, onClick: () -> Unit) {
     val hasUnread = conv.unreadCount > 0
 
     Row(
@@ -320,9 +318,9 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                conv.lastMessage.ifBlank { "Say hi! 👋" },
-                color = if (hasUnread) Color.White else Color(0xFF888888),
-                fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal,
+                if (isTyping) "typing..." else conv.lastMessage.ifBlank { "Say hi! 👋" },
+                color = if (isTyping) DarkAccent else if (hasUnread) Color.White else Color(0xFF888888),
+                fontWeight = if (isTyping || hasUnread) FontWeight.Bold else FontWeight.Normal,
                 fontSize = 13.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
