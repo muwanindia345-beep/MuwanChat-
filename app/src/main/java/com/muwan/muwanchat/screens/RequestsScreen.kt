@@ -22,7 +22,9 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.ChatRequest
 import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.flow.first
@@ -44,6 +46,28 @@ fun RequestsScreen(navController: NavController) {
             if (res.isSuccessful) requests = res.body()?.requests ?: emptyList()
         } catch (_: Exception) {}
         isLoading = false
+    }
+
+    // Screen khuli hai jab tak, naye requests turant list mein jud jayein
+    LaunchedEffect(Unit) {
+        AppSocketManager.events.collect { event ->
+            if (event is SocketEvent.NewRequest) {
+                val alreadyThere = requests.any { it.id == event.id }
+                if (!alreadyThere) {
+                    requests = listOf(
+                        ChatRequest(
+                            id = event.id,
+                            sender_uid = event.senderUid,
+                            receiver_uid = "",
+                            status = "pending",
+                            created_at = event.createdAt,
+                            username = event.username,
+                            avatar = event.avatar
+                        )
+                    ) + requests
+                }
+            }
+        }
     }
 
     fun accept(req: ChatRequest) {
@@ -103,7 +127,7 @@ fun RequestsScreen(navController: NavController) {
             }
         } else {
             LazyColumn {
-                items(requests.filter { !handled.contains(it.id) }) { req ->
+                items(requests.filter { !handled.contains(it.id) }, key = { it.id }) { req ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

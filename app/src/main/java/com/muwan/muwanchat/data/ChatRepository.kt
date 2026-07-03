@@ -2,6 +2,7 @@ package com.muwan.muwanchat.data
 
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.MessageItem
+import com.muwan.muwanchat.screens.nowIso
 
 // Jahan se bhi (socket ya API) message aaye, sirf isi se guzarna hai —
 // yehi messages + conversations dono table consistent rakhta hai
@@ -50,6 +51,32 @@ object ChatRepository {
             )
         } else {
             db.conversationDao().updateLastMessage(roomId, content, createdAt, senderUid, myUid)
+        }
+    }
+
+    // Request accept hote hi conversation list mein turant naya entry daalne ke liye —
+    // koi message abhi tak nahi aaya, isliye lastMessage khaali rakhte hain
+    suspend fun addConversationPlaceholder(
+        db: MuwanChatDb,
+        roomId: String,
+        uid: String,
+        username: String,
+        avatar: String?
+    ) {
+        val existing = db.conversationDao().getByRoomId(roomId)
+        if (existing == null) {
+            db.conversationDao().upsertOne(
+                ConversationEntity(
+                    roomId = roomId,
+                    uid = uid,
+                    username = username,
+                    avatar = avatar,
+                    lastMessage = "",
+                    lastTime = nowIso(),
+                    lastSenderUid = "",
+                    unreadCount = 0
+                )
+            )
         }
     }
 

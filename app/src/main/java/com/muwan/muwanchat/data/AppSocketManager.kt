@@ -25,6 +25,21 @@ sealed class SocketEvent {
     data class StopTyping(val uid: String) : SocketEvent()
 
     data class MessagesSeen(val roomId: String, val seenBy: String) : SocketEvent()
+
+    data class NewRequest(
+        val id: String,
+        val senderUid: String,
+        val username: String,
+        val avatar: String?,
+        val createdAt: String
+    ) : SocketEvent()
+
+    data class RequestAccepted(
+        val roomId: String,
+        val uid: String,
+        val username: String,
+        val avatar: String?
+    ) : SocketEvent()
 }
 
 // Poore app ke liye EK hi socket connection. Login ke baad connect hota hai,
@@ -43,10 +58,8 @@ object AppSocketManager {
         get() = socket?.connected() == true
 
     fun connect(token: String) {
-        // Same token se pehle se connected hai to dobara connect mat karo
         if (socket != null && currentToken == token && socket?.connected() == true) return
 
-        // Naya login / token badla — purana socket saaf karke naya banao
         if (socket != null) disconnect()
 
         currentToken = token
@@ -105,6 +118,31 @@ object AppSocketManager {
                 )
             }
 
+            s.on("new_request") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.NewRequest(
+                        id = json.optString("id"),
+                        senderUid = json.optString("sender_uid"),
+                        username = json.optString("username"),
+                        avatar = if (json.isNull("avatar")) null else json.optString("avatar"),
+                        createdAt = json.optString("created_at")
+                    )
+                )
+            }
+
+            s.on("request_accepted") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.RequestAccepted(
+                        roomId = json.optString("room_id"),
+                        uid = json.optString("uid"),
+                        username = json.optString("username"),
+                        avatar = if (json.isNull("avatar")) null else json.optString("avatar")
+                    )
+                )
+            }
+
             s.connect()
             socket = s
         } catch (_: Exception) {}
@@ -112,6 +150,10 @@ object AppSocketManager {
 
     fun joinRoom(roomId: String) {
         socket?.emit("join_room", roomId)
+    }
+
+    fun leaveRoom(roomId: String) {
+        socket?.emit("leave_room", roomId)
     }
 
     fun checkPresence(uid: String) {

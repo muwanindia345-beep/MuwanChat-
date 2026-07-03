@@ -60,9 +60,8 @@ fun ConversationListScreen(navController: NavController) {
     // Room hi single source of truth — instant render, offline bhi
     val conversationEntities by db.conversationDao().observeConversations().collectAsState(initial = emptyList())
     var onlineStatus by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
-    var typingStatus by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
-    val conversations = remember(conversationEntities, onlineStatus, typingStatus) {
+    val conversations = remember(conversationEntities, onlineStatus) {
         conversationEntities.map { e ->
             ConversationItem(
                 room_id = e.roomId,
@@ -73,8 +72,7 @@ fun ConversationListScreen(navController: NavController) {
                 lastTime = e.lastTime,
                 isOnline = onlineStatus[e.uid] ?: false,
                 unreadCount = e.unreadCount,
-                lastSenderUid = e.lastSenderUid,
-                isTyping = typingStatus[e.uid] ?: false
+                lastSenderUid = e.lastSenderUid
             )
         }
     }
@@ -132,7 +130,6 @@ fun ConversationListScreen(navController: NavController) {
         AppSocketManager.events.collect { event ->
             when (event) {
                 is SocketEvent.NewMessage -> {
-                    typingStatus = typingStatus + (event.senderUid to false)
                     val existing = db.conversationDao().getByRoomId(event.roomId)
                     if (existing == null) {
                         // Bilkul naya conversation — poori list refresh karo taaki username mil jaye
@@ -156,21 +153,17 @@ fun ConversationListScreen(navController: NavController) {
                 }
                 is SocketEvent.UserOffline -> {
                     onlineStatus = onlineStatus + (event.uid to false)
-                    typingStatus = typingStatus + (event.uid to false)
                 }
                 is SocketEvent.PresenceStatus -> {
                     onlineStatus = onlineStatus + (event.uid to event.online)
                 }
-                is SocketEvent.Typing -> {
-                    typingStatus = typingStatus + (event.uid to true)
-                }
-                is SocketEvent.StopTyping -> {
-                    typingStatus = typingStatus + (event.uid to false)
-                }
                 is SocketEvent.NewRequest -> {
+                    // Koi nayi request aayi — badge turant badhao, koi refetch nahi chahiye
                     incomingCount += 1
                 }
                 is SocketEvent.RequestAccepted -> {
+                    // Chahe humne accept kiya ho ya doosre ne — dono taraf superfast
+                    // naya conversation list mein jud jaata hai, bina full refetch ke
                     ChatRepository.addConversationPlaceholder(
                         db = db,
                         roomId = event.roomId,
@@ -327,10 +320,9 @@ fun ConversationRow(conv: ConversationItem, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                if (conv.isTyping) "typing..." else conv.lastMessage.ifBlank { "Say hi! 👋" },
-                color = if (conv.isTyping) DarkAccent
-                        else if (hasUnread) Color.White else Color(0xFF888888),
-                fontWeight = if (conv.isTyping || hasUnread) FontWeight.Bold else FontWeight.Normal,
+                conv.lastMessage.ifBlank { "Say hi! 👋" },
+                color = if (hasUnread) Color.White else Color(0xFF888888),
+                fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal,
                 fontSize = 13.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )

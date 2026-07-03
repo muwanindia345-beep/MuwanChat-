@@ -221,6 +221,13 @@ fun ChatScreen(
         }
     }
 
+    // Chat se bahar jaate hi backend ko batao — taaki per-room presence sahi rahe
+    // aur FCM sahi decide kar sake ki tum ab isi chat mein active nahi ho
+    DisposableEffect(roomId) {
+        onDispose {
+            AppSocketManager.leaveRoom(roomId)
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
