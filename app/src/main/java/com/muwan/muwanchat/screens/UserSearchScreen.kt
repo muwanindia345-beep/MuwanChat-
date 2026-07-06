@@ -23,11 +23,16 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendRequestBody
 import com.muwan.muwanchat.network.UserItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+// Status colors — orange (none/default), purple (pending), green (accepted)
+private val PendingPurple = Color(0xFF8E5CF5)
+private val AcceptedGreen = Color(0xFF2ECC71)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,8 +44,24 @@ fun UserSearchScreen(navController: NavController) {
     var users by remember { mutableStateOf<List<UserItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var myUid by remember { mutableStateOf("") }
-    val sentRequests = remember { mutableStateListOf<String>() }
+
+    // uid -> "none" | "sent" | "received" | "friends" — backend se aata hai, session-local nahi
+    val statusMap = remember { mutableStateMapOf<String, String>() }
     var errorMsg by remember { mutableStateOf("") }
+
+    suspend fun refreshStatuses(list: List<UserItem>) {
+        if (list.isEmpty()) return
+        try {
+            val token = AuthDataStore.getToken(context).first() ?: return
+            val uidsCsv = list.joinToString(",") { it.uid }
+            val res = RetrofitClient.usersApi.getStatuses("Bearer $token", uidsCsv)
+            if (res.isSuccessful) {
+                res.body()?.statuses?.let { statusMap.putAll(it) }
+            }
+        } catch (_: Exception) {
+            // Statuses fetch fail ho jaye to bhi list dikhti rahegi, bas colors default rahenge
+        }
+    }
 
     fun loadSuggestions() {
         isLoading = true
@@ -51,6 +72,7 @@ fun UserSearchScreen(navController: NavController) {
                 val res = RetrofitClient.usersApi.getSuggestions("Bearer $token")
                 if (res.isSuccessful) {
                     users = (res.body()?.users ?: emptyList()).filter { it.uid != myUid }
+                    refreshStatuses(users)
                 } else errorMsg = "Couldn't load users"
             } catch (e: Exception) {
                 errorMsg = e.message ?: "Error"
@@ -81,6 +103,7 @@ fun UserSearchScreen(navController: NavController) {
                 val res = RetrofitClient.usersApi.searchUsers("Bearer $token", query.trim())
                 if (res.isSuccessful) {
                     users = (res.body()?.users ?: emptyList()).filter { it.uid != myUid }
+                    refreshStatuses(users)
                 } else errorMsg = "Search failed"
             } catch (e: Exception) {
                 errorMsg = e.message ?: "Error"
@@ -97,12 +120,17 @@ fun UserSearchScreen(navController: NavController) {
                     "Bearer $token",
                     SendRequestBody(receiverUid)
                 )
-                if (res.isSuccessful) sentRequests.add(receiverUid)
+                if (res.isSuccessful) statusMap[receiverUid] = "sent"
                 else errorMsg = res.body()?.error ?: "Failed"
             } catch (e: Exception) {
                 errorMsg = e.message ?: "Error"
             }
         }
+    }
+
+    fun openChat(user: UserItem) {
+        val roomId = listOf(myUid, user.uid).sorted().joinToString("_")
+        navController.navigate(Screen.Chat.createRoute(user.uid, user.username, roomId))
     }
 
     Column(
@@ -168,7 +196,7 @@ fun UserSearchScreen(navController: NavController) {
 
         LazyColumn {
             items(users) { user ->
-                val alreadySent = sentRequests.contains(user.uid)
+                val status = statusMap[user.uid] ?: "none"
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -194,19 +222,55 @@ fun UserSearchScreen(navController: NavController) {
                         Text(user.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(user.name ?: "", color = Color(0xFF888888), fontSize = 12.sp)
                     }
-                    Button(
-                        onClick = { if (!alreadySent) sendRequest(user.uid) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (alreadySent) Color(0xFF333355) else DarkAccent
-                        ),
-                        shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            if (alreadySent) "Sent ✓" else "Request",
-                            color = Color.White,
-                            fontSize = 13.sp
-                        )
+
+                    when (status) {
+                        "friends" -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(AcceptedGreen, RoundedCornerShape(20.dp))
+                                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Accepted ✅", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = { openChat(user) },
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF333355))
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Chat,
+                                        contentDescription = "Open chat",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                        "sent" -> {
+                            Box(
+                                modifier = Modifier
+                                    .background(PendingPurple, RoundedCornerShape(20.dp))
+                                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text("Pending", color = Color.White, fontSize = 13.sp)
+                            }
+                        }
+                        else -> {
+                            // "none" aur "received" dono ke liye search screen se sirf Request bhej sakte hain;
+                            // accept/reject sirf Requests screen se hota hai
+                            Button(
+                                onClick = { sendRequest(user.uid) },
+                                colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
+                                shape = RoundedCornerShape(20.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text("Request", color = Color.White, fontSize = 13.sp)
+                            }
+                        }
                     }
                 }
                 Divider(color = Color(0xFF1E2040), thickness = 0.5.dp)
@@ -214,3 +278,4 @@ fun UserSearchScreen(navController: NavController) {
         }
     }
 }
+

@@ -31,6 +31,10 @@ data class ProfileUpdateBody(
     val avatar: String?
 )
 
+data class StatusesResponse(
+    val statuses: Map<String, String> = emptyMap()
+)
+
 interface UsersApi {
     @GET("users/search")
     suspend fun searchUsers(
@@ -42,6 +46,12 @@ interface UsersApi {
     suspend fun getSuggestions(
         @Header("Authorization") token: String
     ): Response<UsersSearchResponse>
+
+    @GET("users/statuses")
+    suspend fun getStatuses(
+        @Header("Authorization") token: String,
+        @Query("uids") uids: String
+    ): Response<StatusesResponse>
 
     @GET("users/{uid}")
     suspend fun getUserByUid(
@@ -61,3 +71,4 @@ interface UsersApi {
         @Body body: Map<String, String>
     ): Response<Unit>
 }
+
