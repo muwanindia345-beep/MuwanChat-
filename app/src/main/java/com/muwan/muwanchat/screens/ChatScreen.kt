@@ -56,6 +56,10 @@ fun ChatScreen(
     // Room hi single source of truth — yahi se list render hoti hai, offline bhi
     val messageEntities by db.messageDao().observeMessages(roomId).collectAsState(initial = emptyList())
 
+    // Conversation entity already has the other user's avatar synced (search/suggestions/conversations
+    // list sab yahi cache karte hain) — koi extra network call nahi chahiye header ke liye
+    val conversationEntity by db.conversationDao().observeByRoomId(roomId).collectAsState(initial = null)
+
     var myUid by remember { mutableStateOf("") }
     var myToken by remember { mutableStateOf("") }
     var isReceiverOnline by remember { mutableStateOf(false) }
@@ -239,6 +243,7 @@ fun ChatScreen(
             receiverUsername = receiverUsername,
             isOnline = isReceiverOnline,
             isTyping = isReceiverTyping,
+            avatarBase64 = conversationEntity?.avatar,
             onBack = { navController.popBackStack() },
             onVideoCall = { comingSoonFeature = "📹 Video Call" },
             onVoiceCall = { comingSoonFeature = "📞 Voice Call" }

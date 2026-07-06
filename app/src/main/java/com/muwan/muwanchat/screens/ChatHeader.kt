@@ -2,7 +2,6 @@ package com.muwan.muwanchat.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
@@ -13,7 +12,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,6 +24,7 @@ fun ChatHeader(
     receiverUsername: String,
     isOnline: Boolean,
     isTyping: Boolean = false,
+    avatarBase64: String? = null,
     onBack: () -> Unit,
     onVideoCall: () -> Unit,
     onVoiceCall: () -> Unit
@@ -42,18 +41,12 @@ fun ChatHeader(
             IconButton(onClick = onBack) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(DarkAccent),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    receiverUsername.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp
-                )
-            }
+            AvatarView(
+                avatarBase64 = avatarBase64,
+                fallbackText = receiverUsername,
+                size = 38.dp,
+                fontSize = 16.sp
+            )
             Spacer(Modifier.width(10.dp))
             Column {
                 Text(receiverUsername, color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 16.sp)

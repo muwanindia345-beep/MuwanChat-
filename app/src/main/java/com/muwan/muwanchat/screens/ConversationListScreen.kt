@@ -305,18 +305,12 @@ fun ConversationRow(conv: ConversationItem, isTyping: Boolean = false, onClick: 
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(50.dp)
-                .clip(CircleShape)
-                .background(DarkAccent),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                conv.username.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp
-            )
-        }
+        AvatarView(
+            avatarBase64 = conv.avatar,
+            fallbackText = conv.username,
+            size = 50.dp,
+            fontSize = 20.sp
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
