@@ -174,7 +174,7 @@ fun UserSearchScreen(navController: NavController) {
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(user.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(user.email ?: "", color = Color(0xFF888888), fontSize = 12.sp)
+                        Text(user.name ?: "", color = Color(0xFF888888), fontSize = 12.sp)
                     }
                     Button(
                         onClick = { if (!alreadySent) sendRequest(user.uid) },
