@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,19 +45,20 @@ fun ProfileScreen(navController: NavController, mode: String) {
     val scope = rememberCoroutineScope()
     val isOnboarding = mode == "onboarding"
 
-    var name by remember { mutableStateOf("") }
-    var bio by remember { mutableStateOf("") }
-    var city by remember { mutableStateOf("") }
-    var country by remember { mutableStateOf("") }
-    var gender by remember { mutableStateOf("") }
-    var customGender by remember { mutableStateOf("") }
-    var avatarBase64 by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(!isOnboarding) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var bio by rememberSaveable { mutableStateOf("") }
+    var city by rememberSaveable { mutableStateOf("") }
+    var country by rememberSaveable { mutableStateOf("") }
+    var gender by rememberSaveable { mutableStateOf("") }
+    var customGender by rememberSaveable { mutableStateOf("") }
+    var avatarBase64 by rememberSaveable { mutableStateOf<String?>(null) }
+    var hasFetchedProfile by rememberSaveable { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(!isOnboarding && !hasFetchedProfile) }
     var isSaving by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        if (!isOnboarding) {
+        if (!isOnboarding && !hasFetchedProfile) {
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
                 val res = RetrofitClient.authApi.me("Bearer $token")
@@ -75,6 +77,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
                         customGender = g
                     }
                 }
+                hasFetchedProfile = true
             } catch (_: Exception) {}
             isLoading = false
         }
