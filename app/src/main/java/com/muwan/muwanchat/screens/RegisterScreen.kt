@@ -161,7 +161,7 @@ fun RegisterScreen(navController: NavController) {
                                     dbName    = "",
                                     loginType = "email"
                                 )
-                                navController.navigate(Screen.ConversationList.route) {
+                                navController.navigate(Screen.Profile.createRoute("onboarding")) {
                                     popUpTo(Screen.Register.route) { inclusive = true }
                                 }
                             } else {

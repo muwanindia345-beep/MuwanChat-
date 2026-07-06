@@ -16,6 +16,10 @@ sealed class Screen(val route: String) {
     object ConversationList: Screen("conversations")
     object UserSearch      : Screen("user_search")
     object Requests        : Screen("requests")
+    object Profile         : Screen("profile/{mode}") {
+        fun createRoute(mode: String) = "profile/$mode"
+    }
+    object AvatarCrop      : Screen("avatar_crop")
     object Chat            : Screen("chat/{uid}/{username}/{roomId}") {
         fun createRoute(uid: String, username: String, roomId: String) =
             "chat/$uid/$username/$roomId"
@@ -38,6 +42,10 @@ fun NavGraph() {
         composable(Screen.ConversationList.route) { ConversationListScreen(navController) }
         composable(Screen.UserSearch.route) { UserSearchScreen(navController) }
         composable(Screen.Requests.route) { RequestsScreen(navController) }
+        composable(Screen.Profile.route) { back ->
+            ProfileScreen(navController, back.arguments?.getString("mode") ?: "edit")
+        }
+        composable(Screen.AvatarCrop.route) { AvatarCropScreen(navController) }
         composable(Screen.Chat.route) { back ->
             ChatScreen(
                 navController = navController,

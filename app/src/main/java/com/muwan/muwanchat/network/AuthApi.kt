@@ -27,7 +27,13 @@ data class UserData(
     val uid: String,
     val username: String,
     val email: String,
-    val emailVerified: Boolean
+    val emailVerified: Boolean,
+    val name: String? = null,
+    val bio: String? = null,
+    val city: String? = null,
+    val country: String? = null,
+    val gender: String? = null,
+    val avatar: String? = null
 )
 
 interface AuthApi {
