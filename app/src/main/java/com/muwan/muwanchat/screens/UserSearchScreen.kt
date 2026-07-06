@@ -1,6 +1,7 @@
 package com.muwan.muwanchat.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -203,24 +204,25 @@ fun UserSearchScreen(navController: NavController) {
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(DarkAccent),
-                        contentAlignment = Alignment.Center
+                            .weight(1f)
+                            .clickable {
+                                navController.navigate(Screen.UserProfile.createRoute(user.uid))
+                            },
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            user.username.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
+                        AvatarView(
+                            avatarBase64 = user.avatar,
+                            fallbackText = user.username,
+                            size = 46.dp,
                             fontSize = 18.sp
                         )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(user.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(user.name ?: "", color = Color(0xFF888888), fontSize = 12.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(user.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(user.name ?: "", color = Color(0xFF888888), fontSize = 12.sp)
+                        }
                     }
 
                     when (status) {
@@ -278,4 +280,3 @@ fun UserSearchScreen(navController: NavController) {
         }
     }
 }
-
