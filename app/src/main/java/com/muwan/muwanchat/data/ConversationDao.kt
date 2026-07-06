@@ -34,4 +34,7 @@ interface ConversationDao {
 
     @Query("DELETE FROM conversations WHERE roomId = :roomId")
     suspend fun deleteByRoom(roomId: String)
+
+    @Query("DELETE FROM conversations")
+    suspend fun clearAll()
 }

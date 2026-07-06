@@ -27,4 +27,7 @@ interface MessageDao {
 
     @Query("UPDATE messages SET seen = 1 WHERE roomId = :roomId AND senderUid != :myUid")
     suspend fun markSeen(roomId: String, myUid: String)
+
+    @Query("DELETE FROM messages")
+    suspend fun clearAll()
 }

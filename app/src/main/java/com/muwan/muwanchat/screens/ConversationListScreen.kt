@@ -225,6 +225,8 @@ fun ConversationListScreen(navController: NavController) {
                         scope.launch {
                             AppSocketManager.disconnect()
                             AuthDataStore.clearAuth(context)
+                            db.conversationDao().clearAll()
+                            db.messageDao().clearAll()
                             navController.navigate(Screen.Login.route) {
                                 popUpTo(Screen.ConversationList.route) { inclusive = true }
                             }
