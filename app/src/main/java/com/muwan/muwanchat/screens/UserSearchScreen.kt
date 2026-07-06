@@ -42,17 +42,37 @@ fun UserSearchScreen(navController: NavController) {
     val sentRequests = remember { mutableStateListOf<String>() }
     var errorMsg by remember { mutableStateOf("") }
 
+    fun loadSuggestions() {
+        isLoading = true
+        errorMsg = ""
+        scope.launch {
+            try {
+                val token = AuthDataStore.getToken(context).first() ?: return@launch
+                val res = RetrofitClient.usersApi.getSuggestions("Bearer $token")
+                if (res.isSuccessful) {
+                    users = (res.body()?.users ?: emptyList()).filter { it.uid != myUid }
+                } else errorMsg = "Couldn't load users"
+            } catch (e: Exception) {
+                errorMsg = e.message ?: "Error"
+            }
+            isLoading = false
+        }
+    }
+
     LaunchedEffect(Unit) {
-        // get my uid from /auth/me
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         try {
             val res = RetrofitClient.authApi.me("Bearer $token")
             if (res.isSuccessful) myUid = res.body()?.user?.uid ?: ""
         } catch (_: Exception) {}
+        loadSuggestions()
     }
 
     fun search() {
-        if (query.isBlank()) return
+        if (query.isBlank()) {
+            loadSuggestions()
+            return
+        }
         isLoading = true
         errorMsg = ""
         scope.launch {
@@ -91,7 +111,6 @@ fun UserSearchScreen(navController: NavController) {
             .background(DarkBg)
             .systemBarsPadding()
     ) {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -105,7 +124,6 @@ fun UserSearchScreen(navController: NavController) {
             Text("New Chat", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
 
-        // Search field
         Row(
             modifier = Modifier
                 .fillMaxWidth()
