@@ -12,5 +12,6 @@ data class MessageEntity(
     val content: String,
     val type: String,
     val seen: Int,
-    val createdAt: String
+    val createdAt: String,
+    val status: String = "SENT" // PENDING, SENT, SEEN, FAILED — sirf apne bheje messages ke liye meaningful
 )

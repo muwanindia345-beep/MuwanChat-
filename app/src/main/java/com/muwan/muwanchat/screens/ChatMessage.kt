@@ -12,23 +12,39 @@ data class ChatMessage(
     val sent: Boolean,         // true = aapka message
     val time: String,
     val imageUri: Uri? = null,
-    val replyTo: ChatMessage? = null
+    val replyTo: ChatMessage? = null,
+    val status: String = "SENT" // PENDING, SENT, SEEN, FAILED
 )
+
+fun formatMessageTime(raw: String): String {
+    return try {
+        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        parser.timeZone = TimeZone.getTimeZone("UTC")
+        val date = parser.parse(raw.take(19)) ?: return raw.take(16).replace("T", " ")
+        val display = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        display.timeZone = TimeZone.getDefault() // device local zone
+        display.format(date)
+    } catch (_: Exception) {
+        raw.take(16).replace("T", " ")
+    }
+}
 
 fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     id = id,
     text = content,
     sent = sender_uid == myUid,
-    time = created_at.take(16).replace("T", " "),
-    imageUri = null
+    time = formatMessageTime(created_at),
+    imageUri = null,
+    status = "SENT"
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     id = id,
     text = content,
     sent = senderUid == myUid,
-    time = createdAt.take(16).replace("T", " "),
-    imageUri = null
+    time = formatMessageTime(createdAt),
+    imageUri = null,
+    status = status
 )
 
 fun nowTime(): String {

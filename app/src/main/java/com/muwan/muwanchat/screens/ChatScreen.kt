@@ -38,6 +38,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,6 +96,60 @@ fun ChatScreen(
         }
     }
 
+    // id se dubara retry karne ke liye taaki naya duplicate message na bane
+    fun sendMessageWithId(id: String, text: String, createdAt: String, isRetry: Boolean) {
+        if (!isRetry) {
+            typingJob?.cancel()
+            if (AppSocketManager.isConnected) {
+                AppSocketManager.sendStopTyping(receiverUid)
+            }
+            scope.launch {
+                ChatRepository.recordMessage(
+                    db = db,
+                    id = id,
+                    roomId = roomId,
+                    senderUid = myUid,
+                    receiverUid = receiverUid,
+                    content = text,
+                    type = "text",
+                    createdAt = createdAt,
+                    myUid = myUid,
+                    otherUsername = receiverUsername,
+                    status = "PENDING"
+                )
+            }
+        } else {
+            scope.launch { db.messageDao().updateStatus(id, "PENDING") }
+        }
+
+        if (AppSocketManager.isConnected) {
+            // Ack na aaye to 8 second baad FAILED maan lo
+            val timeoutJob = scope.launch {
+                delay(8000)
+                if (isActive) db.messageDao().updateStatus(id, "FAILED")
+            }
+            AppSocketManager.sendMessage(id, receiverUid, text) { success ->
+                timeoutJob.cancel()
+                scope.launch {
+                    db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
+                }
+            }
+        } else {
+            // Offline — REST fallback try karo
+            scope.launch {
+                try {
+                    val res = RetrofitClient.chatApi.sendMessage(
+                        "Bearer $myToken",
+                        SendMessageRequest(receiverUid, text)
+                    )
+                    db.messageDao().updateStatus(id, if (res.isSuccessful) "SENT" else "FAILED")
+                } catch (_: Exception) {
+                    db.messageDao().updateStatus(id, "FAILED")
+                }
+            }
+        }
+    }
+
     fun sendMessage() {
         val text = input.trim()
         if (text.isBlank()) return
@@ -102,42 +157,11 @@ fun ChatScreen(
         val createdAt = nowIso()
         input = ""
         replyTo = null
+        sendMessageWithId(id, text, createdAt, isRetry = false)
+    }
 
-        // Message bhejte hi typing signal band karo
-        typingJob?.cancel()
-        if (AppSocketManager.isConnected) {
-            AppSocketManager.sendStopTyping(receiverUid)
-        }
-
-        // Room mein turant insert — offline pe bhi apna hi bheja message dikhega, aur
-        // conversation list ka lastMessage bhi isi se sync ho jaata hai
-        scope.launch {
-            ChatRepository.recordMessage(
-                db = db,
-                id = id,
-                roomId = roomId,
-                senderUid = myUid,
-                receiverUid = receiverUid,
-                content = text,
-                type = "text",
-                createdAt = createdAt,
-                myUid = myUid,
-                otherUsername = receiverUsername
-            )
-        }
-
-        if (AppSocketManager.isConnected) {
-            AppSocketManager.sendMessage(id, receiverUid, text)
-        } else {
-            scope.launch {
-                try {
-                    RetrofitClient.chatApi.sendMessage(
-                        "Bearer $myToken",
-                        SendMessageRequest(receiverUid, text)
-                    )
-                } catch (_: Exception) {}
-            }
-        }
+    fun retryMessage(msg: ChatMessage) {
+        sendMessageWithId(msg.id, msg.text, nowIso(), isRetry = true)
     }
 
     // Naya message (Room se ho ya socket se) aate hi list badhegi, tab scroll karo
@@ -202,6 +226,11 @@ fun ChatScreen(
                         }
                     }
                 }
+                is SocketEvent.MessagesSeen -> {
+                    if (event.roomId == roomId) {
+                        db.messageDao().markMySentAsSeen(roomId, myUid)
+                    }
+                }
                 is SocketEvent.UserOnline -> {
                     if (event.uid == receiverUid) isReceiverOnline = true
                 }
@@ -264,7 +293,8 @@ fun ChatScreen(
                     MessageBubble(
                         message = msg,
                         onSwipeReply = { replyTo = it },
-                        onImageTap = { uri -> fullscreenImage = uri }
+                        onImageTap = { uri -> fullscreenImage = uri },
+                        onRetry = { retryMessage(it) }
                     )
                 }
             }

@@ -1,5 +1,6 @@
 package com.muwan.muwanchat.data
 
+import io.socket.client.Ack
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -58,14 +59,9 @@ object AppSocketManager {
     private val _events = MutableSharedFlow<SocketEvent>(extraBufferCapacity = 64)
     val events = _events.asSharedFlow()
 
-    // Global online/typing state — singleton mein rehta hai isliye screen
-    // dispose hone par (jaise ConversationListScreen jab ChatScreen khulne
-    // par backstack mein chali jaati hai) ye reset nahi hota. Wapas aane par
-    // turant sahi status dikhta hai, koi delay ya "sab offline" flash nahi.
     private val _onlineUids = MutableStateFlow<Set<String>>(emptySet())
     val onlineUids: StateFlow<Set<String>> = _onlineUids.asStateFlow()
 
-    // uid -> jis roomId mein wo abhi type kar raha hai
     private val _typingUsers = MutableStateFlow<Map<String, String>>(emptyMap())
     val typingUsers: StateFlow<Map<String, String>> = _typingUsers.asStateFlow()
 
@@ -74,9 +70,6 @@ object AppSocketManager {
 
     fun connect(token: String) {
         if (socket != null && currentToken == token) {
-            // Same session ka socket already bana hua hai — agar abhi disconnect
-            // hai to socket.io khud reconnect karega (reconnection=true), naya
-            // banane ki zaroorat nahi, warna har screen switch pe delay aata hai
             if (socket?.connected() != true) socket?.connect()
             return
         }
@@ -192,16 +185,23 @@ object AppSocketManager {
         socket?.emit("check_presence", uid)
     }
 
-    fun sendMessage(id: String, receiverUid: String, content: String) {
-        socket?.let { s ->
-            val json = JSONObject().apply {
-                put("id", id)
-                put("receiver_uid", receiverUid)
-                put("content", content)
-                put("type", "text")
-            }
-            s.emit("send_message", json)
+    // onAck: true = server ne receive kar liya, false = fail ho gaya
+    fun sendMessage(id: String, receiverUid: String, content: String, onAck: (Boolean) -> Unit = {}) {
+        val s = socket
+        if (s == null || !s.connected()) {
+            onAck(false)
+            return
         }
+        val json = JSONObject().apply {
+            put("id", id)
+            put("receiver_uid", receiverUid)
+            put("content", content)
+            put("type", "text")
+        }
+        s.emit("send_message", arrayOf(json), Ack { args ->
+            val res = args.getOrNull(0) as? JSONObject
+            onAck(res?.optBoolean("success", false) ?: false)
+        })
     }
 
     fun sendTyping(roomId: String, receiverUid: String) {

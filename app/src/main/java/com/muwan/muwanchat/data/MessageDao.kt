@@ -28,6 +28,14 @@ interface MessageDao {
     @Query("UPDATE messages SET seen = 1 WHERE roomId = :roomId AND senderUid != :myUid")
     suspend fun markSeen(roomId: String, myUid: String)
 
+    // Apna bheja message ka status update karne ke liye (PENDING -> SENT/FAILED)
+    @Query("UPDATE messages SET status = :status WHERE id = :id")
+    suspend fun updateStatus(id: String, status: String)
+
+    // Doosre banda ne dekh liya to hamare bheje saare messages SEEN ho jaate hai
+    @Query("UPDATE messages SET status = 'SEEN' WHERE roomId = :roomId AND senderUid = :myUid AND status != 'SEEN'")
+    suspend fun markMySentAsSeen(roomId: String, myUid: String)
+
     @Query("DELETE FROM messages")
     suspend fun clearAll()
 }

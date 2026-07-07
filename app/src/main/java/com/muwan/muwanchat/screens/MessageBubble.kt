@@ -9,6 +9,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,7 +40,8 @@ import com.muwan.muwanchat.DarkInputBg
 fun MessageBubble(
     message: ChatMessage,
     onSwipeReply: (ChatMessage) -> Unit,
-    onImageTap: (Uri) -> Unit
+    onImageTap: (Uri) -> Unit,
+    onRetry: (ChatMessage) -> Unit = {}
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
     val animatedOffset by animateFloatAsState(
@@ -74,6 +81,11 @@ fun MessageBubble(
                     horizontal = if (message.imageUri != null) 4.dp else 14.dp,
                     vertical = if (message.imageUri != null) 4.dp else 10.dp
                 )
+                .let {
+                    if (message.sent && message.status == "FAILED")
+                        it.clickable { onRetry(message) }
+                    else it
+                }
         ) {
             Column {
                 message.replyTo?.let { reply ->
@@ -107,12 +119,31 @@ fun MessageBubble(
                     Text(message.text, color = Color.White, fontSize = 15.sp)
                 }
 
-                Text(
-                    message.time,
-                    color = Color(0xAAFFFFFF),
-                    fontSize = 11.sp,
-                    modifier = Modifier.align(Alignment.End)
-                )
+                Row(
+                    modifier = Modifier.align(Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        message.time,
+                        color = Color(0xAAFFFFFF),
+                        fontSize = 11.sp
+                    )
+                    if (message.sent) {
+                        Spacer(Modifier.width(4.dp))
+                        val (icon, tint) = when (message.status) {
+                            "PENDING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
+                            "SEEN" -> Icons.Filled.DoneAll to Color(0xFF4CAF50)
+                            "FAILED" -> Icons.Filled.ErrorOutline to Color(0xFFE53935)
+                            else -> Icons.Filled.Check to Color(0xAAFFFFFF) // SENT (default)
+                        }
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = message.status,
+                            tint = tint,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
             }
         }
     }

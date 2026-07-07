@@ -19,7 +19,8 @@ object ChatRepository {
         createdAt: String,
         myUid: String,
         otherUsername: String? = null,
-        otherAvatar: String? = null
+        otherAvatar: String? = null,
+        status: String = "SENT"
     ) {
         db.messageDao().insert(
             MessageEntity(
@@ -30,7 +31,8 @@ object ChatRepository {
                 content = content,
                 type = type,
                 seen = 0,
-                createdAt = createdAt
+                createdAt = createdAt,
+                status = status
             )
         )
 
@@ -106,7 +108,8 @@ object ChatRepository {
                 content = it.content,
                 type = it.type,
                 seen = it.seen,
-                createdAt = it.created_at
+                createdAt = it.created_at,
+                status = "SENT"
             )
         }
         db.messageDao().insertAll(entities)
