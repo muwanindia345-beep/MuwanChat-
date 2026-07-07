@@ -86,8 +86,10 @@ fun AvatarCropScreen(navController: NavController) {
         isLoading = false
     }
 
-    // "Fit" base scale: whole image (whichever dimension is longer) fits inside the circle.
-    fun fitScale(bitmap: Bitmap): Float = containerPx / max(bitmap.width, bitmap.height).toFloat()
+    // "Fill" base scale: whole circle is covered by the image (shorter dimension matched to
+    // the circle size), matching Instagram/WhatsApp-style default zoom. Kept function name
+    // fitScale() unchanged so call sites below don't need edits.
+    fun fitScale(bitmap: Bitmap): Float = containerPx / min(bitmap.width, bitmap.height).toFloat()
 
     // Clamp pan so you can't drag the image completely away; at zoom=1 (fit) this allows no pan.
     fun clampOffset(newOffset: Offset, currentZoom: Float, bitmap: Bitmap): Offset {
@@ -216,7 +218,7 @@ fun AvatarCropScreen(navController: NavController) {
             }
 
             Text(
-                "Poori photo dikh rahi hai — pinch se zoom, drag se move karo",
+                "Pinch se zoom, drag se move karo",
                 color = Color(0xFF888888),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
