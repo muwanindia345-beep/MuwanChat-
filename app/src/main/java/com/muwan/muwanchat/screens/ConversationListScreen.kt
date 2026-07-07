@@ -32,6 +32,8 @@ import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.RetrofitClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -106,20 +108,30 @@ fun ConversationListScreen(navController: NavController) {
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         myToken = token
 
-        try {
-            val me = RetrofitClient.authApi.me("Bearer $token")
-            myUid = me.body()?.user?.uid ?: ""
-        } catch (_: Exception) {}
-
         // Global socket — app-wide single connection, disconnect sirf logout par
         AppSocketManager.connect(token)
 
-        // Chup-chaap background sync — Room already list dikha chuka hai isse pehle
-        reloadConversations(token)
-        try {
-            val req = RetrofitClient.requestsApi.getIncoming("Bearer $token")
-            if (req.isSuccessful) incomingCount = req.body()?.requests?.size ?: 0
-        } catch (_: Exception) {}
+        // Teeno API calls parallel — pehle ye sequential the (me -> conversations -> incoming),
+        // jisse fresh install/login par isLoading total teeno ke sum jitni der dikhta tha.
+        // Ab total wait sirf sabse slow ek call jitna hoga.
+        coroutineScope {
+            val meJob = async {
+                try {
+                    val me = RetrofitClient.authApi.me("Bearer $token")
+                    myUid = me.body()?.user?.uid ?: ""
+                } catch (_: Exception) {}
+            }
+            val convJob = async { reloadConversations(token) }
+            val reqJob = async {
+                try {
+                    val req = RetrofitClient.requestsApi.getIncoming("Bearer $token")
+                    if (req.isSuccessful) incomingCount = req.body()?.requests?.size ?: 0
+                } catch (_: Exception) {}
+            }
+            meJob.await()
+            convJob.await()
+            reqJob.await()
+        }
         isLoading = false
 
         // Sabhi known contacts ka presence turant maango — list accurate dikhe
