@@ -2,6 +2,9 @@ package com.muwan.muwanchat.screens
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.graphics.Paint
 import android.net.Uri
 import android.util.Base64
 import androidx.compose.foundation.Image
@@ -23,6 +26,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -43,6 +48,7 @@ object AvatarTransfer {
 private val CIRCLE_SIZE_DP = 280.dp
 private const val MIN_ZOOM = 1f
 private const val MAX_ZOOM = 5f
+private const val OUTPUT_SIZE = 512
 
 @Composable
 fun AvatarCropScreen(navController: NavController) {
@@ -55,7 +61,7 @@ fun AvatarCropScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf("") }
 
-    // Pinch-to-zoom + drag-to-pan state, WhatsApp-style
+    // zoom = 1f means "whole image visible" (fit), zoom > 1 zooms in from there.
     var zoom by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
@@ -80,14 +86,14 @@ fun AvatarCropScreen(navController: NavController) {
         isLoading = false
     }
 
-    // Clamp pan so the visible window never goes past the image edges
+    // "Fit" base scale: whole image (whichever dimension is longer) fits inside the circle.
+    fun fitScale(bitmap: Bitmap): Float = containerPx / max(bitmap.width, bitmap.height).toFloat()
+
+    // Clamp pan so you can't drag the image completely away; at zoom=1 (fit) this allows no pan.
     fun clampOffset(newOffset: Offset, currentZoom: Float, bitmap: Bitmap): Offset {
-        val bw = bitmap.width.toFloat()
-        val bh = bitmap.height.toFloat()
-        val baseScale = containerPx / min(bw, bh)
-        val totalScale = baseScale * currentZoom
-        val maxOffsetX = max(0f, (bw * totalScale - containerPx) / 2f)
-        val maxOffsetY = max(0f, (bh * totalScale - containerPx) / 2f)
+        val totalScale = fitScale(bitmap) * currentZoom
+        val maxOffsetX = max(0f, (bitmap.width * totalScale - containerPx) / 2f)
+        val maxOffsetY = max(0f, (bitmap.height * totalScale - containerPx) / 2f)
         return Offset(
             newOffset.x.coerceIn(-maxOffsetX, maxOffsetX),
             newOffset.y.coerceIn(-maxOffsetY, maxOffsetY)
@@ -108,13 +114,21 @@ fun AvatarCropScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = { navController.popBackStack() }) {
-                    Text("Cancel", color = Color.White)
+                    Text("Cancel", color = Color.White, maxLines = 1)
                 }
-                Text("Set Profile Photo", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    "Set Profile Photo",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                )
                 TextButton(
                     enabled = sourceBitmap != null,
                     onClick = {
@@ -123,27 +137,29 @@ fun AvatarCropScreen(navController: NavController) {
                         val currentOffset = offset
                         scope.launch {
                             val base64 = withContext(Dispatchers.IO) {
-                                val bw = bitmap.width.toFloat()
-                                val bh = bitmap.height.toFloat()
-                                val baseScale = containerPx / min(bw, bh)
-                                val totalScale = baseScale * currentZoom
-                                val visibleSide = (containerPx / totalScale).coerceAtMost(min(bw, bh))
+                                val totalScale = fitScale(bitmap) * currentZoom
+                                val outputScale = totalScale * (OUTPUT_SIZE / containerPx)
+                                val panOutputX = currentOffset.x * (OUTPUT_SIZE / containerPx)
+                                val panOutputY = currentOffset.y * (OUTPUT_SIZE / containerPx)
 
-                                val centerX = (bw / 2f - currentOffset.x / totalScale)
-                                    .coerceIn(visibleSide / 2f, bw - visibleSide / 2f)
-                                val centerY = (bh / 2f - currentOffset.y / totalScale)
-                                    .coerceIn(visibleSide / 2f, bh - visibleSide / 2f)
+                                // Map source bitmap onto the OUTPUT_SIZE x OUTPUT_SIZE square exactly
+                                // as it's shown inside the crop circle - zoomed in parts get cropped,
+                                // and if the user hasn't zoomed to fill, the empty margin around a
+                                // non-square image is kept as a dark background (matches the preview).
+                                val output = Bitmap.createBitmap(OUTPUT_SIZE, OUTPUT_SIZE, Bitmap.Config.ARGB_8888)
+                                val canvas = Canvas(output)
+                                canvas.drawColor(android.graphics.Color.rgb(0x11, 0x11, 0x11))
 
-                                val side = visibleSide.toInt().coerceAtLeast(1)
-                                val left = (centerX - visibleSide / 2f).toInt()
-                                    .coerceIn(0, (bw - side).toInt().coerceAtLeast(0))
-                                val top = (centerY - visibleSide / 2f).toInt()
-                                    .coerceIn(0, (bh - side).toInt().coerceAtLeast(0))
+                                val matrix = Matrix()
+                                matrix.postScale(outputScale, outputScale)
+                                val dx = OUTPUT_SIZE / 2f + panOutputX - (bitmap.width * outputScale) / 2f
+                                val dy = OUTPUT_SIZE / 2f + panOutputY - (bitmap.height * outputScale) / 2f
+                                matrix.postTranslate(dx, dy)
 
-                                val cropped = Bitmap.createBitmap(bitmap, left, top, side, side)
-                                val resized = Bitmap.createScaledBitmap(cropped, 512, 512, true)
+                                canvas.drawBitmap(bitmap, matrix, Paint(Paint.FILTER_BITMAP_FLAG))
+
                                 val outputStream = ByteArrayOutputStream()
-                                resized.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+                                output.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
                                 Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
                             }
                             navController.previousBackStackEntry
@@ -156,7 +172,8 @@ fun AvatarCropScreen(navController: NavController) {
                     Text(
                         "Done",
                         color = if (sourceBitmap != null) DarkAccent else Color(0xFF555555),
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
                     )
                 }
             }
@@ -183,7 +200,7 @@ fun AvatarCropScreen(navController: NavController) {
                             Image(
                                 bitmap = bitmap.asImageBitmap(),
                                 contentDescription = "Preview",
-                                contentScale = ContentScale.Crop,
+                                contentScale = ContentScale.Fit,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer(
@@ -199,7 +216,7 @@ fun AvatarCropScreen(navController: NavController) {
             }
 
             Text(
-                "Pinch to zoom, drag to move — circle ke andar jo dikhega wahi save hoga",
+                "Poori photo dikh rahi hai — pinch se zoom, drag se move karo",
                 color = Color(0xFF888888),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
