@@ -60,6 +60,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-video:2.5.0")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("androidx.datastore:datastore-preferences:1.0.0")

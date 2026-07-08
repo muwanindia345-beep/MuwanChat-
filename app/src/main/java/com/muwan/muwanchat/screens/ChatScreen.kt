@@ -102,7 +102,12 @@ fun ChatScreen(
     var typingJob by remember { mutableStateOf<Job?>(null) }
 
     val messages = remember(messageEntities, myUid) {
-        messageEntities.map { it.toChatMessage(myUid) }
+        val base = messageEntities.map { it.toChatMessage(myUid) }
+        val byId = base.associateBy { it.id }
+        base.map { msg ->
+            val reply = msg.replyToId?.let { byId[it] }
+            if (reply != null) msg.copy(replyTo = reply) else msg
+        }
     }
 
     var input by remember { mutableStateOf("") }
@@ -130,7 +135,8 @@ fun ChatScreen(
 
     fun sendMessageWithId(
         id: String, content: String, createdAt: String, isRetry: Boolean,
-        type: String = "text", fileName: String? = null, mimeType: String? = null
+        type: String = "text", fileName: String? = null, mimeType: String? = null,
+        replyToId: String? = null
     ) {
         if (!isRetry) {
             typingJob?.cancel()
@@ -151,7 +157,8 @@ fun ChatScreen(
                     otherUsername = receiverUsername,
                     status = "PENDING",
                     fileName = fileName,
-                    mimeType = mimeType
+                    mimeType = mimeType,
+                    replyToId = replyToId
                 )
             }
         } else {
@@ -163,7 +170,7 @@ fun ChatScreen(
                 delay(8000)
                 if (isActive) db.messageDao().updateStatus(id, "FAILED")
             }
-            AppSocketManager.sendMessage(id, receiverUid, content, type, fileName, mimeType) { success ->
+            AppSocketManager.sendMessage(id, receiverUid, content, type, fileName, mimeType, replyToId) { success ->
                 timeoutJob.cancel()
                 scope.launch {
                     db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
@@ -174,7 +181,7 @@ fun ChatScreen(
                 try {
                     val res = RetrofitClient.chatApi.sendMessage(
                         "Bearer $myToken",
-                        SendMessageRequest(receiverUid, content, type, fileName, mimeType)
+                        SendMessageRequest(receiverUid, content, type, fileName, mimeType, replyToId)
                     )
                     db.messageDao().updateStatus(id, if (res.isSuccessful) "SENT" else "FAILED")
                 } catch (_: Exception) {
@@ -189,15 +196,17 @@ fun ChatScreen(
         if (text.isBlank()) return
         val id = UUID.randomUUID().toString()
         val createdAt = nowIso()
+        val replyId = replyTo?.id
         input = ""
         replyTo = null
-        sendMessageWithId(id, text, createdAt, isRetry = false)
+        sendMessageWithId(id, text, createdAt, isRetry = false, replyToId = replyId)
     }
 
     fun retryMessage(msg: ChatMessage) {
         sendMessageWithId(
             msg.id, msg.mediaUrl ?: msg.text, nowIso(), isRetry = true,
-            type = msg.type, fileName = msg.fileName, mimeType = msg.mimeType
+            type = msg.type, fileName = msg.fileName, mimeType = msg.mimeType,
+            replyToId = msg.replyToId
         )
     }
 
@@ -249,7 +258,8 @@ fun ChatScreen(
                             myUid = myUid,
                             otherUsername = receiverUsername,
                             fileName = event.fileName,
-                            mimeType = event.mimeType
+                            mimeType = event.mimeType,
+                            replyToId = event.replyToId
                         )
                         if (event.senderUid != myUid) {
                             isReceiverTyping = false
@@ -333,7 +343,13 @@ fun ChatScreen(
                                 context.startActivity(Intent(Intent.ACTION_VIEW).apply { data = Uri.parse(url) })
                             } catch (_: Exception) {}
                         },
-                        onRetry = { retryMessage(it) }
+                        onRetry = { retryMessage(it) },
+                        onReplyTap = { targetId ->
+                            val index = messages.indexOfFirst { it.id == targetId }
+                            if (index >= 0) {
+                                scope.launch { listState.animateScrollToItem(index) }
+                            }
+                        }
                     )
                 }
             }

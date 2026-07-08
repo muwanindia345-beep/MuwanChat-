@@ -37,7 +37,8 @@ data class MessageItem(
     val username: String?,
     val avatar: String?,
     val file_name: String? = null,
-    val mime_type: String? = null
+    val mime_type: String? = null,
+    val reply_to_id: String? = null
 )
 
 data class SendMessageRequest(
@@ -45,7 +46,8 @@ data class SendMessageRequest(
     val content: String,
     val type: String = "text",
     val file_name: String? = null,
-    val mime_type: String? = null
+    val mime_type: String? = null,
+    val reply_to_id: String? = null
 )
 
 data class SendMessageResponse(

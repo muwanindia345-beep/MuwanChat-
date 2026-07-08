@@ -15,6 +15,7 @@ data class ChatMessage(
     val fileName: String? = null,
     val mimeType: String? = null,
     val replyTo: ChatMessage? = null,
+    val replyToId: String? = null,
     val status: String = "SENT"
 )
 
@@ -40,6 +41,7 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     mediaUrl = if (type != "text") content else null,
     fileName = file_name,
     mimeType = mime_type,
+    replyToId = reply_to_id,
     status = "SENT"
 )
 
@@ -52,6 +54,7 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     mediaUrl = if (type != "text") content else null,
     fileName = fileName,
     mimeType = mimeType,
+    replyToId = replyToId,
     status = status
 )
 

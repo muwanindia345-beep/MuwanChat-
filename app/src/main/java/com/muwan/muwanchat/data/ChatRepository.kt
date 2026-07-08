@@ -20,7 +20,8 @@ object ChatRepository {
         otherAvatar: String? = null,
         status: String = "SENT",
         fileName: String? = null,
-        mimeType: String? = null
+        mimeType: String? = null,
+        replyToId: String? = null
     ) {
         db.messageDao().insert(
             MessageEntity(
@@ -34,7 +35,8 @@ object ChatRepository {
                 createdAt = createdAt,
                 status = status,
                 fileName = fileName,
-                mimeType = mimeType
+                mimeType = mimeType,
+                replyToId = replyToId
             )
         )
 
@@ -117,7 +119,8 @@ object ChatRepository {
                 createdAt = it.created_at,
                 status = "SENT",
                 fileName = it.file_name,
-                mimeType = it.mime_type
+                mimeType = it.mime_type,
+                replyToId = it.reply_to_id
             )
         }
         db.messageDao().insertAll(entities)

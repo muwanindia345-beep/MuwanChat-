@@ -44,7 +44,8 @@ fun MessageBubble(
     onImageTap: (String) -> Unit,
     onVideoTap: (String) -> Unit,
     onDocumentTap: (String, String) -> Unit,
-    onRetry: (ChatMessage) -> Unit = {}
+    onRetry: (ChatMessage) -> Unit = {},
+    onReplyTap: (String) -> Unit = {}
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
     val animatedOffset by animateFloatAsState(
@@ -98,6 +99,7 @@ fun MessageBubble(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
                             .background(DarkInputBg)
+                            .clickable { onReplyTap(reply.id) }
                             .padding(8.dp)
                     ) {
                         Text("↩ ${reply.text.take(40)}", color = Color(0xFF888888), fontSize = 12.sp)

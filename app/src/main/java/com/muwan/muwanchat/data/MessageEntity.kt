@@ -15,5 +15,6 @@ data class MessageEntity(
     val createdAt: String,
     val status: String = "SENT",
     val fileName: String? = null,
-    val mimeType: String? = null
+    val mimeType: String? = null,
+    val replyToId: String? = null
 )

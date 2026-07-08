@@ -22,7 +22,8 @@ sealed class SocketEvent {
         val createdAt: String,
         val type: String = "text",
         val fileName: String? = null,
-        val mimeType: String? = null
+        val mimeType: String? = null,
+        val replyToId: String? = null
     ) : SocketEvent()
 
     data class UserOnline(val uid: String) : SocketEvent()
@@ -95,7 +96,8 @@ object AppSocketManager {
                         createdAt = json.optString("created_at"),
                         type = json.optString("type", "text"),
                         fileName = if (json.isNull("file_name")) null else json.optString("file_name"),
-                        mimeType = if (json.isNull("mime_type")) null else json.optString("mime_type")
+                        mimeType = if (json.isNull("mime_type")) null else json.optString("mime_type"),
+                        replyToId = if (json.isNull("reply_to_id")) null else json.optString("reply_to_id")
                     )
                 )
             }
@@ -194,6 +196,7 @@ object AppSocketManager {
         type: String = "text",
         fileName: String? = null,
         mimeType: String? = null,
+        replyToId: String? = null,
         onAck: (Boolean) -> Unit = {}
     ) {
         val s = socket
@@ -208,6 +211,7 @@ object AppSocketManager {
             put("type", type)
             put("file_name", fileName)
             put("mime_type", mimeType)
+            put("reply_to_id", replyToId)
         }
         s.emit("send_message", arrayOf(json), Ack { args ->
             val res = args.getOrNull(0) as? JSONObject
