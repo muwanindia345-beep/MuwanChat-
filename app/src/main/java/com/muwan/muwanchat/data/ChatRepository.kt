@@ -126,6 +126,14 @@ object ChatRepository {
         db.messageDao().insertAll(entities)
     }
 
+    // Jo messages backend pe "delete for everyone" ho chuke the jab hum offline the,
+    // unko local Room DB se bhi hata do — ghost messages ka fix
+    suspend fun reconcileDeleted(db: MuwanChatDb, deletedIds: List<String>) {
+        if (deletedIds.isNotEmpty()) {
+            db.messageDao().deleteByIds(deletedIds)
+        }
+    }
+
     suspend fun clearUnread(db: MuwanChatDb, roomId: String) {
         db.conversationDao().clearUnread(roomId)
     }

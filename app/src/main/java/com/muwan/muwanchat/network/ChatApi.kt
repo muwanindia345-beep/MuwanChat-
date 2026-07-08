@@ -77,6 +77,10 @@ data class LinkPreviewResponse(
     val url: String?
 )
 
+data class DeletedMessagesResponse(
+    val ids: List<String>
+)
+
 interface ChatApi {
     @GET("chat/conversations")
     suspend fun getConversations(
@@ -88,6 +92,13 @@ interface ChatApi {
         @Header("Authorization") token: String,
         @Path("roomId") roomId: String
     ): Response<MessagesResponse>
+
+    // Reconciliation: is room me abhi tak kaunse messages "delete for everyone" ho chuke hain
+    @GET("chat/deleted/{roomId}")
+    suspend fun getDeletedMessages(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String
+    ): Response<DeletedMessagesResponse>
 
     @POST("chat/send")
     suspend fun sendMessage(

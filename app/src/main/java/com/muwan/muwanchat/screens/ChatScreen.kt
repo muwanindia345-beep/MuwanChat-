@@ -251,6 +251,13 @@ if (AppSocketManager.isConnected) {
         } catch (_: Exception) {}
 
         try {
+            val delRes = RetrofitClient.chatApi.getDeletedMessages("Bearer $token", roomId)
+            if (delRes.isSuccessful) {
+                ChatRepository.reconcileDeleted(db, delRes.body()?.ids ?: emptyList())
+            }
+        } catch (_: Exception) {}
+
+        try {
             RetrofitClient.chatApi.markSeen("Bearer $token", roomId)
             ChatRepository.clearUnread(db, roomId)
         } catch (_: Exception) {}
