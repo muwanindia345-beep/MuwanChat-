@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,7 +46,8 @@ fun MessageBubble(
     onVideoTap: (String) -> Unit,
     onDocumentTap: (String, String) -> Unit,
     onRetry: (ChatMessage) -> Unit = {},
-    onReplyTap: (String) -> Unit = {}
+    onReplyTap: (String) -> Unit = {},
+    onLongPress: (ChatMessage) -> Unit = {}
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
     val animatedOffset by animateFloatAsState(
@@ -71,6 +73,11 @@ fun MessageBubble(
                         onHorizontalDrag = { _, dragAmount ->
                             if (dragAmount > 0) offsetX = (offsetX + dragAmount).coerceIn(0f, 100f)
                         }
+                    )
+                }
+                .pointerInput(message.id) {
+                    detectTapGestures(
+                        onLongPress = { onLongPress(message) }
                     )
                 }
                 .widthIn(max = 280.dp)

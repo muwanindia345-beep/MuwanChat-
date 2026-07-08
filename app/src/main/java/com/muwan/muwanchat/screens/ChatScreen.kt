@@ -120,6 +120,23 @@ fun ChatScreen(
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaSheet by remember { mutableStateOf(false) }
     var uploadingMedia by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<ChatMessage?>(null) }
+
+    fun deleteMessageForMe(msg: ChatMessage) {
+        scope.launch { db.messageDao().deleteById(msg.id) }
+    }
+
+    fun deleteMessageForEveryone(msg: ChatMessage) {
+        scope.launch {
+            try {
+                RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", msg.id)
+            } catch (_: Exception) {
+                // Backend call fail ho jaaye (jaise no internet) to bhi apni screen se hata dete hain;
+                // dusre user tak socket event backend se hi jaayega jab connection wapas aayega.
+            }
+            db.messageDao().deleteById(msg.id)
+        }
+    }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { scope.launch { uploadMediaMessage(context, it, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
@@ -164,8 +181,7 @@ fun ChatScreen(
         } else {
             scope.launch { db.messageDao().updateStatus(id, "PENDING") }
         }
-
-        if (AppSocketManager.isConnected) {
+if (AppSocketManager.isConnected) {
             val timeoutJob = scope.launch {
                 delay(8000)
                 if (isActive) db.messageDao().updateStatus(id, "FAILED")
@@ -293,6 +309,11 @@ fun ChatScreen(
                 is SocketEvent.StopTyping -> {
                     if (event.uid == receiverUid) isReceiverTyping = false
                 }
+                is SocketEvent.MessageDeleted -> {
+                    if (event.roomId == roomId) {
+                        scope.launch { db.messageDao().deleteById(event.id) }
+                    }
+                }
                 else -> {}
             }
         }
@@ -349,7 +370,8 @@ fun ChatScreen(
                             if (index >= 0) {
                                 scope.launch { listState.animateScrollToItem(index) }
                             }
-                        }
+                        },
+                        onLongPress = { deleteTarget = it }
                     )
                 }
             }
@@ -385,8 +407,7 @@ fun ChatScreen(
         AnimatedVisibility(visible = showEmojiPicker) {
             EmojiPickerRow { emoji -> input += emoji }
         }
-
-        ChatInputBar(
+ChatInputBar(
             input = input,
             onInputChange = {
                 input = it
@@ -436,6 +457,47 @@ fun ChatScreen(
 
     fullscreenVideo?.let { url ->
         FullscreenVideoPlayer(url = url, onDismiss = { fullscreenVideo = null })
+    }
+
+    deleteTarget?.let { msg ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete message?") },
+            text = {
+                Text(
+                    if (msg.sent)
+                        "Ye message delete karna hai? Aap 'Delete for Everyone' ya sirf 'Delete for Me' choose kar sakte hain."
+                    else
+                        "Ye message sirf aapki screen se delete hoga."
+                )
+            },
+            confirmButton = {
+                if (msg.sent) {
+                    androidx.compose.material3.TextButton(onClick = {
+                        deleteMessageForEveryone(msg)
+                        deleteTarget = null
+                    }) { Text("Delete for Everyone", color = Color(0xFFE05555)) }
+                } else {
+                    androidx.compose.material3.TextButton(onClick = {
+                        deleteMessageForMe(msg)
+                        deleteTarget = null
+                    }) { Text("Delete for Me") }
+                }
+            },
+            dismissButton = {
+                Row {
+                    if (msg.sent) {
+                        androidx.compose.material3.TextButton(onClick = {
+                            deleteMessageForMe(msg)
+                            deleteTarget = null
+                        }) { Text("Delete for Me") }
+                    }
+                    androidx.compose.material3.TextButton(onClick = { deleteTarget = null }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
     }
 }
 
@@ -499,7 +561,6 @@ private suspend fun uploadMediaMessage(
         setUploading(false)
     }
 }
-
 // ─── Upload + send: video (multipart → Cloudinary) ─────────────────────────
 private suspend fun uploadVideoMessage(
     context: android.content.Context,
