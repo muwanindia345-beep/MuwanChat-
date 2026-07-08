@@ -1,5 +1,6 @@
 package com.muwan.muwanchat.network
 
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -34,18 +35,44 @@ data class MessageItem(
     val seen: Int,
     val created_at: String,
     val username: String?,
-    val avatar: String?
+    val avatar: String?,
+    val file_name: String? = null,
+    val mime_type: String? = null
 )
 
 data class SendMessageRequest(
     val receiver_uid: String,
     val content: String,
-    val type: String = "text"
+    val type: String = "text",
+    val file_name: String? = null,
+    val mime_type: String? = null
 )
 
 data class SendMessageResponse(
     val success: Boolean,
     val message: MessageItem?
+)
+
+data class UploadMediaRequest(
+    val filename: String,
+    val mime_type: String,
+    val data: String,   // base64
+    val category: String // image | document
+)
+
+data class UploadMediaResponse(
+    val success: Boolean,
+    val url: String,
+    val file_name: String?,
+    val mime_type: String?
+)
+
+data class LinkPreviewResponse(
+    val title: String?,
+    val description: String?,
+    val image: String?,
+    val site_name: String?,
+    val url: String?
 )
 
 interface ChatApi {
@@ -83,4 +110,23 @@ interface ChatApi {
         @Header("Authorization") token: String,
         @Path("roomId") roomId: String
     ): Response<Map<String, Boolean>>
+
+    @POST("chat/upload")
+    suspend fun uploadMedia(
+        @Header("Authorization") token: String,
+        @Body request: UploadMediaRequest
+    ): Response<UploadMediaResponse>
+
+    @Multipart
+    @POST("chat/upload-video")
+    suspend fun uploadVideo(
+        @Header("Authorization") token: String,
+        @Part video: MultipartBody.Part
+    ): Response<UploadMediaResponse>
+
+    @GET("chat/link-preview")
+    suspend fun linkPreview(
+        @Header("Authorization") token: String,
+        @Query("url") url: String
+    ): Response<LinkPreviewResponse>
 }

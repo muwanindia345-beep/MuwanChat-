@@ -9,9 +9,11 @@ data class MessageEntity(
     val roomId: String,
     val senderUid: String,
     val receiverUid: String,
-    val content: String,
-    val type: String,
+    val content: String,   // text ke liye plain text, media ke liye URL
+    val type: String,      // text, image, video, document
     val seen: Int,
     val createdAt: String,
-    val status: String = "SENT" // PENDING, SENT, SEEN, FAILED — sirf apne bheje messages ke liye meaningful
+    val status: String = "SENT",
+    val fileName: String? = null,
+    val mimeType: String? = null
 )

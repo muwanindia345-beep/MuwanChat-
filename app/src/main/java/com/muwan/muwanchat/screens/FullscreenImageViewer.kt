@@ -1,6 +1,5 @@
 package com.muwan.muwanchat.screens
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -28,7 +27,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import coil.compose.AsyncImage
 
 @Composable
-fun FullscreenImageViewer(uri: Uri, onDismiss: () -> Unit) {
+fun FullscreenImageViewer(model: Any, onDismiss: () -> Unit) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
@@ -56,7 +55,7 @@ fun FullscreenImageViewer(uri: Uri, onDismiss: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
-                model = uri,
+                model = model,
                 contentDescription = "Full image",
                 modifier = Modifier
                     .fillMaxWidth()

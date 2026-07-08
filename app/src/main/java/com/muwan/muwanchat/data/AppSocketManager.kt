@@ -19,7 +19,10 @@ sealed class SocketEvent {
         val roomId: String,
         val senderUid: String,
         val content: String,
-        val createdAt: String
+        val createdAt: String,
+        val type: String = "text",
+        val fileName: String? = null,
+        val mimeType: String? = null
     ) : SocketEvent()
 
     data class UserOnline(val uid: String) : SocketEvent()
@@ -47,10 +50,6 @@ sealed class SocketEvent {
     ) : SocketEvent()
 }
 
-// Poore app ke liye EK hi socket connection. Login ke baad connect hota hai,
-// tab tak zinda rehta hai jab tak logout na ho. Har screen isi se events
-// sunta hai — apna alag socket nahi banata, isse events miss nahi hote aur
-// screen ke beech aane-jaane par reconnect/reload ki zaroorat nahi padti.
 object AppSocketManager {
 
     private var socket: Socket? = null
@@ -93,7 +92,10 @@ object AppSocketManager {
                         roomId = json.optString("room_id"),
                         senderUid = json.optString("sender_uid"),
                         content = json.optString("content"),
-                        createdAt = json.optString("created_at")
+                        createdAt = json.optString("created_at"),
+                        type = json.optString("type", "text"),
+                        fileName = if (json.isNull("file_name")) null else json.optString("file_name"),
+                        mimeType = if (json.isNull("mime_type")) null else json.optString("mime_type")
                     )
                 )
             }
@@ -185,8 +187,15 @@ object AppSocketManager {
         socket?.emit("check_presence", uid)
     }
 
-    // onAck: true = server ne receive kar liya, false = fail ho gaya
-    fun sendMessage(id: String, receiverUid: String, content: String, onAck: (Boolean) -> Unit = {}) {
+    fun sendMessage(
+        id: String,
+        receiverUid: String,
+        content: String,
+        type: String = "text",
+        fileName: String? = null,
+        mimeType: String? = null,
+        onAck: (Boolean) -> Unit = {}
+    ) {
         val s = socket
         if (s == null || !s.connected()) {
             onAck(false)
@@ -196,7 +205,9 @@ object AppSocketManager {
             put("id", id)
             put("receiver_uid", receiverUid)
             put("content", content)
-            put("type", "text")
+            put("type", type)
+            put("file_name", fileName)
+            put("mime_type", mimeType)
         }
         s.emit("send_message", arrayOf(json), Ack { args ->
             val res = args.getOrNull(0) as? JSONObject
@@ -217,7 +228,6 @@ object AppSocketManager {
         socket?.emit("stop_typing", json)
     }
 
-    // Sirf logout par call karo — normal screen navigation par NAHI
     fun disconnect() {
         socket?.off()
         socket?.disconnect()

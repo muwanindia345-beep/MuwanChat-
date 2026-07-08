@@ -4,8 +4,6 @@ import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.MessageItem
 import com.muwan.muwanchat.screens.nowIso
 
-// Jahan se bhi (socket ya API) message aaye, sirf isi se guzarna hai —
-// yehi messages + conversations dono table consistent rakhta hai
 object ChatRepository {
 
     suspend fun recordMessage(
@@ -20,7 +18,9 @@ object ChatRepository {
         myUid: String,
         otherUsername: String? = null,
         otherAvatar: String? = null,
-        status: String = "SENT"
+        status: String = "SENT",
+        fileName: String? = null,
+        mimeType: String? = null
     ) {
         db.messageDao().insert(
             MessageEntity(
@@ -32,12 +32,20 @@ object ChatRepository {
                 type = type,
                 seen = 0,
                 createdAt = createdAt,
-                status = status
+                status = status,
+                fileName = fileName,
+                mimeType = mimeType
             )
         )
 
         val otherUid = if (senderUid == myUid) receiverUid else senderUid
         val existing = db.conversationDao().getByRoomId(roomId)
+        val previewText = if (type == "text") content else when (type) {
+            "image" -> "📷 Photo"
+            "video" -> "🎥 Video"
+            "document" -> "📄 ${fileName ?: "Document"}"
+            else -> content
+        }
         if (existing == null) {
             db.conversationDao().upsertOne(
                 ConversationEntity(
@@ -45,19 +53,17 @@ object ChatRepository {
                     uid = otherUid,
                     username = otherUsername ?: "Unknown",
                     avatar = otherAvatar,
-                    lastMessage = content,
+                    lastMessage = previewText,
                     lastTime = createdAt,
                     lastSenderUid = senderUid,
                     unreadCount = if (senderUid != myUid) 1 else 0
                 )
             )
         } else {
-            db.conversationDao().updateLastMessage(roomId, content, createdAt, senderUid, myUid)
+            db.conversationDao().updateLastMessage(roomId, previewText, createdAt, senderUid, myUid)
         }
     }
 
-    // Request accept hote hi conversation list mein turant naya entry daalne ke liye —
-    // koi message abhi tak nahi aaya, isliye lastMessage khaali rakhte hain
     suspend fun addConversationPlaceholder(
         db: MuwanChatDb,
         roomId: String,
@@ -109,7 +115,9 @@ object ChatRepository {
                 type = it.type,
                 seen = it.seen,
                 createdAt = it.created_at,
-                status = "SENT"
+                status = "SENT",
+                fileName = it.file_name,
+                mimeType = it.mime_type
             )
         }
         db.messageDao().insertAll(entities)

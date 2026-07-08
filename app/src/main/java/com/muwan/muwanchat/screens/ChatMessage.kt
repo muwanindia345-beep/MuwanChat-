@@ -1,6 +1,5 @@
 package com.muwan.muwanchat.screens
 
-import android.net.Uri
 import com.muwan.muwanchat.data.MessageEntity
 import com.muwan.muwanchat.network.MessageItem
 import java.text.SimpleDateFormat
@@ -9,11 +8,14 @@ import java.util.*
 data class ChatMessage(
     val id: String,
     val text: String,
-    val sent: Boolean,         // true = aapka message
+    val sent: Boolean,
     val time: String,
-    val imageUri: Uri? = null,
+    val type: String = "text",       // text, image, video, document
+    val mediaUrl: String? = null,
+    val fileName: String? = null,
+    val mimeType: String? = null,
     val replyTo: ChatMessage? = null,
-    val status: String = "SENT" // PENDING, SENT, SEEN, FAILED
+    val status: String = "SENT"
 )
 
 fun formatMessageTime(raw: String): String {
@@ -22,7 +24,7 @@ fun formatMessageTime(raw: String): String {
         parser.timeZone = TimeZone.getTimeZone("UTC")
         val date = parser.parse(raw.take(19)) ?: return raw.take(16).replace("T", " ")
         val display = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-        display.timeZone = TimeZone.getDefault() // device local zone
+        display.timeZone = TimeZone.getDefault()
         display.format(date)
     } catch (_: Exception) {
         raw.take(16).replace("T", " ")
@@ -31,19 +33,25 @@ fun formatMessageTime(raw: String): String {
 
 fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     id = id,
-    text = content,
+    text = if (type == "text") content else "",
     sent = sender_uid == myUid,
     time = formatMessageTime(created_at),
-    imageUri = null,
+    type = type,
+    mediaUrl = if (type != "text") content else null,
+    fileName = file_name,
+    mimeType = mime_type,
     status = "SENT"
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     id = id,
-    text = content,
+    text = if (type == "text") content else "",
     sent = senderUid == myUid,
     time = formatMessageTime(createdAt),
-    imageUri = null,
+    type = type,
+    mediaUrl = if (type != "text") content else null,
+    fileName = fileName,
+    mimeType = mimeType,
     status = status
 )
 

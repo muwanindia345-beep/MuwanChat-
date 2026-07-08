@@ -1,6 +1,5 @@
 package com.muwan.muwanchat.screens
 
-import android.net.Uri
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -12,8 +11,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,7 +41,9 @@ import com.muwan.muwanchat.DarkInputBg
 fun MessageBubble(
     message: ChatMessage,
     onSwipeReply: (ChatMessage) -> Unit,
-    onImageTap: (Uri) -> Unit,
+    onImageTap: (String) -> Unit,
+    onVideoTap: (String) -> Unit,
+    onDocumentTap: (String, String) -> Unit,
     onRetry: (ChatMessage) -> Unit = {}
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
@@ -49,6 +52,7 @@ fun MessageBubble(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "swipe"
     )
+    val isMedia = message.type == "image" || message.type == "video"
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -78,8 +82,8 @@ fun MessageBubble(
                 )
                 .background(if (message.sent) DarkBubbleSent else DarkBubbleReceived)
                 .padding(
-                    horizontal = if (message.imageUri != null) 4.dp else 14.dp,
-                    vertical = if (message.imageUri != null) 4.dp else 10.dp
+                    horizontal = if (isMedia) 4.dp else 14.dp,
+                    vertical = if (isMedia) 4.dp else 10.dp
                 )
                 .let {
                     if (message.sent && message.status == "FAILED")
@@ -101,18 +105,62 @@ fun MessageBubble(
                     Spacer(Modifier.height(6.dp))
                 }
 
-                message.imageUri?.let { uri ->
-                    AsyncImage(
-                        model = uri,
-                        contentDescription = "Image",
-                        modifier = Modifier
-                            .widthIn(max = 200.dp)
-                            .heightIn(max = 180.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onImageTap(uri) },
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(Modifier.height(4.dp))
+                when (message.type) {
+                    "image" -> message.mediaUrl?.let { url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "Image",
+                            modifier = Modifier
+                                .widthIn(max = 200.dp)
+                                .heightIn(max = 180.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { onImageTap(url) },
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    "video" -> message.mediaUrl?.let { url ->
+                        Box(
+                            modifier = Modifier
+                                .width(200.dp)
+                                .height(140.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .clickable { onVideoTap(url) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.PlayCircle,
+                                contentDescription = "Play video",
+                                tint = Color.White,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    "document" -> message.mediaUrl?.let { url ->
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(DarkInputBg)
+                                .clickable { onDocumentTap(url, message.fileName ?: "Document") }
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.Description, contentDescription = "Document", tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                message.fileName ?: "Document",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
                 }
 
                 if (message.text.isNotBlank()) {
@@ -134,7 +182,7 @@ fun MessageBubble(
                             "PENDING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
                             "SEEN" -> Icons.Filled.DoneAll to Color(0xFF4CAF50)
                             "FAILED" -> Icons.Filled.ErrorOutline to Color(0xFFE53935)
-                            else -> Icons.Filled.Check to Color(0xAAFFFFFF) // SENT (default)
+                            else -> Icons.Filled.Check to Color(0xAAFFFFFF)
                         }
                         Icon(
                             imageVector = icon,
