@@ -426,25 +426,29 @@ fun ConversationRow(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (isSelectionMode) {
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(if (isSelected) DarkAccent else Color(0xFF333355)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isSelected) {
-                    Icon(Icons.Filled.Check, contentDescription = "Selected", tint = Color.White)
-                }
-            }
-        } else {
+        Box(
+            modifier = Modifier.size(50.dp),
+            contentAlignment = Alignment.Center
+        ) {
             AvatarView(
                 avatarBase64 = conv.avatar,
                 fallbackText = conv.username,
                 size = 50.dp,
                 fontSize = 20.sp
             )
+            if (isSelectionMode) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(CircleShape)
+                        .background(if (isSelected) DarkAccent.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.35f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Icon(Icons.Filled.Check, contentDescription = "Selected", tint = Color.White)
+                    }
+                }
+            }
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
