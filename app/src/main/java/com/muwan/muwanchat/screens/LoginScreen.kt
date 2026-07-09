@@ -57,6 +57,7 @@ fun LoginScreen(navController: NavController) {
                         username  = body.user?.username ?: email.substringBefore("@"),
                         email     = email.trim(),
                         token     = body.token ?: "",
+                        uid       = body.user?.uid ?: "",
                         anonKey   = "",
                         secretKey = "",
                         dbName    = "",

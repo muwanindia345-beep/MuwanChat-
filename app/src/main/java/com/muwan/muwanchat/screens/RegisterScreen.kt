@@ -156,6 +156,7 @@ fun RegisterScreen(navController: NavController) {
                                     username  = body.user?.username ?: username.trim(),
                                     email     = email.trim(),
                                     token     = body.token ?: "",
+                                    uid       = body.user?.uid ?: "",
                                     anonKey   = "",
                                     secretKey = "",
                                     dbName    = "",

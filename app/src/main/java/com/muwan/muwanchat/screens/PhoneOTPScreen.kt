@@ -150,6 +150,7 @@ fun PhoneOTPScreen(navController: NavController, phone: String) {
                                     username  = body.user?.username ?: "",
                                     email     = body.user?.email ?: "",
                                     token     = body.token ?: "",
+                                    uid       = body.user?.uid ?: "",
                                     anonKey   = "",
                                     secretKey = "",
                                     dbName    = "",

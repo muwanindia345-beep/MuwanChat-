@@ -16,6 +16,7 @@ object AuthDataStore {
     private val USERNAME_KEY   = stringPreferencesKey("username")
     private val EMAIL_KEY      = stringPreferencesKey("email")
     private val TOKEN_KEY      = stringPreferencesKey("token")
+    private val UID_KEY        = stringPreferencesKey("uid")
     private val ANON_KEY       = stringPreferencesKey("anon_key")
     private val SECRET_KEY     = stringPreferencesKey("secret_key")
     private val DB_NAME_KEY    = stringPreferencesKey("db_name")
@@ -26,6 +27,7 @@ object AuthDataStore {
         username: String,
         email: String,
         token: String,
+        uid: String = "",
         anonKey: String,
         secretKey: String,
         dbName: String,
@@ -35,6 +37,7 @@ object AuthDataStore {
             prefs[USERNAME_KEY]   = username
             prefs[EMAIL_KEY]      = email
             prefs[TOKEN_KEY]      = token
+            prefs[UID_KEY]        = uid
             prefs[ANON_KEY]       = anonKey
             prefs[SECRET_KEY]     = secretKey
             prefs[DB_NAME_KEY]    = dbName
@@ -45,6 +48,7 @@ object AuthDataStore {
     fun getUsername(context: Context): Flow<String?>  = context.dataStore.data.map { it[USERNAME_KEY] }
     fun getEmail(context: Context): Flow<String?>     = context.dataStore.data.map { it[EMAIL_KEY] }
     fun getToken(context: Context): Flow<String?>     = context.dataStore.data.map { it[TOKEN_KEY] }
+    fun getUid(context: Context): Flow<String?>       = context.dataStore.data.map { it[UID_KEY] }
     fun getAnonKey(context: Context): Flow<String?>   = context.dataStore.data.map { it[ANON_KEY] }
     fun getSecretKey(context: Context): Flow<String?> = context.dataStore.data.map { it[SECRET_KEY] }
     fun getDbName(context: Context): Flow<String?>    = context.dataStore.data.map { it[DB_NAME_KEY] }

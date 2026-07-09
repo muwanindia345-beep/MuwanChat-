@@ -263,11 +263,7 @@ if (AppSocketManager.isConnected) {
     LaunchedEffect(Unit) {
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         myToken = token
-
-        try {
-            val me = RetrofitClient.authApi.me("Bearer $token")
-            myUid = me.body()?.user?.uid ?: ""
-        } catch (_: Exception) {}
+        myUid = AuthDataStore.getUid(context).first() ?: ""
 
         AppSocketManager.connect(token)
         AppSocketManager.joinRoom(roomId)
