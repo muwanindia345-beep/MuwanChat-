@@ -2,6 +2,7 @@ package com.muwan.muwanchat.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -89,6 +90,8 @@ fun ConversationListScreen(navController: NavController) {
     var incomingCount by remember { mutableStateOf(0) }
     var myUid by remember { mutableStateOf("") }
     var myToken by remember { mutableStateOf("") }
+    var showFabSheet by remember { mutableStateOf(false) }
+    var comingSoonFeature by remember { mutableStateOf<String?>(null) }
 
     // ── Multi-select "delete chat" state ──────────────────────────────────
     var isSelectionMode by remember { mutableStateOf(false) }
@@ -246,12 +249,31 @@ fun ConversationListScreen(navController: NavController) {
         )
     }
 
+    if (showFabSheet) {
+        ModalBottomSheet(onDismissRequest = { showFabSheet = false }, containerColor = DarkHeader) {
+            Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                FabSheetOption(Icons.Filled.Search, "Search") {
+                    showFabSheet = false
+                    navController.navigate(Screen.UserSearch.route)
+                }
+                FabSheetOption(Icons.Filled.Add, "Create Group") {
+                    showFabSheet = false
+                    comingSoonFeature = "👥 Group Chat"
+                }
+            }
+        }
+    }
+
+    comingSoonFeature?.let { feature ->
+        ComingSoonDialog(feature = feature, onDismiss = { comingSoonFeature = null })
+    }
+
     Scaffold(
         containerColor = DarkBg,
         floatingActionButton = {
             if (!isSelectionMode) {
                 FloatingActionButton(
-                    onClick = { navController.navigate(Screen.UserSearch.route) },
+                    onClick = { showFabSheet = true },
                     containerColor = DarkAccent,
                     shape = CircleShape
                 ) {
@@ -492,5 +514,20 @@ fun ConversationRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun FabSheetOption(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = label, tint = DarkAccent, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(16.dp))
+        Text(label, color = Color.White, fontSize = 16.sp)
     }
 }
