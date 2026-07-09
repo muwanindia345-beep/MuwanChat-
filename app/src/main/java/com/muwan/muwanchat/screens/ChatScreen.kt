@@ -362,13 +362,16 @@ if (AppSocketManager.isConnected) {
 
     val wallpaperEntity by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+    ) {
         WallpaperPreviewBackground(wallpaperEntity)
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .then(if (wallpaperEntity == null) Modifier.background(DarkBg) else Modifier)
-                .systemBarsPadding()
                 .imePadding()
         ) {
         if (isSelectionMode) {

@@ -11,10 +11,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -103,7 +102,7 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
             .background(DarkBg)
             .systemBarsPadding()
     ) {
-        // ── Header ──
+        // ── Header (fixed, doesn't scroll) ──
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -117,21 +116,27 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
             Text("Chat Wallpaper", color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
 
-        // ── Preview ──
-        Box(
+        // ── Everything below scrolls ──
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .padding(16.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
         ) {
-            WallpaperPreviewBackground(current)
-        }
+            // ── Preview ──
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .padding(vertical = 16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            ) {
+                WallpaperPreviewBackground(current)
+            }
 
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
             // ── Gallery + Remove row ──
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
@@ -155,48 +160,24 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
             }
 
             Text("Solid Colors", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier.height(100.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(WallpaperPresets.colors) { preset ->
+                modifier = Modifier.padding(top = 12.dp, bottom = 10.dp))
+            PresetGrid(columns = 4) {
+                WallpaperPresets.colors.forEach { preset ->
                     val selected = current?.type == "color" && current?.value == preset.id
-                    Box(
-                        modifier = Modifier
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(android.graphics.Color.parseColor(preset.hex)))
-                            .border(
-                                width = if (selected) 2.dp else 0.dp,
-                                color = if (selected) DarkAccent else Color.Transparent,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clickable { applyPreset("color", preset.id) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White)
+                    PresetSwatch(selected = selected, onClick = { applyPreset("color", preset.id) }) {
+                        Box(Modifier.fillMaxSize().background(Color(android.graphics.Color.parseColor(preset.hex))))
                     }
                 }
             }
 
             Text("Gradients", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.height(160.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(WallpaperPresets.gradients) { preset ->
+                modifier = Modifier.padding(top = 20.dp, bottom = 10.dp))
+            PresetGrid(columns = 3) {
+                WallpaperPresets.gradients.forEach { preset ->
                     val selected = current?.type == "gradient" && current?.value == preset.id
-                    Box(
-                        modifier = Modifier
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
+                    PresetSwatch(selected = selected, onClick = { applyPreset("gradient", preset.id) }) {
+                        Box(
+                            Modifier.fillMaxSize().background(
                                 Brush.linearGradient(
                                     listOf(
                                         Color(android.graphics.Color.parseColor(preset.hexFrom)),
@@ -204,49 +185,61 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
                                     )
                                 )
                             )
-                            .border(
-                                width = if (selected) 2.dp else 0.dp,
-                                color = if (selected) DarkAccent else Color.Transparent,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clickable { applyPreset("gradient", preset.id) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White)
+                        )
                     }
                 }
             }
 
             Text("Patterns", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier.height(100.dp).padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(WallpaperPresets.patterns) { preset ->
+                modifier = Modifier.padding(top = 20.dp, bottom = 10.dp))
+            PresetGrid(columns = 4) {
+                WallpaperPresets.patterns.forEach { preset ->
                     val selected = current?.type == "pattern" && current?.value == preset.id
-                    Box(
-                        modifier = Modifier
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(
-                                width = if (selected) 2.dp else 0.dp,
-                                color = if (selected) DarkAccent else Color.Transparent,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clickable { applyPreset("pattern", preset.id) }
-                    ) {
+                    PresetSwatch(selected = selected, onClick = { applyPreset("pattern", preset.id) }) {
                         PatternThumbnail(preset)
-                        if (selected) {
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White,
-                                modifier = Modifier.align(Alignment.Center))
-                        }
                     }
                 }
             }
+
+            Spacer(Modifier.height(32.dp))
         }
+    }
+}
+
+// ─── Reusable non-lazy grid: chunked rows, height grows with content (scroll-safe) ───
+@Composable
+private fun PresetGrid(columns: Int, content: @Composable () -> Unit) {
+    // content() ke andar se items ek flat list ki tarah nahi aa sakte (Compose slot API),
+    // isliye har caller apna forEach khud PresetGridRow ke through bhejta hai — simplest
+    // tareeka: har group apni khud ki Row banata hai. Yahan hum ek generic Layout use
+    // karte hain jo children ko columns ke hisaab se rows me wrap karta hai.
+    androidx.compose.foundation.layout.FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        maxItemsInEachRow = columns
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun PresetSwatch(selected: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(0.22f)
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(10.dp))
+            .border(
+                width = if (selected) 2.dp else 0.dp,
+                color = if (selected) DarkAccent else Color.Transparent,
+                shape = RoundedCornerShape(10.dp)
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White)
     }
 }
 
@@ -297,8 +290,8 @@ fun PatternThumbnail(preset: com.muwan.muwanchat.data.PatternPreset) {
     val base = Color(android.graphics.Color.parseColor(preset.baseHex))
     val dot = Color(android.graphics.Color.parseColor(preset.dotHex))
     Canvas(modifier = Modifier.fillMaxSize().background(base)) {
-        val spacing = 28.dp.toPx()
-        val radius = 2.5.dp.toPx()
+        val spacing = 22.dp.toPx()
+        val radius = 2.dp.toPx()
         var y = spacing / 2
         while (y < size.height) {
             var x = spacing / 2
