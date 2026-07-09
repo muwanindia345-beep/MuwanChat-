@@ -1,5 +1,7 @@
 package com.muwan.muwanchat.screens
 
+import android.util.Patterns
+import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -10,6 +12,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
@@ -30,6 +33,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -40,6 +49,26 @@ import com.muwan.muwanchat.DarkBubbleReceived
 import com.muwan.muwanchat.DarkBubbleSent
 import com.muwan.muwanchat.DarkInputBg
 
+// Message text mein URLs dhoondh ke unhe clickable-blue dikhane ke liye
+private const val LINK_TAG = "URL"
+
+private fun linkifyText(text: String): AnnotatedString {
+    val builder = AnnotatedString.Builder(text)
+    val matcher = Patterns.WEB_URL.matcher(text)
+    while (matcher.find()) {
+        val start = matcher.start()
+        val end = matcher.end()
+        var url = text.substring(start, end)
+        if (!url.startsWith("http://") && !url.startsWith("https://")) url = "https://$url"
+        builder.addStyle(
+            SpanStyle(color = DarkAccent, textDecoration = TextDecoration.Underline),
+            start, end
+        )
+        builder.addStringAnnotation(tag = LINK_TAG, annotation = url, start = start, end = end)
+    }
+    return builder.toAnnotatedString()
+}
+
 @Composable
 fun MessageBubble(
     message: ChatMessage,
@@ -49,11 +78,15 @@ fun MessageBubble(
     onSwipeReply: (ChatMessage) -> Unit,
     onImageTap: (String) -> Unit,
     onVideoTap: (String) -> Unit,
-    onDocumentTap: (String, String) -> Unit,
+    onDocumentTap: (String, String, String?) -> Unit,
+    onLinkTap: (String) -> Unit = {},
     onRetry: (ChatMessage) -> Unit = {},
     onReplyTap: (String) -> Unit = {},
     onLongPress: (ChatMessage) -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+
     var offsetX by remember { mutableFloatStateOf(0f) }
     val animatedOffset by animateFloatAsState(
         targetValue = offsetX,
@@ -103,10 +136,20 @@ fun MessageBubble(
                         }
                     )
                 }
+                // Copy Message feature: kahin bhi bubble pe double-tap = clipboard copy, koi UI change nahi
                 .pointerInput(message.id, isSelectionMode) {
                     detectTapGestures(
                         onLongPress = { onLongPress(message) },
-                        onTap = { if (isSelectionMode) onTap() }
+                        onTap = { if (isSelectionMode) onTap() },
+                        onDoubleTap = {
+                            if (!isSelectionMode) {
+                                val textToCopy = message.text.ifBlank { message.fileName ?: "" }
+                                if (textToCopy.isNotBlank()) {
+                                    clipboardManager.setText(AnnotatedString(textToCopy))
+                                    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     )
                 }
                 .widthIn(max = 280.dp)
@@ -183,7 +226,10 @@ fun MessageBubble(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(DarkInputBg)
-                                .clickable { if (isSelectionMode) onTap() else onDocumentTap(url, message.fileName ?: "Document") }
+                                .clickable {
+                                    if (isSelectionMode) onTap()
+                                    else onDocumentTap(url, message.fileName ?: "Document", message.mimeType)
+                                }
                                 .padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -202,7 +248,20 @@ fun MessageBubble(
                 }
 
                 if (message.text.isNotBlank()) {
-                    Text(message.text, color = Color.White, fontSize = 15.sp)
+                    if (isSelectionMode) {
+                        // Selection mode me poore bubble ka tap select/deselect ke liye reserved hai
+                        Text(message.text, color = Color.White, fontSize = 15.sp)
+                    } else {
+                        val annotated = remember(message.text) { linkifyText(message.text) }
+                        ClickableText(
+                            text = annotated,
+                            style = TextStyle(color = Color.White, fontSize = 15.sp),
+                            onClick = { offset ->
+                                val link = annotated.getStringAnnotations(LINK_TAG, offset, offset).firstOrNull()
+                                if (link != null) onLinkTap(link.item)
+                            }
+                        )
+                    }
                 }
 
                 Row(

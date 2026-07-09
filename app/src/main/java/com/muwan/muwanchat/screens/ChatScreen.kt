@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
+import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -421,9 +422,36 @@ if (AppSocketManager.isConnected) {
                         onSwipeReply = { replyTo = it },
                         onImageTap = { url -> fullscreenImage = url },
                         onVideoTap = { url -> fullscreenVideo = url },
-                        onDocumentTap = { url, _ ->
+                        onDocumentTap = { url, _, mimeType ->
+                            val resolvedMime = mimeType?.takeIf { it.isNotBlank() } ?: run {
+                                val ext = MimeTypeMap.getFileExtensionFromUrl(url)
+                                MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                            }
                             try {
-                                context.startActivity(Intent(Intent.ACTION_VIEW).apply { data = Uri.parse(url) })
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    if (resolvedMime != null) setDataAndType(Uri.parse(url), resolvedMime)
+                                    else data = Uri.parse(url)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                    )
+                                } catch (_: Exception) {}
+                            }
+                        },
+                        onLinkTap = { url ->
+                            try {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                )
                             } catch (_: Exception) {}
                         },
                         onRetry = { retryMessage(it) },
