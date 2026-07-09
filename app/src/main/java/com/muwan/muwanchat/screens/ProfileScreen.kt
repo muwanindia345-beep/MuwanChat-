@@ -33,6 +33,8 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.MuwanChatDb
+import com.muwan.muwanchat.data.MyProfileEntity
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.ProfileUpdateBody
 import com.muwan.muwanchat.network.RetrofitClient
@@ -44,6 +46,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isOnboarding = mode == "onboarding"
+    val db = remember { MuwanChatDb.get(context) }
 
     var name by rememberSaveable { mutableStateOf("") }
     var bio by rememberSaveable { mutableStateOf("") }
@@ -57,25 +60,42 @@ fun ProfileScreen(navController: NavController, mode: String) {
     var isSaving by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf("") }
 
+    fun applyProfileFields(name_: String?, bio_: String?, city_: String?, country_: String?, gender_: String?, avatar_: String?) {
+        name = name_ ?: ""
+        bio = bio_ ?: ""
+        city = city_ ?: ""
+        country = country_ ?: ""
+        avatarBase64 = avatar_
+        val g = gender_ ?: ""
+        if (g == "Male" || g == "Female") {
+            gender = g
+        } else if (g.isNotEmpty()) {
+            gender = "Custom"
+            customGender = g
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (!isOnboarding && !hasFetchedProfile) {
+            // 1) Room cache se turant fields bhar do — offline pe bhi khaali screen na dikhe
+            db.myProfileDao().get()?.let { cached ->
+                applyProfileFields(cached.name, cached.bio, cached.city, cached.country, cached.gender, cached.avatar)
+                isLoading = false
+            }
+
+            // 2) Background me network se fresh data lao, UI + cache dono update
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
                 val res = RetrofitClient.authApi.me("Bearer $token")
                 if (res.isSuccessful) {
                     val user = res.body()?.user
-                    name = user?.name ?: ""
-                    bio = user?.bio ?: ""
-                    city = user?.city ?: ""
-                    country = user?.country ?: ""
-                    avatarBase64 = user?.avatar
-                    val g = user?.gender ?: ""
-                    if (g == "Male" || g == "Female") {
-                        gender = g
-                    } else if (g.isNotEmpty()) {
-                        gender = "Custom"
-                        customGender = g
-                    }
+                    applyProfileFields(user?.name, user?.bio, user?.city, user?.country, user?.gender, user?.avatar)
+                    db.myProfileDao().upsert(
+                        MyProfileEntity(
+                            name = user?.name, bio = user?.bio, city = user?.city,
+                            country = user?.country, gender = user?.gender, avatar = user?.avatar
+                        )
+                    )
                 }
                 hasFetchedProfile = true
             } catch (_: Exception) {}
@@ -129,6 +149,13 @@ fun ProfileScreen(navController: NavController, mode: String) {
                     )
                 )
                 if (res.isSuccessful) {
+                    db.myProfileDao().upsert(
+                        MyProfileEntity(
+                            name = name.trim(), bio = bio.trim().ifBlank { null },
+                            city = city.trim().ifBlank { null }, country = country.trim().ifBlank { null },
+                            gender = finalGender.ifBlank { null }, avatar = avatarBase64
+                        )
+                    )
                     if (isOnboarding) {
                         navController.navigate(Screen.ConversationList.route) {
                             popUpTo(Screen.Profile.route) { inclusive = true }

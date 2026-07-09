@@ -248,8 +248,16 @@ if (AppSocketManager.isConnected) {
         )
     }
 
+    var hasDoneInitialScroll by remember { mutableStateOf(false) }
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+        if (messages.isNotEmpty()) {
+            if (!hasDoneInitialScroll) {
+                listState.scrollToItem(messages.size - 1)
+                hasDoneInitialScroll = true
+            } else {
+                listState.animateScrollToItem(messages.size - 1)
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -410,11 +418,7 @@ if (AppSocketManager.isConnected) {
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             items(messages, key = { it.id }) { msg ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn()
-                ) {
-                    MessageBubble(
+                MessageBubble(
                         message = msg,
                         isSelectionMode = isSelectionMode,
                         isSelected = selectedMessageIds.contains(msg.id),
@@ -468,7 +472,6 @@ if (AppSocketManager.isConnected) {
                             }
                         }
                     )
-                }
             }
         }
 
