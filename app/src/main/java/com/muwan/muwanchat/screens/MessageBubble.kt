@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBubbleReceived
 import com.muwan.muwanchat.DarkBubbleSent
 import com.muwan.muwanchat.DarkInputBg
@@ -41,6 +43,9 @@ import com.muwan.muwanchat.DarkInputBg
 @Composable
 fun MessageBubble(
     message: ChatMessage,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onTap: () -> Unit = {},
     onSwipeReply: (ChatMessage) -> Unit,
     onImageTap: (String) -> Unit,
     onVideoTap: (String) -> Unit,
@@ -59,25 +64,49 @@ fun MessageBubble(
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (message.sent) Arrangement.End else Arrangement.Start
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        if (isSelectionMode) {
+            Box(
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) DarkAccent else Color(0xFF333355)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = "Selected",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = if (message.sent) Arrangement.End else Arrangement.Start
+        ) {
         Box(
             modifier = Modifier
                 .offset { IntOffset(animatedOffset.toInt(), 0) }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
-                            if (offsetX > 80f) onSwipeReply(message)
+                            if (!isSelectionMode && offsetX > 80f) onSwipeReply(message)
                             offsetX = 0f
                         },
                         onHorizontalDrag = { _, dragAmount ->
-                            if (dragAmount > 0) offsetX = (offsetX + dragAmount).coerceIn(0f, 100f)
+                            if (!isSelectionMode && dragAmount > 0) offsetX = (offsetX + dragAmount).coerceIn(0f, 100f)
                         }
                     )
                 }
-                .pointerInput(message.id) {
+                .pointerInput(message.id, isSelectionMode) {
                     detectTapGestures(
-                        onLongPress = { onLongPress(message) }
+                        onLongPress = { onLongPress(message) },
+                        onTap = { if (isSelectionMode) onTap() }
                     )
                 }
                 .widthIn(max = 280.dp)
@@ -95,7 +124,7 @@ fun MessageBubble(
                 )
                 .let {
                     if (message.sent && message.status == "FAILED")
-                        it.clickable { onRetry(message) }
+                        it.clickable { if (isSelectionMode) onTap() else onRetry(message) }
                     else it
                 }
         ) {
@@ -106,7 +135,7 @@ fun MessageBubble(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
                             .background(DarkInputBg)
-                            .clickable { onReplyTap(reply.id) }
+                            .clickable { if (isSelectionMode) onTap() else onReplyTap(reply.id) }
                             .padding(8.dp)
                     ) {
                         Text("↩ ${reply.text.take(40)}", color = Color(0xFF888888), fontSize = 12.sp)
@@ -123,7 +152,7 @@ fun MessageBubble(
                                 .widthIn(max = 200.dp)
                                 .heightIn(max = 180.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable { onImageTap(url) },
+                                .clickable { if (isSelectionMode) onTap() else onImageTap(url) },
                             contentScale = ContentScale.Crop
                         )
                         Spacer(Modifier.height(4.dp))
@@ -136,7 +165,7 @@ fun MessageBubble(
                                 .height(140.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFF1A1A1A))
-                                .clickable { onVideoTap(url) },
+                                .clickable { if (isSelectionMode) onTap() else onVideoTap(url) },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -154,7 +183,7 @@ fun MessageBubble(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(DarkInputBg)
-                                .clickable { onDocumentTap(url, message.fileName ?: "Document") }
+                                .clickable { if (isSelectionMode) onTap() else onDocumentTap(url, message.fileName ?: "Document") }
                                 .padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -202,6 +231,7 @@ fun MessageBubble(
                     }
                 }
             }
+        }
         }
     }
 }

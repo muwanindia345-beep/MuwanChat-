@@ -30,9 +30,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
+import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.DarkInputBg
 import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AuthDataStore
@@ -120,22 +122,41 @@ fun ChatScreen(
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaSheet by remember { mutableStateOf(false) }
     var uploadingMedia by remember { mutableStateOf(false) }
-    var deleteTarget by remember { mutableStateOf<ChatMessage?>(null) }
+    // ── Multi-select "delete message" state (ConversationListScreen jaisa hi system) ──
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedMessageIds by remember { mutableStateOf(setOf<String>()) }
+    var showBulkDeleteConfirm by remember { mutableStateOf(false) }
 
-    fun deleteMessageForMe(msg: ChatMessage) {
-        scope.launch { db.messageDao().deleteById(msg.id) }
+    fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedMessageIds = emptySet()
     }
 
-    fun deleteMessageForEveryone(msg: ChatMessage) {
+    fun toggleMessageSelection(id: String) {
+        selectedMessageIds = if (selectedMessageIds.contains(id)) selectedMessageIds - id else selectedMessageIds + id
+        if (selectedMessageIds.isEmpty()) isSelectionMode = false
+    }
+
+    fun deleteSelectedForMe() {
+        val ids = selectedMessageIds.toList()
+        scope.launch { db.messageDao().deleteByIds(ids) }
+        exitSelectionMode()
+    }
+
+    fun deleteSelectedForEveryone() {
+        val ids = selectedMessageIds.toList()
         scope.launch {
-            try {
-                RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", msg.id)
-            } catch (_: Exception) {
-                // Backend call fail ho jaaye (jaise no internet) to bhi apni screen se hata dete hain;
-                // dusre user tak socket event backend se hi jaayega jab connection wapas aayega.
+            ids.forEach { id ->
+                try {
+                    RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", id)
+                } catch (_: Exception) {
+                    // Backend call fail ho jaaye (jaise no internet) to bhi apni screen se hata dete hain;
+                    // dusre user tak socket event backend se hi jaayega jab connection wapas aayega.
+                }
             }
-            db.messageDao().deleteById(msg.id)
+            db.messageDao().deleteByIds(ids)
         }
+        exitSelectionMode()
     }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -339,15 +360,46 @@ if (AppSocketManager.isConnected) {
             .systemBarsPadding()
             .imePadding()
     ) {
-        ChatHeader(
-            receiverUsername = receiverUsername,
-            isOnline = isReceiverOnline,
-            isTyping = isReceiverTyping,
-            avatarBase64 = conversationEntity?.avatar,
-            onBack = { navController.popBackStack() },
-            onVideoCall = { comingSoonFeature = "📹 Video Call" },
-            onVoiceCall = { comingSoonFeature = "📞 Voice Call" }
-        )
+        if (isSelectionMode) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkHeader)
+                    .padding(horizontal = 8.dp, vertical = 10.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { exitSelectionMode() }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Cancel", tint = Color.White)
+                }
+                Text(
+                    "${selectedMessageIds.size} selected",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick = { if (selectedMessageIds.isNotEmpty()) showBulkDeleteConfirm = true },
+                    enabled = selectedMessageIds.isNotEmpty()
+                ) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "Delete",
+                        tint = if (selectedMessageIds.isNotEmpty()) Color(0xFFFF3B30) else Color(0xFF555577)
+                    )
+                }
+            }
+        } else {
+            ChatHeader(
+                receiverUsername = receiverUsername,
+                isOnline = isReceiverOnline,
+                isTyping = isReceiverTyping,
+                avatarBase64 = conversationEntity?.avatar,
+                onBack = { navController.popBackStack() },
+                onVideoCall = { comingSoonFeature = "📹 Video Call" },
+                onVoiceCall = { comingSoonFeature = "📞 Voice Call" }
+            )
+        }
 
         LazyColumn(
             state = listState,
@@ -363,6 +415,9 @@ if (AppSocketManager.isConnected) {
                 ) {
                     MessageBubble(
                         message = msg,
+                        isSelectionMode = isSelectionMode,
+                        isSelected = selectedMessageIds.contains(msg.id),
+                        onTap = { toggleMessageSelection(msg.id) },
                         onSwipeReply = { replyTo = it },
                         onImageTap = { url -> fullscreenImage = url },
                         onVideoTap = { url -> fullscreenVideo = url },
@@ -378,7 +433,12 @@ if (AppSocketManager.isConnected) {
                                 scope.launch { listState.animateScrollToItem(index) }
                             }
                         },
-                        onLongPress = { deleteTarget = it }
+                        onLongPress = {
+                            if (!isSelectionMode) {
+                                isSelectionMode = true
+                                selectedMessageIds = setOf(it.id)
+                            }
+                        }
                     )
                 }
             }
@@ -466,40 +526,43 @@ ChatInputBar(
         FullscreenVideoPlayer(url = url, onDismiss = { fullscreenVideo = null })
     }
 
-    deleteTarget?.let { msg ->
+    if (showBulkDeleteConfirm) {
+        // Sirf tabhi "Delete for Everyone" dikhega jab SAARE selected messages khud ke bheje hue hain
+        val allMine = messages.filter { selectedMessageIds.contains(it.id) }.all { it.sent }
+        val count = selectedMessageIds.size
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            title = { Text("Delete message?") },
+            onDismissRequest = { showBulkDeleteConfirm = false },
+            title = { Text("Delete $count message${if (count > 1) "s" else ""}?") },
             text = {
                 Text(
-                    if (msg.sent)
-                        "Ye message delete karna hai? Aap 'Delete for Everyone' ya sirf 'Delete for Me' choose kar sakte hain."
+                    if (allMine)
+                        "'Delete for Everyone' sabki screen se hatayega, 'Delete for Me' sirf aapki screen se."
                     else
-                        "Ye message sirf aapki screen se delete hoga."
+                        "Yeh sirf aapki screen se delete honge."
                 )
             },
             confirmButton = {
-                if (msg.sent) {
+                if (allMine) {
                     androidx.compose.material3.TextButton(onClick = {
-                        deleteMessageForEveryone(msg)
-                        deleteTarget = null
+                        deleteSelectedForEveryone()
+                        showBulkDeleteConfirm = false
                     }) { Text("Delete for Everyone", color = Color(0xFFE05555)) }
                 } else {
                     androidx.compose.material3.TextButton(onClick = {
-                        deleteMessageForMe(msg)
-                        deleteTarget = null
-                    }) { Text("Delete for Me") }
+                        deleteSelectedForMe()
+                        showBulkDeleteConfirm = false
+                    }) { Text("Delete for Me", color = Color(0xFFE05555)) }
                 }
             },
             dismissButton = {
                 Row {
-                    if (msg.sent) {
+                    if (allMine) {
                         androidx.compose.material3.TextButton(onClick = {
-                            deleteMessageForMe(msg)
-                            deleteTarget = null
+                            deleteSelectedForMe()
+                            showBulkDeleteConfirm = false
                         }) { Text("Delete for Me") }
                     }
-                    androidx.compose.material3.TextButton(onClick = { deleteTarget = null }) {
+                    androidx.compose.material3.TextButton(onClick = { showBulkDeleteConfirm = false }) {
                         Text("Cancel")
                     }
                 }
