@@ -6,13 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [MessageEntity::class, ConversationEntity::class],
-    version = 5,
+    entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class],
+    version = 6,
     exportSchema = false
 )
 abstract class MuwanChatDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun conversationDao(): ConversationDao
+    abstract fun hiddenConversationDao(): HiddenConversationDao
 
     companion object {
         @Volatile

@@ -1,7 +1,8 @@
 package com.muwan.muwanchat.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,7 +53,7 @@ private fun formatConvTime(raw: String): String {
     } catch (_: Exception) { raw.take(10) }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ConversationListScreen(navController: NavController) {
     val context = LocalContext.current
@@ -89,6 +90,25 @@ fun ConversationListScreen(navController: NavController) {
     var myUid by remember { mutableStateOf("") }
     var myToken by remember { mutableStateOf("") }
 
+    // ── Multi-select "delete chat" state ──────────────────────────────────
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedRoomIds by remember { mutableStateOf(setOf<String>()) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedRoomIds = emptySet()
+    }
+
+    fun toggleSelection(roomId: String) {
+        selectedRoomIds = if (selectedRoomIds.contains(roomId)) {
+            selectedRoomIds - roomId
+        } else {
+            selectedRoomIds + roomId
+        }
+        if (selectedRoomIds.isEmpty()) isSelectionMode = false
+    }
+
     suspend fun reloadConversations(token: String) {
         try {
             val res = RetrofitClient.chatApi.getConversations("Bearer $token")
@@ -102,8 +122,7 @@ fun ConversationListScreen(navController: NavController) {
     LaunchedEffect(conversationEntities) {
         if (conversationEntities.isNotEmpty()) isLoading = false
     }
-
-    // Ek baar setup: token/uid nikaalo, global socket connect karo, background sync karo
+// Ek baar setup: token/uid nikaalo, global socket connect karo, background sync karo
     LaunchedEffect(Unit) {
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         myToken = token
@@ -150,7 +169,8 @@ fun ConversationListScreen(navController: NavController) {
                 is SocketEvent.NewMessage -> {
                     val existing = db.conversationDao().getByRoomId(event.roomId)
                     if (existing == null) {
-                        // Bilkul naya conversation — poori list refresh karo taaki username mil jaye
+                        // Bilkul naya conversation — ya phir yeh room hidden tha (delete for me),
+                        // dono case me poori list refresh karo (syncConversations khud unhide handle karega)
                         if (myToken.isNotBlank()) reloadConversations(myToken)
                     } else {
                         ChatRepository.recordMessage(
@@ -195,15 +215,48 @@ fun ConversationListScreen(navController: NavController) {
     val filtered = if (searchQuery.isBlank()) conversations
     else conversations.filter { it.username.contains(searchQuery, ignoreCase = true) }
 
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            containerColor = DarkHeader,
+            title = { Text("Delete ${selectedRoomIds.size} chat${if (selectedRoomIds.size > 1) "s" else ""}?", color = Color.White) },
+            text = {
+                Text(
+                    "Yeh sirf tumhare liye delete honge — doosre user ki chat waisi hi rahegi.",
+                    color = Color(0xFFAAAAAA)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val idsToDelete = selectedRoomIds
+                    scope.launch {
+                        ChatRepository.deleteChatsLocally(db, idsToDelete)
+                    }
+                    showDeleteConfirm = false
+                    exitSelectionMode()
+                }) {
+                    Text("Delete", color = Color(0xFFFF3B30), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel", color = Color(0xFF888888))
+                }
+            }
+        )
+    }
+
     Scaffold(
         containerColor = DarkBg,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Screen.UserSearch.route) },
-                containerColor = DarkAccent,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Filled.Edit, contentDescription = "New Chat", tint = Color.White)
+            if (!isSelectionMode) {
+                FloatingActionButton(
+                    onClick = { navController.navigate(Screen.UserSearch.route) },
+                    containerColor = DarkAccent,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Filled.Edit, contentDescription = "New Chat", tint = Color.White)
+                }
             }
         }
     ) { padding ->
@@ -213,43 +266,74 @@ fun ConversationListScreen(navController: NavController) {
                 .padding(padding)
                 .background(DarkBg)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(DarkHeader)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("MuwanChat", color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                Row {
-                    IconButton(onClick = {
-                        navController.navigate(Screen.Profile.createRoute("edit"))
-                    }) {
-                        Icon(Icons.Filled.Person, contentDescription = "Profile", tint = DarkAccent)
+            if (isSelectionMode) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DarkHeader)
+                        .padding(horizontal = 8.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { exitSelectionMode() }) {
+                        Icon(Icons.Filled.Close, contentDescription = "Cancel", tint = Color.White)
                     }
-                    BadgedBox(badge = {
-                        if (incomingCount > 0) Badge { Text("$incomingCount") }
-                    }) {
+                    Text(
+                        "${selectedRoomIds.size} selected",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = { if (selectedRoomIds.isNotEmpty()) showDeleteConfirm = true },
+                        enabled = selectedRoomIds.isNotEmpty()
+                    ) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = "Delete",
+                            tint = if (selectedRoomIds.isNotEmpty()) Color(0xFFFF3B30) else Color(0xFF555577)
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DarkHeader)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("MuwanChat", color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    Row {
                         IconButton(onClick = {
-                            incomingCount = 0
-                            navController.navigate(Screen.Requests.route)
+                            navController.navigate(Screen.Profile.createRoute("edit"))
                         }) {
-                            Icon(Icons.Filled.Notifications, contentDescription = "Requests", tint = DarkAccent)
+                            Icon(Icons.Filled.Person, contentDescription = "Profile", tint = DarkAccent)
                         }
-                    }
-                    IconButton(onClick = {
-                        scope.launch {
-                            AppSocketManager.disconnect()
-                            AuthDataStore.clearAuth(context)
-                            db.conversationDao().clearAll()
-                            db.messageDao().clearAll()
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(Screen.ConversationList.route) { inclusive = true }
+                        BadgedBox(badge = {
+                            if (incomingCount > 0) Badge { Text("$incomingCount") }
+                        }) {
+                            IconButton(onClick = {
+                                incomingCount = 0
+                                navController.navigate(Screen.Requests.route)
+                            }) {
+                                Icon(Icons.Filled.Notifications, contentDescription = "Requests", tint = DarkAccent)
                             }
                         }
-                    }) {
-                        Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = Color(0xFF888888))
+                        IconButton(onClick = {
+                            scope.launch {
+                                AppSocketManager.disconnect()
+                                AuthDataStore.clearAuth(context)
+                                db.conversationDao().clearAll()
+                                db.messageDao().clearAll()
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(Screen.ConversationList.route) { inclusive = true }
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = Color(0xFF888888))
+                        }
                     }
                 }
             }
@@ -292,12 +376,29 @@ fun ConversationListScreen(navController: NavController) {
                 LazyColumn {
                     items(filtered, key = { it.room_id }) { conv ->
                         val isTyping = typingUsers[conv.uid] == conv.room_id
-                        ConversationRow(conv = conv, isTyping = isTyping, onClick = {
-                            scope.launch { ChatRepository.clearUnread(db, conv.room_id) }
-                            navController.navigate(
-                                Screen.Chat.createRoute(conv.uid, conv.username, conv.room_id)
-                            )
-                        })
+                        val isSelected = selectedRoomIds.contains(conv.room_id)
+                        ConversationRow(
+                            conv = conv,
+                            isTyping = isTyping,
+                            isSelectionMode = isSelectionMode,
+                            isSelected = isSelected,
+                            onClick = {
+                                if (isSelectionMode) {
+                                    toggleSelection(conv.room_id)
+                                } else {
+                                    scope.launch { ChatRepository.clearUnread(db, conv.room_id) }
+                                    navController.navigate(
+                                        Screen.Chat.createRoute(conv.uid, conv.username, conv.room_id)
+                                    )
+                                }
+                            },
+                            onLongClick = {
+                                if (!isSelectionMode) {
+                                    isSelectionMode = true
+                                    selectedRoomIds = setOf(conv.room_id)
+                                }
+                            }
+                        )
                         HorizontalDivider(color = Color(0xFF1E2040), thickness = 0.5.dp)
                     }
                 }
@@ -305,24 +406,46 @@ fun ConversationListScreen(navController: NavController) {
         }
     }
 }
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ConversationRow(conv: ConversationItem, isTyping: Boolean = false, onClick: () -> Unit) {
+fun ConversationRow(
+    conv: ConversationItem,
+    isTyping: Boolean = false,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {}
+) {
     val hasUnread = conv.unreadCount > 0
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .background(if (isSelected) DarkAccent.copy(alpha = 0.15f) else Color.Transparent)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AvatarView(
-            avatarBase64 = conv.avatar,
-            fallbackText = conv.username,
-            size = 50.dp,
-            fontSize = 20.sp
-        )
+        if (isSelectionMode) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) DarkAccent else Color(0xFF333355)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(Icons.Filled.Check, contentDescription = "Selected", tint = Color.White)
+                }
+            }
+        } else {
+            AvatarView(
+                avatarBase64 = conv.avatar,
+                fallbackText = conv.username,
+                size = 50.dp,
+                fontSize = 20.sp
+            )
+        }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

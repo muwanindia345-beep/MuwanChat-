@@ -91,19 +91,45 @@ object ChatRepository {
     }
 
     suspend fun syncConversations(db: MuwanChatDb, items: List<ConversationItem>) {
-        val entities = items.map {
-            ConversationEntity(
-                roomId = it.room_id,
-                uid = it.uid,
-                username = it.username,
-                avatar = it.avatar,
-                lastMessage = it.lastMessage,
-                lastTime = it.lastTime,
-                lastSenderUid = it.lastSenderUid,
-                unreadCount = it.unreadCount
-            )
+        // "Delete chat" (for me) ka hidden record — jab tak backend ka lastTime
+        // hiddenAt se naya na ho, us room ko wapas list me nahi daalna
+        val hiddenMap = db.hiddenConversationDao().getAll().associateBy { it.roomId }
+
+        val toUpsert = mutableListOf<ConversationEntity>()
+        for (it in items) {
+            val hidden = hiddenMap[it.room_id]
+            if (hidden == null) {
+                toUpsert.add(
+                    ConversationEntity(
+                        roomId = it.room_id,
+                        uid = it.uid,
+                        username = it.username,
+                        avatar = it.avatar,
+                        lastMessage = it.lastMessage,
+                        lastTime = it.lastTime,
+                        lastSenderUid = it.lastSenderUid,
+                        unreadCount = it.unreadCount
+                    )
+                )
+            } else if (it.lastTime > hidden.hiddenAt) {
+                // Naya message aa chuka hai delete ke baad — WhatsApp jaisa, chat wapas dikhao
+                db.hiddenConversationDao().unhide(it.room_id)
+                toUpsert.add(
+                    ConversationEntity(
+                        roomId = it.room_id,
+                        uid = it.uid,
+                        username = it.username,
+                        avatar = it.avatar,
+                        lastMessage = it.lastMessage,
+                        lastTime = it.lastTime,
+                        lastSenderUid = it.lastSenderUid,
+                        unreadCount = it.unreadCount
+                    )
+                )
+            }
+            // else: still hidden, skip — is chat ko wapas insert mat karo
         }
-        db.conversationDao().upsertAll(entities)
+        db.conversationDao().upsertAll(toUpsert)
     }
 
     suspend fun syncMessages(db: MuwanChatDb, items: List<MessageItem>) {
@@ -131,6 +157,17 @@ object ChatRepository {
     suspend fun reconcileDeleted(db: MuwanChatDb, deletedIds: List<String>) {
         if (deletedIds.isNotEmpty()) {
             db.messageDao().deleteByIds(deletedIds)
+        }
+    }
+
+    // "Delete chat" (for me only) — messages + conversation row local se hatao,
+    // backend/doosre user ko kuch touch nahi hota
+    suspend fun deleteChatsLocally(db: MuwanChatDb, roomIds: Set<String>) {
+        val now = nowIso()
+        for (roomId in roomIds) {
+            db.messageDao().deleteByRoom(roomId)
+            db.conversationDao().deleteByRoom(roomId)
+            db.hiddenConversationDao().hide(HiddenConversationEntity(roomId, now))
         }
     }
 
