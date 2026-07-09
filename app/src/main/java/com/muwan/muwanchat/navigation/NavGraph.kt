@@ -27,6 +27,9 @@ sealed class Screen(val route: String) {
         fun createRoute(uid: String, username: String, roomId: String) =
             "chat/$uid/$username/$roomId"
     }
+    object Wallpaper       : Screen("wallpaper/{roomId}") {
+        fun createRoute(roomId: String) = "wallpaper/$roomId"
+    }
 }
 
 @Composable
@@ -57,6 +60,12 @@ fun NavGraph() {
                 navController = navController,
                 receiverUid = back.arguments?.getString("uid") ?: "",
                 receiverUsername = back.arguments?.getString("username") ?: "",
+                roomId = back.arguments?.getString("roomId") ?: ""
+            )
+        }
+        composable(Screen.Wallpaper.route) { back ->
+            WallpaperScreen(
+                navController = navController,
                 roomId = back.arguments?.getString("roomId") ?: ""
             )
         }

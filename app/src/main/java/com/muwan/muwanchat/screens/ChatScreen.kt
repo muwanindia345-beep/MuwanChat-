@@ -45,6 +45,7 @@ import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import com.muwan.muwanchat.network.UploadMediaRequest
+import com.muwan.muwanchat.navigation.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -122,6 +123,7 @@ fun ChatScreen(
     var fullscreenVideo by remember { mutableStateOf<String?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaSheet by remember { mutableStateOf(false) }
+    var showWallpaperSheet by remember { mutableStateOf(false) }
     var uploadingMedia by remember { mutableStateOf(false) }
     // ── Multi-select "delete message" state (ConversationListScreen jaisa hi system) ──
     var isSelectionMode by remember { mutableStateOf(false) }
@@ -358,13 +360,17 @@ if (AppSocketManager.isConnected) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBg)
-            .systemBarsPadding()
-            .imePadding()
-    ) {
+    val wallpaperEntity by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        WallpaperPreviewBackground(wallpaperEntity)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (wallpaperEntity == null) Modifier.background(DarkBg) else Modifier)
+                .systemBarsPadding()
+                .imePadding()
+        ) {
         if (isSelectionMode) {
             Row(
                 modifier = Modifier
@@ -402,7 +408,8 @@ if (AppSocketManager.isConnected) {
                 avatarBase64 = conversationEntity?.avatar,
                 onBack = { navController.popBackStack() },
                 onVideoCall = { comingSoonFeature = "📹 Video Call" },
-                onVoiceCall = { comingSoonFeature = "📞 Voice Call" }
+                onVoiceCall = { comingSoonFeature = "📞 Voice Call" },
+                onMenuClick = { showWallpaperSheet = true }
             )
         }
 
@@ -529,6 +536,17 @@ ChatInputBar(
             onPickImage = { showMediaSheet = true },
             onSend = { sendMessage() },
             onVoiceMessage = { comingSoonFeature = "🎤 Voice Message" }
+        )
+        }
+    }
+
+    if (showWallpaperSheet) {
+        ChatWallpaperSheet(
+            onDismiss = { showWallpaperSheet = false },
+            onSetWallpaper = {
+                showWallpaperSheet = false
+                navController.navigate(Screen.Wallpaper.createRoute(roomId))
+            }
         )
     }
 

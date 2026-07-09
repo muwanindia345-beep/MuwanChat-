@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,7 +28,8 @@ fun ChatHeader(
     avatarBase64: String? = null,
     onBack: () -> Unit,
     onVideoCall: () -> Unit,
-    onVoiceCall: () -> Unit
+    onVoiceCall: () -> Unit,
+    onMenuClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -70,6 +72,10 @@ fun ChatHeader(
             }
             IconButton(onClick = onVoiceCall) {
                 Icon(Icons.Filled.Call, contentDescription = "Call",
+                    tint = DarkAccent, modifier = Modifier.size(22.dp))
+            }
+            IconButton(onClick = onMenuClick) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "Menu",
                     tint = DarkAccent, modifier = Modifier.size(22.dp))
             }
         }
