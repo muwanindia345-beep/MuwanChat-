@@ -19,5 +19,4 @@ data class MessageEntity(
     val replyToId: String? = null,
     val deleted: Boolean = false,   // true = "delete for everyone" ho chuka hai
     val edited: Boolean = false
-    val edited: Boolean = false
 )
