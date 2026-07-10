@@ -45,6 +45,7 @@ object ChatRepository {
         val previewText = if (type == "text") content else when (type) {
             "image" -> "📷 Photo"
             "video" -> "🎥 Video"
+            "audio" -> "🎤 Voice message"
             "document" -> "📄 ${fileName ?: "Document"}"
             else -> content
         }
