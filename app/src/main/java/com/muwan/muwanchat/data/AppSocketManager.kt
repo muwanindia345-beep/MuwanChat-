@@ -27,7 +27,6 @@ sealed class SocketEvent {
     ) : SocketEvent()
 
     data class UserOnline(val uid: String) : SocketEvent()
-    data class UserOffline(val uid: String) : SocketEvent()
     data class PresenceStatus(val uid: String, val online: Boolean) : SocketEvent()
 
     data class Typing(val uid: String, val roomId: String) : SocketEvent()
@@ -37,9 +36,6 @@ sealed class SocketEvent {
 
     // "Delete for Everyone" ka result — dusre user ki screen bhi isi se live update hoti hai
     data class MessageDeleted(val id: String, val roomId: String) : SocketEvent()
-
-    // Edit Message ka result — sender ke alawa dusre device/user ki screen bhi isi se update hoti hai
-    data class MessageEdited(val id: String, val roomId: String, val content: String) : SocketEvent()
 
     // Edit Message ka result — sender ke alawa dusre device/user ki screen bhi isi se update hoti hai
     data class MessageEdited(val id: String, val roomId: String, val content: String) : SocketEvent()
