@@ -175,7 +175,7 @@ fun ChatScreen(
         exitSelectionMode()
     }
 
-        fun startEditingSelected() {
+    fun startEditingSelected() {
         val msg = messages.firstOrNull { it.id == selectedMessageIds.firstOrNull() }
         if (msg != null && msg.sent && msg.type == "text" && !msg.isDeleted) {
             editingMessage = msg
@@ -205,8 +205,7 @@ fun ChatScreen(
         }
     }
 
-
-val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { scope.launch { uploadMediaMessage(context, it, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
     }
 
@@ -249,7 +248,7 @@ val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetC
         } else {
             scope.launch { db.messageDao().updateStatus(id, "PENDING") }
         }
-if (AppSocketManager.isConnected) {
+        if (AppSocketManager.isConnected) {
             val timeoutJob = scope.launch {
                 delay(8000)
                 if (isActive) db.messageDao().updateStatus(id, "FAILED")
@@ -394,13 +393,12 @@ if (AppSocketManager.isConnected) {
                         scope.launch { db.messageDao().markDeleted(event.id) }
                     }
                 }
-                                is SocketEvent.MessageEdited -> {
+                is SocketEvent.MessageEdited -> {
                     if (event.roomId == roomId) {
                         scope.launch { db.messageDao().editMessage(event.id, event.content) }
                     }
                 }
-
-else -> {}
+                else -> {}
             }
         }
     }
@@ -436,8 +434,7 @@ else -> {}
                     fontSize = 18.sp,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(
-                                    val canEditSelected = selectedMessageIds.size == 1 &&
+                val canEditSelected = selectedMessageIds.size == 1 &&
                     messages.firstOrNull { it.id == selectedMessageIds.first() }
                         ?.let { it.sent && it.type == "text" && !it.isDeleted } == true
 
@@ -447,8 +444,8 @@ else -> {}
                     }
                 }
 
-
-onClick = { if (selectedMessageIds.isNotEmpty()) showBulkDeleteConfirm = true },
+                IconButton(
+                    onClick = { if (selectedMessageIds.isNotEmpty()) showBulkDeleteConfirm = true },
                     enabled = selectedMessageIds.isNotEmpty()
                 ) {
                     Icon(
@@ -562,7 +559,7 @@ onClick = { if (selectedMessageIds.isNotEmpty()) showBulkDeleteConfirm = true },
             }
         }
 
-                AnimatedVisibility(visible = editingMessage != null) {
+        AnimatedVisibility(visible = editingMessage != null) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -579,11 +576,10 @@ onClick = { if (selectedMessageIds.isNotEmpty()) showBulkDeleteConfirm = true },
             }
         }
 
-
-AnimatedVisibility(visible = showEmojiPicker) {
+        AnimatedVisibility(visible = showEmojiPicker) {
             EmojiPickerRow { emoji -> input += emoji }
         }
-ChatInputBar(
+        ChatInputBar(
             input = input,
             onInputChange = {
                 input = it

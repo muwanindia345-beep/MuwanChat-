@@ -16,5 +16,8 @@ data class MessageEntity(
     val status: String = "SENT",
     val fileName: String? = null,
     val mimeType: String? = null,
-    val replyToId: String? = null
+    val replyToId: String? = null,
+    val deleted: Boolean = false,   // true = "delete for everyone" ho chuka hai
+    val edited: Boolean = false
+    val edited: Boolean = false
 )

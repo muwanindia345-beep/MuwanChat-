@@ -38,6 +38,12 @@ sealed class SocketEvent {
     // "Delete for Everyone" ka result — dusre user ki screen bhi isi se live update hoti hai
     data class MessageDeleted(val id: String, val roomId: String) : SocketEvent()
 
+    // Edit Message ka result — sender ke alawa dusre device/user ki screen bhi isi se update hoti hai
+    data class MessageEdited(val id: String, val roomId: String, val content: String) : SocketEvent()
+
+    // Edit Message ka result — sender ke alawa dusre device/user ki screen bhi isi se update hoti hai
+    data class MessageEdited(val id: String, val roomId: String, val content: String) : SocketEvent()
+
     data class NewRequest(
         val id: String,
         val senderUid: String,
@@ -154,6 +160,28 @@ object AppSocketManager {
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
                 _events.tryEmit(
                     SocketEvent.MessageDeleted(json.optString("id"), json.optString("room_id"))
+                )
+            }
+
+            s.on("message_edited") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.MessageEdited(
+                        json.optString("id"),
+                        json.optString("room_id"),
+                        json.optString("content")
+                    )
+                )
+            }
+
+            s.on("message_edited") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.MessageEdited(
+                        json.optString("id"),
+                        json.optString("room_id"),
+                        json.optString("content")
+                    )
                 )
             }
 

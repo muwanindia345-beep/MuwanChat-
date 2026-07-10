@@ -19,12 +19,27 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(message: MessageEntity)
 
+    // "Delete for me" — row hi hata do, dusre bande ki screen se koi matlab nahi
     @Query("DELETE FROM messages WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    // Reconciliation ke liye: tombstone ids jo backend se aaye unhe ek saath local se hata do
     @Query("DELETE FROM messages WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<String>)
+
+    // "Delete for everyone" — row zinda rehti hai, bas tombstone bubble ban jaati hai
+    @Query("UPDATE messages SET deleted = 1, content = '' WHERE id = :id")
+    suspend fun markDeleted(id: String)
+
+    @Query("UPDATE messages SET deleted = 1, content = '' WHERE id IN (:ids)")
+    suspend fun markDeletedByIds(ids: List<String>)
+
+    // Edit message — content update + edited flag ek saath
+    @Query("UPDATE messages SET content = :content, edited = 1 WHERE id = :id")
+    suspend fun editMessage(id: String, content: String)
+
+    // Edit message — content update + edited flag ek saath
+    @Query("UPDATE messages SET content = :content, edited = 1 WHERE id = :id")
+    suspend fun editMessage(id: String, content: String)
 
     @Query("DELETE FROM messages WHERE roomId = :roomId")
     suspend fun deleteByRoom(roomId: String)

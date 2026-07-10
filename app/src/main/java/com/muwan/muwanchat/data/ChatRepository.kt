@@ -147,7 +147,9 @@ object ChatRepository {
                 status = "SENT",
                 fileName = it.file_name,
                 mimeType = it.mime_type,
-                replyToId = it.reply_to_id
+                replyToId = it.reply_to_id,
+                deleted = it.deleted,
+                edited = it.edited
             )
         }
         db.messageDao().insertAll(entities)
@@ -157,7 +159,7 @@ object ChatRepository {
     // unko local Room DB se bhi hata do — ghost messages ka fix
     suspend fun reconcileDeleted(db: MuwanChatDb, deletedIds: List<String>) {
         if (deletedIds.isNotEmpty()) {
-            db.messageDao().deleteByIds(deletedIds)
+            db.messageDao().markDeletedByIds(deletedIds)
         }
     }
 

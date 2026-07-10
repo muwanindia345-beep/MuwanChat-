@@ -38,7 +38,9 @@ data class MessageItem(
     val avatar: String?,
     val file_name: String? = null,
     val mime_type: String? = null,
-    val reply_to_id: String? = null
+    val reply_to_id: String? = null,
+    val deleted: Boolean = false,
+    val edited: Boolean = false
 )
 
 data class SendMessageRequest(
@@ -53,6 +55,10 @@ data class SendMessageRequest(
 data class SendMessageResponse(
     val success: Boolean,
     val message: MessageItem?
+)
+
+data class EditMessageRequest(
+    val content: String
 )
 
 data class UploadMediaRequest(
@@ -111,6 +117,13 @@ interface ChatApi {
         @Header("Authorization") token: String,
         @Path("roomId") roomId: String
     ): Response<Map<String, Boolean>>
+
+    @PUT("chat/message/{id}")
+    suspend fun editMessage(
+        @Header("Authorization") token: String,
+        @Path("id") id: String,
+        @Body request: EditMessageRequest
+    ): Response<SendMessageResponse>
 
     @DELETE("chat/message/{id}")
     suspend fun deleteMsgById(
