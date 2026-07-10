@@ -54,16 +54,22 @@ import com.muwan.muwanchat.DarkInputBg
 // Message text mein URLs dhoondh ke unhe clickable-blue dikhane ke liye
 private const val LINK_TAG = "URL"
 
-private fun linkifyText(text: String): AnnotatedString {
+// Bug fix: DarkAccent (link color) == DarkBubbleSent (sent bubble background),
+// isliye sent bubble pe link orange-on-orange ho ke invisible ho jata tha.
+// Sent bubble pe white-ish + underline, received bubble pe DarkAccent — dono jagah contrast guaranteed.
+private val LinkColorOnSent = Color(0xFFFFE0B2)
+
+private fun linkifyText(text: String, sent: Boolean): AnnotatedString {
     val builder = AnnotatedString.Builder(text)
     val matcher = Patterns.WEB_URL.matcher(text)
+    val linkColor = if (sent) LinkColorOnSent else DarkAccent
     while (matcher.find()) {
         val start = matcher.start()
         val end = matcher.end()
         var url = text.substring(start, end)
         if (!url.startsWith("http://") && !url.startsWith("https://")) url = "https://$url"
         builder.addStyle(
-            SpanStyle(color = DarkAccent, textDecoration = TextDecoration.Underline),
+            SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
             start, end
         )
         builder.addStringAnnotation(tag = LINK_TAG, annotation = url, start = start, end = end)
@@ -289,7 +295,7 @@ fun MessageBubble(
                         // Selection mode me poore bubble ka tap select/deselect ke liye reserved hai
                         Text(message.text, color = Color.White, fontSize = 15.sp)
                     } else {
-                        val annotated = remember(message.text) { linkifyText(message.text) }
+                        val annotated = remember(message.text, message.sent) { linkifyText(message.text, message.sent) }
                         ClickableText(
                             text = annotated,
                             style = TextStyle(color = Color.White, fontSize = 15.sp),
