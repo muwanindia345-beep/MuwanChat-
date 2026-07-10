@@ -37,10 +37,6 @@ interface MessageDao {
     @Query("UPDATE messages SET content = :content, edited = 1 WHERE id = :id")
     suspend fun editMessage(id: String, content: String)
 
-    // Edit message — content update + edited flag ek saath
-    @Query("UPDATE messages SET content = :content, edited = 1 WHERE id = :id")
-    suspend fun editMessage(id: String, content: String)
-
     @Query("DELETE FROM messages WHERE roomId = :roomId")
     suspend fun deleteByRoom(roomId: String)
 

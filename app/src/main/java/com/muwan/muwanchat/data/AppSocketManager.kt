@@ -174,17 +174,6 @@ object AppSocketManager {
                 )
             }
 
-            s.on("message_edited") { args ->
-                val json = args.getOrNull(0) as? JSONObject ?: return@on
-                _events.tryEmit(
-                    SocketEvent.MessageEdited(
-                        json.optString("id"),
-                        json.optString("room_id"),
-                        json.optString("content")
-                    )
-                )
-            }
-
             s.on("new_request") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
                 _events.tryEmit(
