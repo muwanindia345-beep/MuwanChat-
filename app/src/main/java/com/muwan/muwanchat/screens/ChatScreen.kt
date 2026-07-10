@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
@@ -49,6 +50,7 @@ import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
+import com.muwan.muwanchat.network.EditMessageRequest
 import com.muwan.muwanchat.network.UploadMediaRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

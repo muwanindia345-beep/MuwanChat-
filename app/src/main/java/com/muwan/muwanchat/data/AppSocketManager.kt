@@ -27,6 +27,7 @@ sealed class SocketEvent {
     ) : SocketEvent()
 
     data class UserOnline(val uid: String) : SocketEvent()
+    data class UserOffline(val uid: String) : SocketEvent()
     data class PresenceStatus(val uid: String, val online: Boolean) : SocketEvent()
 
     data class Typing(val uid: String, val roomId: String) : SocketEvent()
