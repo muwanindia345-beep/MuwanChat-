@@ -1,12 +1,16 @@
 package com.muwan.muwanchat.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
 import android.webkit.MimeTypeMap
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -38,6 +42,7 @@ import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.DarkInputBg
 import com.muwan.muwanchat.data.AppSocketManager
+import com.muwan.muwanchat.data.AudioRecorder
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatRepository
 import com.muwan.muwanchat.data.MuwanChatDb
@@ -45,7 +50,6 @@ import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import com.muwan.muwanchat.network.UploadMediaRequest
-import com.muwan.muwanchat.navigation.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -123,8 +127,16 @@ fun ChatScreen(
     var fullscreenVideo by remember { mutableStateOf<String?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaSheet by remember { mutableStateOf(false) }
-    var showWallpaperSheet by remember { mutableStateOf(false) }
     var uploadingMedia by remember { mutableStateOf(false) }
+    // ── Voice message recording state ──
+    var showVoiceRecorder by remember { mutableStateOf(false) }
+    val audioRecorder = remember { AudioRecorder(context) }
+    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) showVoiceRecorder = true
+        else Toast.makeText(context, "Microphone permission needed", Toast.LENGTH_SHORT).show()
+    }
     // ── Multi-select "delete message" state (ConversationListScreen jaisa hi system) ──
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedMessageIds by remember { mutableStateOf(setOf<String>()) }
@@ -360,20 +372,13 @@ if (AppSocketManager.isConnected) {
         }
     }
 
-    val wallpaperEntity by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
-
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(DarkBg)
             .systemBarsPadding()
+            .imePadding()
     ) {
-        WallpaperPreviewBackground(wallpaperEntity)
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(if (wallpaperEntity == null) Modifier.background(DarkBg) else Modifier)
-                .imePadding()
-        ) {
         if (isSelectionMode) {
             Row(
                 modifier = Modifier
@@ -411,8 +416,7 @@ if (AppSocketManager.isConnected) {
                 avatarBase64 = conversationEntity?.avatar,
                 onBack = { navController.popBackStack() },
                 onVideoCall = { comingSoonFeature = "📹 Video Call" },
-                onVoiceCall = { comingSoonFeature = "📞 Voice Call" },
-                onMenuClick = { showWallpaperSheet = true }
+                onVoiceCall = { comingSoonFeature = "📞 Voice Call" }
             )
         }
 
@@ -538,17 +542,12 @@ ChatInputBar(
             },
             onPickImage = { showMediaSheet = true },
             onSend = { sendMessage() },
-            onVoiceMessage = { comingSoonFeature = "🎤 Voice Message" }
-        )
-        }
-    }
-
-    if (showWallpaperSheet) {
-        ChatWallpaperSheet(
-            onDismiss = { showWallpaperSheet = false },
-            onSetWallpaper = {
-                showWallpaperSheet = false
-                navController.navigate(Screen.Wallpaper.createRoute(roomId))
+            onVoiceMessage = {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    showVoiceRecorder = true
+                } else {
+                    recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
             }
         )
     }
@@ -559,6 +558,19 @@ ChatInputBar(
             onSelectPhoto = { photoPicker.launch("image/*") },
             onSelectVideo = { videoPicker.launch("video/*") },
             onSelectDocument = { docPicker.launch(arrayOf("*/*")) }
+        )
+    }
+
+    if (showVoiceRecorder) {
+        VoiceRecorderSheet(
+            recorder = audioRecorder,
+            onCancel = { showVoiceRecorder = false },
+            onSend = { file ->
+                showVoiceRecorder = false
+                scope.launch {
+                    uploadAudioMessage(context, file, myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it }
+                }
+            }
         )
     }
 
@@ -732,5 +744,63 @@ private suspend fun uploadVideoMessage(
     } catch (_: Exception) {
     } finally {
         setUploading(false)
+    }
+}
+
+// ─── Upload + send: voice message (base64 → MuwanBox, category=audio) ─────
+private suspend fun uploadAudioMessage(
+    context: android.content.Context,
+    file: java.io.File,
+    token: String,
+    roomId: String,
+    myUid: String,
+    receiverUid: String,
+    receiverUsername: String,
+    db: MuwanChatDb,
+    setUploading: (Boolean) -> Unit
+) {
+    setUploading(true)
+    try {
+        val base64Data = withContext(Dispatchers.IO) {
+            Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+        }
+        val filename = file.name
+        val mime = "audio/mp4"
+        val res = RetrofitClient.chatApi.uploadMedia(
+            "Bearer $token",
+            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = "audio")
+        )
+        if (res.isSuccessful) {
+            res.body()?.let { body ->
+                val id = UUID.randomUUID().toString()
+                ChatRepository.recordMessage(
+                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+                    content = body.url, type = "audio", createdAt = nowIso(), myUid = myUid,
+                    otherUsername = receiverUsername, status = "PENDING",
+                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
+                )
+                if (AppSocketManager.isConnected) {
+                    AppSocketManager.sendMessage(id, receiverUid, body.url, "audio", body.file_name ?: filename, body.mime_type ?: mime) { success ->
+                        kotlinx.coroutines.GlobalScope.launch {
+                            db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
+                        }
+                    }
+                } else {
+                    try {
+                        val sendRes = RetrofitClient.chatApi.sendMessage(
+                            "Bearer $token",
+                            SendMessageRequest(receiverUid, body.url, "audio", body.file_name ?: filename, body.mime_type ?: mime)
+                        )
+                        db.messageDao().updateStatus(id, if (sendRes.isSuccessful) "SENT" else "FAILED")
+                    } catch (_: Exception) {
+                        db.messageDao().updateStatus(id, "FAILED")
+                    }
+                }
+            }
+        }
+    } catch (_: Exception) {
+    } finally {
+        setUploading(false)
+        file.delete()
     }
 }

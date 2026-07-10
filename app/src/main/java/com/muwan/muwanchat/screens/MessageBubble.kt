@@ -93,7 +93,7 @@ fun MessageBubble(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "swipe"
     )
-    val isMedia = message.type == "image" || message.type == "video"
+    val isMedia = message.type == "image" || message.type == "video" || message.type == "audio"
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -219,6 +219,10 @@ fun MessageBubble(
                             )
                         }
                         Spacer(Modifier.height(4.dp))
+                    }
+
+                    "audio" -> message.mediaUrl?.let { url ->
+                        AudioMessagePlayer(url = url, sent = message.sent)
                     }
 
                     "document" -> message.mediaUrl?.let { url ->
