@@ -16,7 +16,9 @@ data class ChatMessage(
     val mimeType: String? = null,
     val replyTo: ChatMessage? = null,
     val replyToId: String? = null,
-    val status: String = "SENT"
+    val status: String = "SENT",
+    val isDeleted: Boolean = false,
+    val isEdited: Boolean = false
 )
 
 fun formatMessageTime(raw: String): String {
@@ -42,7 +44,9 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     fileName = file_name,
     mimeType = mime_type,
     replyToId = reply_to_id,
-    status = "SENT"
+    status = "SENT",
+    isDeleted = deleted,
+    isEdited = edited
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
@@ -55,7 +59,9 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     fileName = fileName,
     mimeType = mimeType,
     replyToId = replyToId,
-    status = status
+    status = status,
+    isDeleted = deleted,
+    isEdited = edited
 )
 
 fun nowTime(): String {

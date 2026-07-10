@@ -120,6 +120,7 @@ fun ChatScreen(
 
     var input by remember { mutableStateOf("") }
     var replyTo by remember { mutableStateOf<ChatMessage?>(null) }
+    var editingMessage by remember { mutableStateOf<ChatMessage?>(null) }
     val listState = rememberLazyListState()
 
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
@@ -174,7 +175,38 @@ fun ChatScreen(
         exitSelectionMode()
     }
 
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        fun startEditingSelected() {
+        val msg = messages.firstOrNull { it.id == selectedMessageIds.firstOrNull() }
+        if (msg != null && msg.sent && msg.type == "text" && !msg.isDeleted) {
+            editingMessage = msg
+            input = msg.text
+            replyTo = null
+            exitSelectionMode()
+        }
+    }
+
+    fun cancelEditing() {
+        editingMessage = null
+        input = ""
+    }
+
+    fun submitEdit() {
+        val msg = editingMessage ?: return
+        val newText = input.trim()
+        if (newText.isBlank()) return
+        editingMessage = null
+        input = ""
+        scope.launch {
+            db.messageDao().editMessage(msg.id, newText)
+            try {
+                RetrofitClient.chatApi.editMessage("Bearer $myToken", msg.id, EditMessageRequest(newText))
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+
+val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { scope.launch { uploadMediaMessage(context, it, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
     }
 
@@ -244,6 +276,7 @@ if (AppSocketManager.isConnected) {
     }
 
     fun sendMessage() {
+        if (editingMessage != null) { submitEdit(); return }
         val text = input.trim()
         if (text.isBlank()) return
         val id = UUID.randomUUID().toString()
@@ -358,10 +391,16 @@ if (AppSocketManager.isConnected) {
                 }
                 is SocketEvent.MessageDeleted -> {
                     if (event.roomId == roomId) {
-                        scope.launch { db.messageDao().deleteById(event.id) }
+                        scope.launch { db.messageDao().markDeleted(event.id) }
                     }
                 }
-                else -> {}
+                                is SocketEvent.MessageEdited -> {
+                    if (event.roomId == roomId) {
+                        scope.launch { db.messageDao().editMessage(event.id, event.content) }
+                    }
+                }
+
+else -> {}
             }
         }
     }
@@ -398,7 +437,18 @@ if (AppSocketManager.isConnected) {
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(
-                    onClick = { if (selectedMessageIds.isNotEmpty()) showBulkDeleteConfirm = true },
+                                    val canEditSelected = selectedMessageIds.size == 1 &&
+                    messages.firstOrNull { it.id == selectedMessageIds.first() }
+                        ?.let { it.sent && it.type == "text" && !it.isDeleted } == true
+
+                if (canEditSelected) {
+                    IconButton(onClick = { startEditingSelected() }) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit", tint = Color.White)
+                    }
+                }
+
+
+onClick = { if (selectedMessageIds.isNotEmpty()) showBulkDeleteConfirm = true },
                     enabled = selectedMessageIds.isNotEmpty()
                 ) {
                     Icon(
@@ -512,7 +562,25 @@ if (AppSocketManager.isConnected) {
             }
         }
 
-        AnimatedVisibility(visible = showEmojiPicker) {
+                AnimatedVisibility(visible = editingMessage != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkInputBg)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("✏ Editing message", color = com.muwan.muwanchat.DarkAccent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                IconButton(onClick = { cancelEditing() }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Cancel edit",
+                        tint = Color(0xFF888888), modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+
+
+AnimatedVisibility(visible = showEmojiPicker) {
             EmojiPickerRow { emoji -> input += emoji }
         }
 ChatInputBar(

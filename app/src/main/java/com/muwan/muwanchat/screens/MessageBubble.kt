@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DoneAll
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -128,21 +130,21 @@ fun MessageBubble(
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
-                            if (!isSelectionMode && offsetX > 80f) onSwipeReply(message)
+                            if (!isSelectionMode && !message.isDeleted && offsetX > 80f) onSwipeReply(message)
                             offsetX = 0f
                         },
                         onHorizontalDrag = { _, dragAmount ->
-                            if (!isSelectionMode && dragAmount > 0) offsetX = (offsetX + dragAmount).coerceIn(0f, 100f)
+                            if (!isSelectionMode && !message.isDeleted && dragAmount > 0) offsetX = (offsetX + dragAmount).coerceIn(0f, 100f)
                         }
                     )
                 }
                 // Copy Message feature: kahin bhi bubble pe double-tap = clipboard copy, koi UI change nahi
                 .pointerInput(message.id, isSelectionMode) {
                     detectTapGestures(
-                        onLongPress = { onLongPress(message) },
+                        onLongPress = { if (!message.isDeleted) onLongPress(message) },
                         onTap = { if (isSelectionMode) onTap() },
                         onDoubleTap = {
-                            if (!isSelectionMode) {
+                            if (!isSelectionMode && !message.isDeleted) {
                                 val textToCopy = message.text.ifBlank { message.fileName ?: "" }
                                 if (textToCopy.isNotBlank()) {
                                     clipboardManager.setText(AnnotatedString(textToCopy))
@@ -162,15 +164,35 @@ fun MessageBubble(
                 )
                 .background(if (message.sent) DarkBubbleSent else DarkBubbleReceived)
                 .padding(
-                    horizontal = if (isMedia) 4.dp else 14.dp,
-                    vertical = if (isMedia) 4.dp else 10.dp
+                    horizontal = if (isMedia && !message.isDeleted) 4.dp else 14.dp,
+                    vertical = if (isMedia && !message.isDeleted) 4.dp else 10.dp
                 )
                 .let {
-                    if (message.sent && message.status == "FAILED")
+                    if (message.sent && message.status == "FAILED" && !message.isDeleted)
                         it.clickable { if (isSelectionMode) onTap() else onRetry(message) }
                     else it
                 }
         ) {
+            if (message.isDeleted) {
+                // Tombstone bubble — "delete for everyone" ka result, WhatsApp jaisa
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.Block,
+                        contentDescription = "Deleted",
+                        tint = Color(0xFFAAAAAA),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "This message was deleted",
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 13.sp,
+                        fontStyle = FontStyle.Italic
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(message.time, color = Color(0x88FFFFFF), fontSize = 11.sp)
+                }
+            } else {
             Column {
                 message.replyTo?.let { reply ->
                     Box(
@@ -272,6 +294,15 @@ fun MessageBubble(
                     modifier = Modifier.align(Alignment.End),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (message.isEdited) {
+                        Text(
+                            "edited",
+                            color = Color(0x88FFFFFF),
+                            fontSize = 11.sp,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
                     Text(
                         message.time,
                         color = Color(0xAAFFFFFF),
@@ -293,6 +324,7 @@ fun MessageBubble(
                         )
                     }
                 }
+            }
             }
         }
         }
