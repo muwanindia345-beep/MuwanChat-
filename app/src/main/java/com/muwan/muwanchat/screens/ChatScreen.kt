@@ -171,8 +171,8 @@ fun ChatScreen(
                     // Backend call fail ho jaaye (jaise no internet) to bhi apni screen se hata dete hain;
                     // dusre user tak socket event backend se hi jaayega jab connection wapas aayega.
                 }
+                db.messageDao().markDeleted(id)
             }
-            db.messageDao().deleteByIds(ids)
         }
         exitSelectionMode()
     }

@@ -175,22 +175,33 @@ fun MessageBubble(
         ) {
             if (message.isDeleted) {
                 // Tombstone bubble — "delete for everyone" ka result, WhatsApp jaisa
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Block,
-                        contentDescription = "Deleted",
-                        tint = Color(0xFFAAAAAA),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Block,
+                            contentDescription = "Deleted",
+                            tint = Color(0xFFAAAAAA),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "This message was deleted",
+                            color = Color(0xFFAAAAAA),
+                            fontSize = 13.sp,
+                            fontStyle = FontStyle.Italic,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "This message was deleted",
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 13.sp,
-                        fontStyle = FontStyle.Italic
+                        message.time,
+                        color = Color(0x88FFFFFF),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.align(Alignment.End)
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(message.time, color = Color(0x88FFFFFF), fontSize = 11.sp)
                 }
             } else {
             Column {
