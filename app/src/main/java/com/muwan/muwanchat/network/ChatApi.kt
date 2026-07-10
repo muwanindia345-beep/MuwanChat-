@@ -118,16 +118,20 @@ interface ChatApi {
         @Path("roomId") roomId: String
     ): Response<Map<String, Boolean>>
 
-    @PUT("chat/message/{id}")
+    // roomId ab path me jaata hai — backend ab O(1) direct key lookup karta hai
+    // (pehle poori app ke messages scan hote the, isliye delete/edit slow tha)
+    @PUT("chat/message/{roomId}/{id}")
     suspend fun editMessage(
         @Header("Authorization") token: String,
+        @Path("roomId") roomId: String,
         @Path("id") id: String,
         @Body request: EditMessageRequest
     ): Response<SendMessageResponse>
 
-    @DELETE("chat/message/{id}")
+    @DELETE("chat/message/{roomId}/{id}")
     suspend fun deleteMsgById(
         @Header("Authorization") token: String,
+        @Path("roomId") roomId: String,
         @Path("id") id: String
     ): Response<Map<String, Boolean>>
 

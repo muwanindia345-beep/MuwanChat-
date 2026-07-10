@@ -166,7 +166,7 @@ fun ChatScreen(
         scope.launch {
             ids.forEach { id ->
                 try {
-                    RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", id)
+                    RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", roomId, id)
                 } catch (_: Exception) {
                     // Backend call fail ho jaaye (jaise no internet) to bhi apni screen se hata dete hain;
                     // dusre user tak socket event backend se hi jaayega jab connection wapas aayega.
@@ -201,7 +201,7 @@ fun ChatScreen(
         scope.launch {
             db.messageDao().editMessage(msg.id, newText)
             try {
-                RetrofitClient.chatApi.editMessage("Bearer $myToken", msg.id, EditMessageRequest(newText))
+                RetrofitClient.chatApi.editMessage("Bearer $myToken", roomId, msg.id, EditMessageRequest(newText))
             } catch (_: Exception) {
             }
         }
