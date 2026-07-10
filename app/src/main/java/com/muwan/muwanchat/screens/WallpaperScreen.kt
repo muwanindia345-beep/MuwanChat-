@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -208,6 +209,7 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
 
 // ─── Reusable non-lazy grid: chunked rows, height grows with content (scroll-safe) ───
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun PresetGrid(columns: Int, content: @Composable () -> Unit) {
     // content() ke andar se items ek flat list ki tarah nahi aa sakte (Compose slot API),
     // isliye har caller apna forEach khud PresetGridRow ke through bhejta hai — simplest
