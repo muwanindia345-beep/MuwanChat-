@@ -102,6 +102,7 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
+    val currentWallpaper by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
 
     val messageEntities by db.messageDao().observeMessages(roomId).collectAsState(initial = emptyList())
     val conversationEntity by db.conversationDao().observeByRoomId(roomId).collectAsState(initial = null)
@@ -487,15 +488,17 @@ fun ChatScreen(
             )
         }
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(messages, key = { it.id }) { msg ->
-                MessageBubble(
+        Box(modifier = Modifier.weight(1f)) {
+            WallpaperPreviewBackground(currentWallpaper)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(messages, key = { it.id }) { msg ->
+                    MessageBubble(
                         message = msg,
                         myUid = myUid,
                         isSelectionMode = isSelectionMode,
@@ -550,6 +553,7 @@ fun ChatScreen(
                             }
                         }
                     )
+                }
             }
         }
 

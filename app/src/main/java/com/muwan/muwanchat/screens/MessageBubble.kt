@@ -251,8 +251,7 @@ fun MessageBubble(
                             contentDescription = "GIF",
                             modifier = Modifier
                                 .sizeIn(minWidth = 120.dp, minHeight = 120.dp, maxWidth = 200.dp, maxHeight = 200.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { if (isSelectionMode) onTap() else onImageTap(url) },
+                                .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Fit
                         )
                         Spacer(Modifier.height(4.dp))
