@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
@@ -177,6 +178,14 @@ fun ChatScreen(
         }
     }
 
+    var selectedMessageIds by remember { mutableStateOf(setOf<String>()) }
+    var showBulkDeleteConfirm by remember { mutableStateOf(false) }
+
+    fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedMessageIds = emptySet()
+    }
+
     fun reactToSelected(emoji: String) {
         val id = selectedMessageIds.firstOrNull() ?: return
         showReactionPicker = false
@@ -184,13 +193,6 @@ fun ChatScreen(
         customEmojiInput = ""
         sendReaction(id, emoji)
         exitSelectionMode()
-    }
-    var selectedMessageIds by remember { mutableStateOf(setOf<String>()) }
-    var showBulkDeleteConfirm by remember { mutableStateOf(false) }
-
-    fun exitSelectionMode() {
-        isSelectionMode = false
-        selectedMessageIds = emptySet()
     }
 
     fun toggleMessageSelection(id: String) {
