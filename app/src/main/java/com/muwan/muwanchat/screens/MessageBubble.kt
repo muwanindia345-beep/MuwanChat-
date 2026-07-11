@@ -355,32 +355,6 @@ fun MessageBubble(
             }
             }
             }
-            if (message.reactions.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .offset(y = 10.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF2A2A40))
-                        .padding(horizontal = 5.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    message.reactions.forEach { r ->
-                        val isMine = myUid.isNotBlank() && r.userIds.contains(myUid)
-                        Text(
-                            if (r.userIds.size > 1) "${r.emoji} ${r.userIds.size}" else r.emoji,
-                            fontSize = 12.sp,
-                            color = Color.White,
-                            modifier = if (isMine) {
-                                Modifier.pointerInput(message.id, r.emoji) {
-                                    detectTapGestures(
-                                        onLongPress = { onReactionLongPress(message.id, r.emoji) }
-                                    )
-                                }
-                            } else Modifier
-                        )
-                    }
-                }
-            }
             }
         }
         }

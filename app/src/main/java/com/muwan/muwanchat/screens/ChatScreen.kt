@@ -498,7 +498,6 @@ fun ChatScreen(
                 MessageBubble(
                         message = msg,
                         myUid = myUid,
-                        onReactionLongPress = { messageId, emoji -> sendReaction(messageId, emoji) },
                         isSelectionMode = isSelectionMode,
                         isSelected = selectedMessageIds.contains(msg.id),
                         onTap = { toggleMessageSelection(msg.id) },
