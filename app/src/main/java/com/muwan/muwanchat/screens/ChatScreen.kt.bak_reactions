@@ -37,8 +37,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EmojiEmotions
-import androidx.compose.material.icons.filled.Add
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
@@ -54,8 +52,6 @@ import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import com.muwan.muwanchat.network.EditMessageRequest
-import com.muwan.muwanchat.network.ReactRequest
-import com.google.gson.Gson
 import com.muwan.muwanchat.network.UploadMediaRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -149,35 +145,6 @@ fun ChatScreen(
     // ── Multi-select "delete message" state (ConversationListScreen jaisa hi system) ──
     var isSelectionMode by remember { mutableStateOf(false) }
     var showMenuSheet by remember { mutableStateOf(false) }
-    var showReactionPicker by remember { mutableStateOf(false) }
-    var customEmojiInput by remember { mutableStateOf("") }
-    var showCustomEmojiField by remember { mutableStateOf(false) }
-    val quickReactions = listOf("👍", "❤️", "😂", "😮", "😢", "🙏")
-
-    // Reusable — selection-mode picker aur bubble ke reaction-chip long-press dono isi ko call karte hain
-    fun sendReaction(messageId: String, emoji: String) {
-        scope.launch {
-            try {
-                val res = RetrofitClient.chatApi.reactToMessage(
-                    "Bearer $myToken", roomId, messageId, ReactRequest(emoji)
-                )
-                res.body()?.reactions?.let { reactions ->
-                    db.messageDao().updateReactions(messageId, Gson().toJson(reactions))
-                }
-            } catch (_: Exception) {
-                // Offline ho toh koi baat nahi, agli baar socket/sync se sahi ho jayega
-            }
-        }
-    }
-
-    fun reactToSelected(emoji: String) {
-        val id = selectedMessageIds.firstOrNull() ?: return
-        showReactionPicker = false
-        showCustomEmojiField = false
-        customEmojiInput = ""
-        sendReaction(id, emoji)
-        exitSelectionMode()
-    }
     var selectedMessageIds by remember { mutableStateOf(setOf<String>()) }
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -441,11 +408,6 @@ fun ChatScreen(
                         scope.launch { db.messageDao().editMessage(event.id, event.content) }
                     }
                 }
-                is SocketEvent.ReactionUpdate -> {
-                    if (event.roomId == roomId) {
-                        scope.launch { db.messageDao().updateReactions(event.id, event.reactionsJson) }
-                    }
-                }
                 else -> {}
             }
         }
@@ -489,15 +451,6 @@ fun ChatScreen(
                 if (canEditSelected) {
                     IconButton(onClick = { startEditingSelected() }) {
                         Icon(Icons.Filled.Edit, contentDescription = "Edit", tint = Color.White)
-                    }
-                }
-
-                val canReact = selectedMessageIds.size == 1 &&
-                    messages.firstOrNull { it.id == selectedMessageIds.first() }?.isDeleted == false
-
-                if (canReact) {
-                    IconButton(onClick = { showReactionPicker = true }) {
-                        Icon(Icons.Filled.EmojiEmotions, contentDescription = "React", tint = Color.White)
                     }
                 }
 
@@ -726,72 +679,6 @@ fun ChatScreen(
 
     fullscreenVideo?.let { url ->
         FullscreenVideoPlayer(url = url, onDismiss = { fullscreenVideo = null })
-    }
-
-    if (showReactionPicker) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = {
-            showReactionPicker = false
-            showCustomEmojiField = false
-            customEmojiInput = ""
-        }) {
-            Column(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(DarkHeader)
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    quickReactions.forEach { emoji ->
-                        Text(
-                            emoji,
-                            fontSize = 26.sp,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { reactToSelected(emoji) }
-                                .padding(6.dp)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF3A3A55))
-                            .clickable { showCustomEmojiField = !showCustomEmojiField },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Custom emoji", tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                if (showCustomEmojiField) {
-                    Spacer(Modifier.height(10.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = customEmojiInput,
-                            onValueChange = { customEmojiInput = it },
-                            placeholder = { Text("Type an emoji…", fontSize = 13.sp, color = Color(0xFF888888)) },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f).height(52.dp),
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 20.sp, color = Color.White),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = DarkAccent,
-                                unfocusedBorderColor = Color(0xFF444466)
-                            )
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        IconButton(
-                            onClick = { if (customEmojiInput.isNotBlank()) reactToSelected(customEmojiInput.trim()) },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(DarkAccent)
-                        ) {
-                            Icon(Icons.Filled.Check, contentDescription = "React", tint = Color.White)
-                        }
-                    }
-                }
-            }
-        }
     }
 
     if (showBulkDeleteConfirm) {

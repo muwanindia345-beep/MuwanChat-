@@ -18,5 +18,6 @@ data class MessageEntity(
     val mimeType: String? = null,
     val replyToId: String? = null,
     val deleted: Boolean = false,   // true = "delete for everyone" ho chuka hai
-    val edited: Boolean = false
+    val edited: Boolean = false,
+    val reactions: String? = null   // JSON array string: [{"emoji":"👍","userIds":["u1"]}]
 )

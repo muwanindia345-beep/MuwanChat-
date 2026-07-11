@@ -41,9 +41,6 @@ sealed class SocketEvent {
     // Edit Message ka result — sender ke alawa dusre device/user ki screen bhi isi se update hoti hai
     data class MessageEdited(val id: String, val roomId: String, val content: String) : SocketEvent()
 
-    // Reaction add/remove ka result — reactionsJson poori updated list hai (server se aata hai)
-    data class ReactionUpdate(val id: String, val roomId: String, val reactionsJson: String) : SocketEvent()
-
     data class NewRequest(
         val id: String,
         val senderUid: String,
@@ -171,14 +168,6 @@ object AppSocketManager {
                         json.optString("room_id"),
                         json.optString("content")
                     )
-                )
-            }
-
-            s.on("reaction_update") { args ->
-                val json = args.getOrNull(0) as? JSONObject ?: return@on
-                val reactionsJson = json.optJSONArray("reactions")?.toString() ?: "[]"
-                _events.tryEmit(
-                    SocketEvent.ReactionUpdate(json.optString("id"), json.optString("room_id"), reactionsJson)
                 )
             }
 

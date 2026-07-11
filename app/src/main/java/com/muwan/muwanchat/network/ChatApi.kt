@@ -25,6 +25,11 @@ data class MessagesResponse(
     val messages: List<MessageItem>
 )
 
+data class MessageReaction(
+    val emoji: String,
+    val userIds: List<String>
+)
+
 data class MessageItem(
     val id: String,
     val sender_uid: String,
@@ -40,7 +45,8 @@ data class MessageItem(
     val mime_type: String? = null,
     val reply_to_id: String? = null,
     val deleted: Boolean = false,
-    val edited: Boolean = false
+    val edited: Boolean = false,
+    val reactions: List<MessageReaction>? = null
 )
 
 data class SendMessageRequest(
@@ -85,6 +91,15 @@ data class LinkPreviewResponse(
 
 data class DeletedMessagesResponse(
     val ids: List<String>
+)
+
+data class ReactRequest(
+    val emoji: String
+)
+
+data class ReactResponse(
+    val success: Boolean,
+    val reactions: List<MessageReaction>? = null
 )
 
 interface ChatApi {
@@ -134,6 +149,14 @@ interface ChatApi {
         @Path("roomId") roomId: String,
         @Path("id") id: String
     ): Response<Map<String, Boolean>>
+
+    @POST("chat/message/{roomId}/{id}/react")
+    suspend fun reactToMessage(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String,
+        @Path("id") id: String,
+        @Body request: ReactRequest
+    ): Response<ReactResponse>
 
     @DELETE("chat/conversation/{roomId}")
     suspend fun deleteConversation(

@@ -37,6 +37,10 @@ interface MessageDao {
     @Query("UPDATE messages SET content = :content, edited = 1 WHERE id = :id")
     suspend fun editMessage(id: String, content: String)
 
+    // Reaction add/remove — poora reactions JSON string replace ho jata hai (server hi source of truth hai)
+    @Query("UPDATE messages SET reactions = :reactionsJson WHERE id = :id")
+    suspend fun updateReactions(id: String, reactionsJson: String)
+
     @Query("DELETE FROM messages WHERE roomId = :roomId")
     suspend fun deleteByRoom(roomId: String)
 

@@ -1,10 +1,13 @@
 package com.muwan.muwanchat.data
 
+import com.google.gson.Gson
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.MessageItem
 import com.muwan.muwanchat.screens.nowIso
 
 object ChatRepository {
+
+    private val gson = Gson()
 
     suspend fun recordMessage(
         db: MuwanChatDb,
@@ -152,7 +155,8 @@ object ChatRepository {
                 mimeType = it.mime_type,
                 replyToId = it.reply_to_id,
                 deleted = it.deleted,
-                edited = it.edited
+                edited = it.edited,
+                reactions = it.reactions?.let { r -> gson.toJson(r) }
             )
         }
         db.messageDao().insertAll(entities)

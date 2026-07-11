@@ -1,9 +1,24 @@
 package com.muwan.muwanchat.screens
 
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.muwan.muwanchat.data.MessageEntity
 import com.muwan.muwanchat.network.MessageItem
+import com.muwan.muwanchat.network.MessageReaction
 import java.text.SimpleDateFormat
 import java.util.*
+
+private val reactionsGson = Gson()
+private val reactionsListType = object : TypeToken<List<MessageReaction>>() {}.type
+
+fun parseReactionsJson(json: String?): List<MessageReaction> {
+    if (json.isNullOrBlank()) return emptyList()
+    return try {
+        reactionsGson.fromJson(json, reactionsListType) ?: emptyList()
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
 
 data class ChatMessage(
     val id: String,
@@ -18,7 +33,8 @@ data class ChatMessage(
     val replyToId: String? = null,
     val status: String = "SENT",
     val isDeleted: Boolean = false,
-    val isEdited: Boolean = false
+    val isEdited: Boolean = false,
+    val reactions: List<MessageReaction> = emptyList()
 )
 
 fun formatMessageTime(raw: String): String {
@@ -46,7 +62,8 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     replyToId = reply_to_id,
     status = "SENT",
     isDeleted = deleted,
-    isEdited = edited
+    isEdited = edited,
+    reactions = reactions ?: emptyList()
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
@@ -61,7 +78,8 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     replyToId = replyToId,
     status = status,
     isDeleted = deleted,
-    isEdited = edited
+    isEdited = edited,
+    reactions = parseReactionsJson(reactions)
 )
 
 fun nowTime(): String {
