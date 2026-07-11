@@ -110,6 +110,17 @@ fun FullscreenImageViewer(model: Any, onDismiss: () -> Unit) {
                     ),
                 contentScale = ContentScale.Fit
             )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(onDoubleTap = {
+                            scale = if (scale > 1f) 1f else 2.5f
+                            offsetX = 0f
+                            offsetY = 0f
+                        })
+                    }
+            )
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
@@ -132,17 +143,6 @@ fun FullscreenImageViewer(model: Any, onDismiss: () -> Unit) {
                     Icon(Icons.Filled.Download, contentDescription = "Save to gallery", tint = Color.White)
                 }
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTapGestures(onDoubleTap = {
-                            scale = if (scale > 1f) 1f else 2.5f
-                            offsetX = 0f
-                            offsetY = 0f
-                        })
-                    }
-            )
         }
     }
 }
