@@ -385,4 +385,3 @@ fun MessageBubble(
         }
         }
     }
-}
