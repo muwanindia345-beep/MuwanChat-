@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import java.util.concurrent.ConcurrentHashMap
 
 @Database(
     entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class, MyProfileEntity::class, ChatWallpaperEntity::class, DeletedMessageEntity::class],
@@ -19,19 +20,20 @@ abstract class MuwanChatDb : RoomDatabase() {
     abstract fun deletedMessageDao(): DeletedMessageDao
 
     companion object {
-        @Volatile
-        private var INSTANCE: MuwanChatDb? = null
+        // Har logged-in user ka apna alag local DB file — taaki device pe
+        // account switch/logout-login karne pe purane user ka data naye
+        // user ki screen pe kabhi na dikhe (per-uid isolation)
+        private val instances = ConcurrentHashMap<String, MuwanChatDb>()
 
-        fun get(context: Context): MuwanChatDb {
-            return INSTANCE ?: synchronized(this) {
+        fun get(context: Context, uid: String): MuwanChatDb {
+            return instances.getOrPut(uid) {
                 Room.databaseBuilder(
                     context.applicationContext,
                     MuwanChatDb::class.java,
-                    "muwanchat_db"
+                    "muwanchat_db_$uid"
                 )
-                    // Trial project hai, koi migration data important nahi — fresh schema pe reset kar do
                     .fallbackToDestructiveMigration()
-                    .build().also { INSTANCE = it }
+                    .build()
             }
         }
     }
