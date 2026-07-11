@@ -186,6 +186,9 @@ fun AvatarCropScreen(navController: NavController) {
                     errorMsg.isNotEmpty() -> Text(errorMsg, color = Color.Red)
                     sourceBitmap != null -> {
                         val bitmap = sourceBitmap!!
+                        val baseScale = fitScale(bitmap)
+                        val wDp = with(density) { (bitmap.width * baseScale).toDp() }
+                        val hDp = with(density) { (bitmap.height * baseScale).toDp() }
                         Box(
                             modifier = Modifier
                                 .size(CIRCLE_SIZE_DP)
@@ -197,14 +200,15 @@ fun AvatarCropScreen(navController: NavController) {
                                         zoom = newZoom
                                         offset = clampOffset(offset + pan, newZoom, bitmap)
                                     }
-                                }
+                                },
+                            contentAlignment = Alignment.Center
                         ) {
                             Image(
                                 bitmap = bitmap.asImageBitmap(),
                                 contentDescription = "Preview",
-                                contentScale = ContentScale.Fit,
+                                contentScale = ContentScale.None,
                                 modifier = Modifier
-                                    .fillMaxSize()
+                                    .size(wDp, hDp)
                                     .graphicsLayer(
                                         scaleX = zoom,
                                         scaleY = zoom,

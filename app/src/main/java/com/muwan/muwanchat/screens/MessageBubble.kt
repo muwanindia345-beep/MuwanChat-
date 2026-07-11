@@ -231,16 +231,29 @@ fun MessageBubble(
                 }
 
                 when (message.type) {
-                    "image", "gif" -> message.mediaUrl?.let { url ->
+                    "image" -> message.mediaUrl?.let { url ->
                         AsyncImage(
                             model = url,
                             contentDescription = "Image",
                             modifier = Modifier
-                                .widthIn(max = 200.dp)
-                                .heightIn(max = 180.dp)
+                                .widthIn(min = 120.dp, max = 200.dp)
+                                .heightIn(min = 120.dp, max = 200.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable { if (isSelectionMode) onTap() else onImageTap(url) },
                             contentScale = ContentScale.Crop
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    "gif" -> message.mediaUrl?.let { url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "GIF",
+                            modifier = Modifier
+                                .sizeIn(minWidth = 120.dp, minHeight = 120.dp, maxWidth = 200.dp, maxHeight = 200.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { if (isSelectionMode) onTap() else onImageTap(url) },
+                            contentScale = ContentScale.Fit
                         )
                         Spacer(Modifier.height(4.dp))
                     }
