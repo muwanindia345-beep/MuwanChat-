@@ -250,12 +250,6 @@ fun MessageBubble(
                                 .clickable { if (isSelectionMode) onTap() else onVideoTap(url) },
                             contentAlignment = Alignment.Center
                         ) {
-                            AsyncImage(
-                                model = url,
-                                contentDescription = "Video thumbnail",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
                             Icon(
                                 Icons.Filled.PlayCircle,
                                 contentDescription = "Play video",
