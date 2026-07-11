@@ -46,7 +46,6 @@ import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AudioRecorder
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatRepository
-import com.muwan.muwanchat.data.DeletedMessageEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.RetrofitClient
@@ -158,12 +157,7 @@ fun ChatScreen(
 
     fun deleteSelectedForMe() {
         val ids = selectedMessageIds.toList()
-        val now = nowIso()
-        scope.launch {
-            db.messageDao().deleteByIds(ids)
-            // Record karo taaki agla sync backend se inhe wapas na le aaye
-            db.deletedMessageDao().markDeleted(ids.map { DeletedMessageEntity(it, now) })
-        }
+        scope.launch { db.messageDao().deleteByIds(ids) }
         exitSelectionMode()
     }
 

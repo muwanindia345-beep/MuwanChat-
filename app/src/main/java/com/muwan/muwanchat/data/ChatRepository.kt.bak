@@ -134,10 +134,7 @@ object ChatRepository {
     }
 
     suspend fun syncMessages(db: MuwanChatDb, items: List<MessageItem>) {
-        // "Delete for me" (single message) ka local record — jab tak hai,
-        // backend se dobara aane pe bhi is message ko wapas insert mat karo
-        val deletedIds = db.deletedMessageDao().getAllIds().toSet()
-        val entities = items.filter { it.id !in deletedIds }.map {
+        val entities = items.map {
             MessageEntity(
                 id = it.id,
                 roomId = it.room_id,
