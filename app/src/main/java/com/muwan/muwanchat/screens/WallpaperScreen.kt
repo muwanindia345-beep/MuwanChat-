@@ -37,6 +37,7 @@ import coil.compose.AsyncImage
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatWallpaperEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.WallpaperPresets
@@ -74,7 +75,7 @@ private fun saveWallpaperImage(context: Context, uri: Uri, roomId: String): Stri
 fun WallpaperScreen(navController: NavController, roomId: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val db = remember { MuwanChatDb.get(context) }
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
     val current by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
 

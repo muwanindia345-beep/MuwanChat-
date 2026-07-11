@@ -46,7 +46,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isOnboarding = mode == "onboarding"
-    val db = remember { MuwanChatDb.get(context) }
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
     var name by rememberSaveable { mutableStateOf("") }
     var bio by rememberSaveable { mutableStateOf("") }

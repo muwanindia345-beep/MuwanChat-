@@ -22,16 +22,35 @@ abstract class MuwanChatDb : RoomDatabase() {
         @Volatile
         private var INSTANCE: MuwanChatDb? = null
 
-        fun get(context: Context): MuwanChatDb {
-            return INSTANCE ?: synchronized(this) {
-                Room.databaseBuilder(
+        // Kis uid ke liye INSTANCE khula hai — agar dusra uid maanga jaaye
+        // (account switch same device pe), purana instance band karke naya kholte hain.
+        @Volatile
+        private var INSTANCE_UID: String? = null
+
+        // Har account ki apni alag DB file ("muwanchat_db_<uid>") — Instagram/WhatsApp
+        // jaisa. Isse: (a) ek account ka data dusre account ki screen pe kabhi nahi dikhta,
+        // (b) logout/login same account pe wapas aane par Room clear karne ki zaroorat
+        // nahi padti — purani file wahi ki wahi milti hai, turant data dikhta hai.
+        fun get(context: Context, uid: String): MuwanChatDb {
+            val safeUid = uid.ifBlank { "guest" }
+            synchronized(this) {
+                if (INSTANCE != null && INSTANCE_UID == safeUid) {
+                    return INSTANCE!!
+                }
+                // Account badal gaya — purana instance band karo taaki naya khulne mein
+                // conflict na ho
+                INSTANCE?.close()
+                val fresh = Room.databaseBuilder(
                     context.applicationContext,
                     MuwanChatDb::class.java,
-                    "muwanchat_db"
+                    "muwanchat_db_$safeUid"
                 )
                     // Trial project hai, koi migration data important nahi — fresh schema pe reset kar do
                     .fallbackToDestructiveMigration()
-                    .build().also { INSTANCE = it }
+                    .build()
+                INSTANCE = fresh
+                INSTANCE_UID = safeUid
+                return fresh
             }
         }
     }

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth")
@@ -60,4 +61,13 @@ object AuthDataStore {
     suspend fun clearAuth(context: Context) {
         context.dataStore.edit { it.clear() }
     }
+
+    // Composable ke remember{} block ke andar uid turant chahiye hota hai
+    // (Room DB banane ke liye, jo per-account file use karta hai) — wahan
+    // Flow.first() suspend hone ki wajah se seedha use nahi ho sakta.
+    // Yeh ek chhota blocking local-disk read hai (DataStore pehle se hi
+    // in-memory cached rehta hai app ke chalte hue), toh UI thread pe
+    // noticeable jank nahi aata.
+    fun getUidBlocking(context: Context): String =
+        kotlinx.coroutines.runBlocking { getUid(context).first() } ?: ""
 }

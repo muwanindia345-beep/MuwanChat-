@@ -59,7 +59,7 @@ private fun formatConvTime(raw: String): String {
 fun ConversationListScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val db = remember { MuwanChatDb.get(context) }
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
     // Room hi single source of truth — instant render, offline bhi
     val conversationEntities by db.conversationDao().observeConversations().collectAsState(initial = emptyList())
@@ -347,8 +347,9 @@ fun ConversationListScreen(navController: NavController) {
                             scope.launch {
                                 AppSocketManager.disconnect()
                                 AuthDataStore.clearAuth(context)
-                                db.conversationDao().clearAll()
-                                db.messageDao().clearAll()
+                                // Room ab clear nahi karte — har account ki apni alag DB
+                                // file hai ("muwanchat_db_<uid>"), toh isi account ka
+                                // cache safe hai.
                                 navController.navigate(Screen.Login.route) {
                                     popUpTo(Screen.ConversationList.route) { inclusive = true }
                                 }

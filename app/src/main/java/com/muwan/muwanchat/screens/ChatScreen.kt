@@ -101,7 +101,7 @@ fun ChatScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
-    val db = remember { MuwanChatDb.get(context) }
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
     val messageEntities by db.messageDao().observeMessages(roomId).collectAsState(initial = emptyList())
     val conversationEntity by db.conversationDao().observeByRoomId(roomId).collectAsState(initial = null)
