@@ -15,6 +15,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.widget.addTextChangedListener
+import android.net.Uri
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
@@ -27,7 +30,8 @@ fun ChatInputBar(
     onToggleEmojiPicker: () -> Unit,
     onPickImage: () -> Unit,
     onSend: () -> Unit,
-    onVoiceMessage: () -> Unit
+    onVoiceMessage: () -> Unit,
+    onGifReceived: (Uri, String, () -> Unit) -> Unit = { _, _, release -> release() }
 ) {
     Row(
         modifier = Modifier
@@ -58,29 +62,36 @@ fun ChatInputBar(
                 )
             }
 
-            TextField(
-                value = input,
-                onValueChange = onInputChange,
-                placeholder = {
-                    Text(
-                        "Message...",
-                        color = Color(0xFF888888),
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+            AndroidView(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 4.dp),
+                factory = { ctx ->
+                    GifAwareEditText(ctx).apply {
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        setTextColor(android.graphics.Color.WHITE)
+                        setHintTextColor(android.graphics.Color.parseColor("#888888"))
+                        setHighlightColor(android.graphics.Color.parseColor("#55FF7043"))
+                        hint = "Message..."
+                        textSize = 14f
+                        setPadding(0, 0, 0, 0)
+                        isSingleLine = false
+                        maxLines = 4
+                        addTextChangedListener { editable ->
+                            val text = editable?.toString() ?: ""
+                            if (text != input) onInputChange(text)
+                        }
+                        onContentReceived = { uri, mime, release ->
+                            onGifReceived(uri, mime, release)
+                        }
+                    }
                 },
-                modifier = Modifier.weight(1f),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                singleLine = false,
-                maxLines = 4
+                update = { view ->
+                    if (view.text.toString() != input) {
+                        view.setText(input)
+                        view.setSelection(input.length.coerceIn(0, view.text.length))
+                    }
+                }
             )
 
             IconButton(

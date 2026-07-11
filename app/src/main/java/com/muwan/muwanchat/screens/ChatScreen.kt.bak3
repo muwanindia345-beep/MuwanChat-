@@ -497,8 +497,6 @@ fun ChatScreen(
             items(messages, key = { it.id }) { msg ->
                 MessageBubble(
                         message = msg,
-                        myUid = myUid,
-                        onReactionLongPress = { messageId, emoji -> sendReaction(messageId, emoji) },
                         isSelectionMode = isSelectionMode,
                         isSelected = selectedMessageIds.contains(msg.id),
                         onTap = { toggleMessageSelection(msg.id) },
@@ -628,12 +626,6 @@ fun ChatScreen(
             },
             onPickImage = { showMediaSheet = true },
             onSend = { sendMessage() },
-            onGifReceived = { uri, _, release ->
-                scope.launch {
-                    uploadMediaMessage(context, uri, "gif", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it }
-                    release()
-                }
-            },
             onVoiceMessage = {
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     showVoiceRecorder = true

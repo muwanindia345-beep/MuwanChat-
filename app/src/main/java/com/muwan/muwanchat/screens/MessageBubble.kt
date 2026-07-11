@@ -80,6 +80,8 @@ private fun linkifyText(text: String, sent: Boolean): AnnotatedString {
 @Composable
 fun MessageBubble(
     message: ChatMessage,
+    myUid: String = "",
+    onReactionLongPress: (String, String) -> Unit = { _, _ -> },
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onTap: () -> Unit = {},
@@ -101,7 +103,7 @@ fun MessageBubble(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "swipe"
     )
-    val isMedia = message.type == "image" || message.type == "video" || message.type == "audio"
+    val isMedia = message.type == "image" || message.type == "gif" || message.type == "video" || message.type == "audio"
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -129,6 +131,9 @@ fun MessageBubble(
         Row(
             modifier = Modifier.weight(1f),
             horizontalArrangement = if (message.sent) Arrangement.End else Arrangement.Start
+        ) {
+        Box(
+            contentAlignment = if (message.sent) Alignment.BottomEnd else Alignment.BottomStart
         ) {
         Box(
             modifier = Modifier
@@ -226,7 +231,7 @@ fun MessageBubble(
                 }
 
                 when (message.type) {
-                    "image" -> message.mediaUrl?.let { url ->
+                    "image", "gif" -> message.mediaUrl?.let { url ->
                         AsyncImage(
                             model = url,
                             contentDescription = "Image",
@@ -344,6 +349,34 @@ fun MessageBubble(
                             contentDescription = message.status,
                             tint = tint,
                             modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+            }
+            }
+            if (message.reactions.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .offset(y = 10.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF2A2A40))
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    message.reactions.forEach { r ->
+                        val isMine = myUid.isNotBlank() && r.userIds.contains(myUid)
+                        Text(
+                            if (r.userIds.size > 1) "${r.emoji} ${r.userIds.size}" else r.emoji,
+                            fontSize = 12.sp,
+                            color = Color.White,
+                            modifier = if (isMine) {
+                                Modifier.pointerInput(message.id, r.emoji) {
+                                    detectTapGestures(
+                                        onLongPress = { onReactionLongPress(message.id, r.emoji) }
+                                    )
+                                }
+                            } else Modifier
                         )
                     }
                 }
