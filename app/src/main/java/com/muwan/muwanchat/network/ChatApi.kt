@@ -102,6 +102,20 @@ data class ReactResponse(
     val reactions: List<MessageReaction>? = null
 )
 
+data class WallpaperRequest(
+    val type: String,
+    val value: String
+)
+
+data class WallpaperData(
+    val type: String,
+    val value: String
+)
+
+data class WallpaperResponse(
+    val wallpaper: WallpaperData?
+)
+
 interface ChatApi {
     @GET("chat/conversations")
     suspend fun getConversations(
@@ -182,4 +196,23 @@ interface ChatApi {
         @Header("Authorization") token: String,
         @Query("url") url: String
     ): Response<LinkPreviewResponse>
+
+    @POST("chat/wallpaper/{roomId}")
+    suspend fun setWallpaper(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String,
+        @Body request: WallpaperRequest
+    ): Response<Map<String, Boolean>>
+
+    @GET("chat/wallpaper/{roomId}")
+    suspend fun getWallpaper(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String
+    ): Response<WallpaperResponse>
+
+    @DELETE("chat/wallpaper/{roomId}")
+    suspend fun deleteWallpaper(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String
+    ): Response<Map<String, Boolean>>
 }

@@ -41,9 +41,12 @@ import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatWallpaperEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.WallpaperPresets
+import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.network.WallpaperRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import java.io.File
 import java.io.FileOutputStream
 
@@ -91,11 +94,26 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
     }
 
     fun applyPreset(type: String, id: String) {
-        scope.launch { db.chatWallpaperDao().upsert(ChatWallpaperEntity(roomId, type, id)) }
+        scope.launch {
+            db.chatWallpaperDao().upsert(ChatWallpaperEntity(roomId, type, id))
+            try {
+                val token = AuthDataStore.getToken(context).first() ?: return@launch
+                RetrofitClient.chatApi.setWallpaper("Bearer $token", roomId, WallpaperRequest(type, id))
+            } catch (_: Exception) {
+                // Offline ho toh koi baat nahi, local wallpaper turant apply ho chuka hai
+            }
+        }
     }
 
     fun removeWallpaper() {
-        scope.launch { db.chatWallpaperDao().deleteByRoomId(roomId) }
+        scope.launch {
+            db.chatWallpaperDao().deleteByRoomId(roomId)
+            try {
+                val token = AuthDataStore.getToken(context).first() ?: return@launch
+                RetrofitClient.chatApi.deleteWallpaper("Bearer $token", roomId)
+            } catch (_: Exception) {
+            }
+        }
     }
 
     Column(
