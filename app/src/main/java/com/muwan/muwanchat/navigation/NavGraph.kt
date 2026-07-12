@@ -21,6 +21,8 @@ sealed class Screen(val route: String) {
     }
     object AvatarCrop      : Screen("avatar_crop")
     object CreateGroup     : Screen("create_group")
+    object AddFromContacts : Screen("add_from_contacts")
+    object SearchMembersForGroup : Screen("search_members_for_group")
     object UserProfile     : Screen("user_profile/{uid}") {
         fun createRoute(uid: String) = "user_profile/$uid"
     }
@@ -54,6 +56,8 @@ fun NavGraph() {
         }
         composable(Screen.AvatarCrop.route) { AvatarCropScreen(navController) }
         composable(Screen.CreateGroup.route) { CreateGroupScreen(navController) }
+        composable(Screen.AddFromContacts.route) { AddFromContactsScreen(navController) }
+        composable(Screen.SearchMembersForGroup.route) { SearchMembersForGroupScreen(navController) }
         composable(Screen.UserProfile.route) { back ->
             UserProfileScreen(navController, back.arguments?.getString("uid") ?: "")
         }

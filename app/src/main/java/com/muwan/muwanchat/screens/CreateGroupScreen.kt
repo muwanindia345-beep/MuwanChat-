@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -35,12 +36,10 @@ fun CreateGroupScreen(navController: NavController) {
     var description by rememberSaveable { mutableStateOf("") }
     var avatarBase64 by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // Placeholder counters — actual picker/search screens abhi wired nahi hain,
-    // isliye Confirm + dono add-member boxes filhaal Coming Soon dikhate hain.
+    val selectedMembers = GroupMemberSelection.selected
+
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
 
-    // AvatarCropScreen ka wahi handoff pattern jo ProfileScreen use karta hai —
-    // cropped avatar wapas savedStateHandle se aata hai.
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
     val croppedAvatarFlow = remember(savedStateHandle) {
         savedStateHandle?.getStateFlow<String?>("cropped_avatar", null)
@@ -75,7 +74,6 @@ fun CreateGroupScreen(navController: NavController) {
                 .systemBarsPadding()
                 .imePadding()
         ) {
-            // ─── Header ───
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -94,7 +92,6 @@ fun CreateGroupScreen(navController: NavController) {
                 )
             }
 
-            // ─── Scrollable body — kaafi fields hain isliye scroll zaroori hai ───
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -104,7 +101,6 @@ fun CreateGroupScreen(navController: NavController) {
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ─── Avatar picker ───
                 Box(
                     modifier = Modifier
                         .size(110.dp)
@@ -118,21 +114,6 @@ fun CreateGroupScreen(navController: NavController) {
                         size = 110.dp,
                         fontSize = 36.sp
                     )
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(DarkAccent),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Filled.CameraAlt,
-                            contentDescription = "Set group photo",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -144,7 +125,6 @@ fun CreateGroupScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ─── Name ───
                 OutlinedTextField(
                     value = groupName,
                     onValueChange = { groupName = it },
@@ -158,7 +138,6 @@ fun CreateGroupScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ─── Description ───
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
@@ -188,27 +167,69 @@ fun CreateGroupScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // ─── Add from existing contacts ───
                 AddMemberRow(
                     icon = Icons.Filled.Person,
                     title = "Add from contacts",
                     subtitle = "Apne accepted connections se select karo",
-                    onClick = { comingSoonFeature = "👤 Add Members" }
+                    onClick = { navController.navigate(Screen.AddFromContacts.route) }
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // ─── Search / random add ───
                 AddMemberRow(
                     icon = Icons.Filled.Search,
                     title = "Search members",
                     subtitle = "Kisi ko bhi search karke add karo",
-                    onClick = { comingSoonFeature = "🔍 Search Members" }
+                    onClick = { navController.navigate(Screen.SearchMembersForGroup.route) }
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // ─── Confirm ───
+                if (selectedMembers.isNotEmpty()) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "${selectedMembers.size} member${if (selectedMembers.size > 1) "s" else ""} added",
+                            color = Color(0xFF888888),
+                            fontSize = 12.sp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            selectedMembers.forEach { member ->
+                                Box(contentAlignment = Alignment.TopEnd) {
+                                    AvatarView(
+                                        avatarBase64 = member.avatar,
+                                        fallbackText = member.username,
+                                        size = 56.dp,
+                                        fontSize = 20.sp
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFE05555))
+                                            .clickable { GroupMemberSelection.remove(member.uid) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Close,
+                                            contentDescription = "Remove ${member.username}",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
                 Button(
                     onClick = { comingSoonFeature = "👥 Group Chat" },
                     modifier = Modifier
