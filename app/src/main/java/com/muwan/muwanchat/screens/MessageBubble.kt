@@ -132,6 +132,7 @@ fun MessageBubble(
             modifier = Modifier.weight(1f),
             horizontalArrangement = if (message.sent) Arrangement.End else Arrangement.Start
         ) {
+        Column(horizontalAlignment = if (message.sent) Alignment.End else Alignment.Start) {
         Box(
             contentAlignment = if (message.sent) Alignment.BottomEnd else Alignment.BottomStart
         ) {
@@ -368,14 +369,16 @@ fun MessageBubble(
             }
             }
 
+            }
+
             if (message.reactions.isNotEmpty()) {
                 val totalCount = message.reactions.sumOf { it.userIds.size }
                 Row(
                     modifier = Modifier
-                        .align(if (message.sent) Alignment.BottomStart else Alignment.BottomEnd)
+                        .align(if (message.sent) Alignment.End else Alignment.Start)
                         .offset(
                             x = if (message.sent) (-6).dp else 6.dp,
-                            y = 8.dp
+                            y = (-10).dp
                         )
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF2A2A45))
@@ -383,7 +386,14 @@ fun MessageBubble(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     message.reactions.take(3).forEach { r ->
-                        Text(r.emoji, fontSize = 12.sp)
+                        Text(
+                            r.emoji,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { onReactionLongPress(message.id, r.emoji) }
+                                .padding(horizontal = 1.dp)
+                        )
                     }
                     if (totalCount > 1) {
                         Spacer(Modifier.width(2.dp))
@@ -394,6 +404,7 @@ fun MessageBubble(
                         )
                     }
                 }
+                Spacer(Modifier.height(6.dp))
             }
             }
         }

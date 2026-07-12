@@ -559,6 +559,7 @@ fun ChatScreen(
                     MessageBubble(
                         message = msg,
                         myUid = myUid,
+                        onReactionLongPress = { id, emoji -> sendReaction(id, emoji) },
                         isSelectionMode = isSelectionMode,
                         isSelected = selectedMessageIds.contains(msg.id),
                         onTap = { toggleMessageSelection(msg.id) },
@@ -785,7 +786,7 @@ fun ChatScreen(
                             onValueChange = { customEmojiInput = it },
                             placeholder = { Text("Type an emoji…", fontSize = 13.sp, color = Color(0xFF888888)) },
                             singleLine = true,
-                            modifier = Modifier.weight(1f).height(52.dp),
+                            modifier = Modifier.weight(1f),
                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 20.sp, color = Color.White),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = DarkAccent,
