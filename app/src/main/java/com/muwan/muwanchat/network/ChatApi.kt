@@ -116,7 +116,53 @@ data class WallpaperResponse(
     val wallpaper: WallpaperData?
 )
 
+data class GroupMemberProfile(
+    val uid: String,
+    val username: String,
+    val avatar: String?,
+    val isAdmin: Boolean,
+    val isOwner: Boolean
+)
+
+data class GroupData(
+    val id: String,
+    val name: String,
+    val avatar: String?,
+    val owner: String,
+    val admins: List<String>,
+    val members: List<String>,
+    val createdAt: String,
+    val memberProfiles: List<GroupMemberProfile> = emptyList()
+)
+
+data class GroupResponse(
+    val group: GroupData?
+)
+
+data class CreateGroupRequest(
+    val name: String,
+    val avatar: String?,
+    val memberUids: List<String>
+)
+
+data class CreateGroupResponse(
+    val success: Boolean,
+    val group: GroupData?
+)
+
 interface ChatApi {
+    @POST("groups/create")
+    suspend fun createGroup(
+        @Header("Authorization") token: String,
+        @Body request: CreateGroupRequest
+    ): Response<CreateGroupResponse>
+
+    @GET("groups/{roomId}")
+    suspend fun getGroup(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String
+    ): Response<GroupResponse>
+
     @GET("chat/conversations")
     suspend fun getConversations(
         @Header("Authorization") token: String

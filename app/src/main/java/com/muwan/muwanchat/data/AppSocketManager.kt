@@ -267,6 +267,48 @@ object AppSocketManager {
         socket?.emit("stop_typing", json)
     }
 
+    // ── Group versions — receiver_uid ki jagah room_id bhejte hain, backend
+    // socket/chat.js "group_" prefix se already detect karta hai ──
+    fun sendGroupMessage(
+        id: String,
+        roomId: String,
+        content: String,
+        type: String = "text",
+        fileName: String? = null,
+        mimeType: String? = null,
+        replyToId: String? = null,
+        onAck: (Boolean) -> Unit = {}
+    ) {
+        val s = socket
+        if (s == null || !s.connected()) {
+            onAck(false)
+            return
+        }
+        val json = JSONObject().apply {
+            put("id", id)
+            put("room_id", roomId)
+            put("content", content)
+            put("type", type)
+            put("file_name", fileName)
+            put("mime_type", mimeType)
+            put("reply_to_id", replyToId)
+        }
+        s.emit("send_message", arrayOf(json), Ack { args ->
+            val res = args.getOrNull(0) as? JSONObject
+            onAck(res?.optBoolean("success", false) ?: false)
+        })
+    }
+
+    fun sendGroupTyping(roomId: String) {
+        val json = JSONObject().apply { put("room_id", roomId) }
+        socket?.emit("typing", json)
+    }
+
+    fun sendGroupStopTyping(roomId: String) {
+        val json = JSONObject().apply { put("room_id", roomId) }
+        socket?.emit("stop_typing", json)
+    }
+
     fun disconnect() {
         socket?.off()
         socket?.disconnect()
