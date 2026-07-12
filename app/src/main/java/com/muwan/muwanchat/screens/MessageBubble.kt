@@ -399,4 +399,3 @@ fun MessageBubble(
         }
         }
     }
-}
