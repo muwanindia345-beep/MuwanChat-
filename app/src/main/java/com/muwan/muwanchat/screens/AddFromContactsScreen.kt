@@ -59,7 +59,7 @@ fun AddFromContactsScreen(navController: NavController) {
         }
 
         LazyColumn {
-            items(conversations, key = { it.uid }) { conv ->
+            items(conversations, key = { it.roomId }) { conv ->
                 val user = UserItem(uid = conv.uid, username = conv.username, avatar = conv.avatar)
                 val isAdded = GroupMemberSelection.isSelected(user.uid)
 
