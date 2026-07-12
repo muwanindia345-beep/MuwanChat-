@@ -228,7 +228,7 @@ fun MessageBubble(
                     ) {
                         Text("↩ ${reply.text.take(40)}", color = Color(0xFF888888), fontSize = 12.sp)
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(2.dp))
                 }
 
                 when (message.type) {
@@ -404,7 +404,7 @@ fun MessageBubble(
                         )
                     }
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(2.dp))
             }
             }
         }
