@@ -706,7 +706,7 @@ fun ChatScreen(
                     // Backend sirf "image" | "document" category accept karta hai — "gif" bhejne se
                     // type silently "text" pe fallback ho jata tha aur chat me raw URL dikhta tha.
                     // "image" bhejo, MessageBubble already isko AsyncImage se render karta hai.
-                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db, { uploadingMedia = it }, skipCompression = true)
+                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, setUploading = { uploadingMedia = it })
                     release()
                 }
             },
@@ -879,8 +879,8 @@ private suspend fun uploadMediaMessage(
     receiverUid: String,
     receiverUsername: String,
     db: MuwanChatDb,
-    setUploading: (Boolean) -> Unit,
-    skipCompression: Boolean = false
+    skipCompression: Boolean = false,
+    setUploading: (Boolean) -> Unit
 ) {
     setUploading(true)
     try {
