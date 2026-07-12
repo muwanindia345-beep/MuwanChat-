@@ -258,7 +258,7 @@ fun ConversationListScreen(navController: NavController) {
                 }
                 FabSheetOption(Icons.Filled.Add, "Create Group") {
                     showFabSheet = false
-                    comingSoonFeature = "👥 Group Chat"
+                    navController.navigate(Screen.CreateGroup.route)
                 }
             }
         }

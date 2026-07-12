@@ -20,6 +20,7 @@ sealed class Screen(val route: String) {
         fun createRoute(mode: String) = "profile/$mode"
     }
     object AvatarCrop      : Screen("avatar_crop")
+    object CreateGroup     : Screen("create_group")
     object UserProfile     : Screen("user_profile/{uid}") {
         fun createRoute(uid: String) = "user_profile/$uid"
     }
@@ -52,6 +53,7 @@ fun NavGraph() {
             ProfileScreen(navController, back.arguments?.getString("mode") ?: "edit")
         }
         composable(Screen.AvatarCrop.route) { AvatarCropScreen(navController) }
+        composable(Screen.CreateGroup.route) { CreateGroupScreen(navController) }
         composable(Screen.UserProfile.route) { back ->
             UserProfileScreen(navController, back.arguments?.getString("uid") ?: "")
         }
