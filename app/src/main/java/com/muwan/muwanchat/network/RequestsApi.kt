@@ -59,4 +59,9 @@ interface RequestsApi {
         @Header("Authorization") token: String,
         @Path("id") id: String
     ): Response<SimpleResponse>
+
+    @GET("requests/accepted")
+    suspend fun getAccepted(
+        @Header("Authorization") token: String
+    ): Response<UsersSearchResponse>
 }
