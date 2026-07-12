@@ -367,7 +367,36 @@ fun MessageBubble(
             }
             }
             }
+
+            if (message.reactions.isNotEmpty()) {
+                val totalCount = message.reactions.sumOf { it.userIds.size }
+                Row(
+                    modifier = Modifier
+                        .align(if (message.sent) Alignment.BottomStart else Alignment.BottomEnd)
+                        .offset(
+                            x = if (message.sent) (-6).dp else 6.dp,
+                            y = 8.dp
+                        )
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF2A2A45))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    message.reactions.take(3).forEach { r ->
+                        Text(r.emoji, fontSize = 12.sp)
+                    }
+                    if (totalCount > 1) {
+                        Spacer(Modifier.width(2.dp))
+                        Text(
+                            "$totalCount",
+                            color = Color(0xAAFFFFFF),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
             }
         }
         }
     }
+}
