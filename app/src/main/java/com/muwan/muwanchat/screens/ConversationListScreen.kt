@@ -78,9 +78,12 @@ fun ConversationListScreen(navController: NavController) {
                 avatar = e.avatar,
                 lastMessage = e.lastMessage,
                 lastTime = e.lastTime,
-                isOnline = onlineUids.contains(e.uid),
+                isOnline = if (e.isGroup) e.onlineCount > 0 else onlineUids.contains(e.uid),
                 unreadCount = e.unreadCount,
-                lastSenderUid = e.lastSenderUid
+                lastSenderUid = e.lastSenderUid,
+                isGroup = e.isGroup,
+                memberCount = e.memberCount,
+                onlineCount = e.onlineCount
             )
         }
     }
@@ -410,9 +413,15 @@ fun ConversationListScreen(navController: NavController) {
                                     toggleSelection(conv.room_id)
                                 } else {
                                     scope.launch { ChatRepository.clearUnread(db, conv.room_id) }
-                                    navController.navigate(
-                                        Screen.Chat.createRoute(conv.uid, conv.username, conv.room_id)
-                                    )
+                                    if (conv.isGroup) {
+                                        navController.navigate(
+                                            Screen.GroupChat.createRoute(conv.room_id, conv.username)
+                                        )
+                                    } else {
+                                        navController.navigate(
+                                            Screen.Chat.createRoute(conv.uid, conv.username, conv.room_id)
+                                        )
+                                    }
                                 }
                             },
                             onLongClick = {
@@ -506,6 +515,19 @@ fun ConversationRow(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            } else if (conv.isGroup) {
+                val othersCount = (conv.memberCount - 1).coerceAtLeast(0)
+                val offlineCount = (othersCount - conv.onlineCount).coerceAtLeast(0)
+                val statusText = if (conv.onlineCount > 0)
+                    "Online (${if (conv.onlineCount > 9) "9+" else "${conv.onlineCount}"})"
+                else
+                    "Offline (${if (offlineCount > 9) "9+" else "${offlineCount}"})"
+                Text(
+                    statusText,
+                    color = if (conv.onlineCount > 0) Color(0xFF4CD964) else Color(0xFFFF3B30),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
             } else {
                 Text(
                     if (conv.isOnline) "Online" else "Offline",

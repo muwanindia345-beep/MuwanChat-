@@ -75,7 +75,9 @@ object ChatRepository {
         roomId: String,
         uid: String,
         username: String,
-        avatar: String?
+        avatar: String?,
+        isGroup: Boolean = false,
+        memberCount: Int = 0
     ) {
         val existing = db.conversationDao().getByRoomId(roomId)
         if (existing == null) {
@@ -88,7 +90,10 @@ object ChatRepository {
                     lastMessage = "",
                     lastTime = nowIso(),
                     lastSenderUid = "",
-                    unreadCount = 0
+                    unreadCount = 0,
+                    isGroup = isGroup,
+                    memberCount = memberCount,
+                    onlineCount = 0
                 )
             )
         }
@@ -112,7 +117,10 @@ object ChatRepository {
                         lastMessage = it.lastMessage,
                         lastTime = it.lastTime,
                         lastSenderUid = it.lastSenderUid,
-                        unreadCount = it.unreadCount
+                        unreadCount = it.unreadCount,
+                        isGroup = it.isGroup,
+                        memberCount = it.memberCount,
+                        onlineCount = it.onlineCount
                     )
                 )
             } else if (it.lastTime > hidden.hiddenAt) {
@@ -127,7 +135,10 @@ object ChatRepository {
                         lastMessage = it.lastMessage,
                         lastTime = it.lastTime,
                         lastSenderUid = it.lastSenderUid,
-                        unreadCount = it.unreadCount
+                        unreadCount = it.unreadCount,
+                        isGroup = it.isGroup,
+                        memberCount = it.memberCount,
+                        onlineCount = it.onlineCount
                     )
                 )
             }

@@ -12,5 +12,8 @@ data class ConversationEntity(
     val lastMessage: String,
     val lastTime: String,
     val lastSenderUid: String,
-    val unreadCount: Int
+    val unreadCount: Int,
+    val isGroup: Boolean = false,
+    val memberCount: Int = 0,
+    val onlineCount: Int = 0
 )

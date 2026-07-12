@@ -14,7 +14,10 @@ data class ConversationItem(
     val isOnline: Boolean = false,
     val unreadCount: Int = 0,
     val lastSenderUid: String = "",
-    val isTyping: Boolean = false
+    val isTyping: Boolean = false,
+    val isGroup: Boolean = false,
+    val memberCount: Int = 0,
+    val onlineCount: Int = 0
 )
 
 data class ConversationsResponse(
