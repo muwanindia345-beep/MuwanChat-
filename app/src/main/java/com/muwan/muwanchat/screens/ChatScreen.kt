@@ -692,7 +692,10 @@ fun ChatScreen(
             onSend = { sendMessage() },
             onGifReceived = { uri, _, release ->
                 scope.launch {
-                    uploadMediaMessage(context, uri, "gif", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it }
+                    // Backend sirf "image" | "document" category accept karta hai — "gif" bhejne se
+                    // type silently "text" pe fallback ho jata tha aur chat me raw URL dikhta tha.
+                    // "image" bhejo, MessageBubble already isko AsyncImage se render karta hai.
+                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db, { uploadingMedia = it }, skipCompression = true)
                     release()
                 }
             },
@@ -865,12 +868,13 @@ private suspend fun uploadMediaMessage(
     receiverUid: String,
     receiverUsername: String,
     db: MuwanChatDb,
-    setUploading: (Boolean) -> Unit
+    setUploading: (Boolean) -> Unit,
+    skipCompression: Boolean = false
 ) {
     setUploading(true)
     try {
         val (base64Data, mime) = withContext(Dispatchers.IO) {
-            if (category == "image") compressImageToBase64(context, uri)
+            if (category == "image" && !skipCompression) compressImageToBase64(context, uri)
             else {
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
                 Base64.encodeToString(bytes, Base64.NO_WRAP) to (context.contentResolver.getType(uri) ?: "application/octet-stream")

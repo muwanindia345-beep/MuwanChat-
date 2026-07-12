@@ -104,6 +104,9 @@ fun MessageBubble(
         label = "swipe"
     )
     val isMedia = message.type == "image" || message.type == "gif" || message.type == "video" || message.type == "audio"
+    // Sticker/GIF ka apna pattern hai: koi chat-bubble background/padding nahi (WhatsApp jaisa),
+    // bada size, aur timestamp seedha image ke corner pe overlay hota hai — niche alag row nahi.
+    val isSticker = message.type == "gif"
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -174,10 +177,10 @@ fun MessageBubble(
                         bottomStart = if (message.sent) 18.dp else 4.dp
                     )
                 )
-                .background(if (message.sent) DarkBubbleSent else DarkBubbleReceived)
+                .background(if (isSticker) Color.Transparent else if (message.sent) DarkBubbleSent else DarkBubbleReceived)
                 .padding(
-                    horizontal = if (isMedia && !message.isDeleted) 4.dp else 14.dp,
-                    vertical = if (isMedia && !message.isDeleted) 4.dp else 10.dp
+                    horizontal = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else 14.dp,
+                    vertical = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else 10.dp
                 )
                 .let {
                     if (message.sent && message.status == "FAILED" && !message.isDeleted)
@@ -247,15 +250,36 @@ fun MessageBubble(
                     }
 
                     "gif" -> message.mediaUrl?.let { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = "GIF",
-                            modifier = Modifier
-                                .sizeIn(minWidth = 120.dp, minHeight = 120.dp, maxWidth = 200.dp, maxHeight = 200.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(Modifier.height(4.dp))
+                        Box(contentAlignment = Alignment.BottomEnd) {
+                            AsyncImage(
+                                model = url,
+                                contentDescription = "Sticker",
+                                modifier = Modifier
+                                    .sizeIn(minWidth = 140.dp, minHeight = 140.dp, maxWidth = 180.dp, maxHeight = 180.dp)
+                                    .clickable { if (isSelectionMode) onTap() },
+                                contentScale = ContentScale.Fit
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .padding(6.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0x99000000))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(message.time, color = Color.White, fontSize = 10.sp)
+                                if (message.sent) {
+                                    Spacer(Modifier.width(3.dp))
+                                    val (icon, tint) = when (message.status) {
+                                        "PENDING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
+                                        "SEEN" -> Icons.Filled.DoneAll to Color(0xFF4CAF50)
+                                        "FAILED" -> Icons.Filled.ErrorOutline to Color(0xFFE53935)
+                                        else -> Icons.Filled.Check to Color(0xAAFFFFFF)
+                                    }
+                                    Icon(icon, contentDescription = message.status, tint = tint, modifier = Modifier.size(10.dp))
+                                }
+                            }
+                        }
                     }
 
                     "video" -> message.mediaUrl?.let { url ->
@@ -331,6 +355,7 @@ fun MessageBubble(
                     }
                 }
 
+                if (!isSticker) {
                 Row(
                     modifier = Modifier.align(Alignment.End),
                     verticalAlignment = Alignment.CenterVertically
@@ -364,6 +389,7 @@ fun MessageBubble(
                             modifier = Modifier.size(12.dp)
                         )
                     }
+                }
                 }
             }
             }
