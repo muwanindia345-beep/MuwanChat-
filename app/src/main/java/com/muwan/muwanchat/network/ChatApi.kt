@@ -166,6 +166,28 @@ data class GroupSettingsRequest(
     val readReceiptsEnabled: Boolean? = null
 )
 
+data class JoinPreviewData(
+    val id: String,
+    val name: String,
+    val avatar: String?,
+    val description: String? = "",
+    val memberCount: Int,
+    val joinApprovalRequired: Boolean
+)
+
+data class JoinPreviewResponse(
+    val preview: JoinPreviewData?,
+    val alreadyMember: Boolean = false,
+    val alreadyRequested: Boolean = false
+)
+
+data class JoinActionResponse(
+    val success: Boolean,
+    val joined: Boolean = false,
+    val pending: Boolean = false,
+    val group: GroupData? = null
+)
+
 data class InviteRegenerateResponse(
     val success: Boolean,
     val inviteCode: String?
@@ -398,6 +420,18 @@ interface ChatApi {
         @Header("Authorization") token: String,
         @Path("roomId") roomId: String
     ): Response<InviteRegenerateResponse>
+
+    @GET("groups/join/{code}")
+    suspend fun getJoinPreview(
+        @Header("Authorization") token: String,
+        @Path("code") code: String
+    ): Response<JoinPreviewResponse>
+
+    @POST("groups/join/{code}")
+    suspend fun joinViaCode(
+        @Header("Authorization") token: String,
+        @Path("code") code: String
+    ): Response<JoinActionResponse>
 
     @GET("chat/{roomId}/mute")
     suspend fun getMuteStatus(

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import com.muwan.muwanchat.screens.*
 
 sealed class Screen(val route: String) {
@@ -45,6 +46,9 @@ sealed class Screen(val route: String) {
     }
     object ApprovalRequests: Screen("approval_requests/{groupId}") {
         fun createRoute(groupId: String) = "approval_requests/$groupId"
+    }
+    object JoinGroup       : Screen("join/{code}") {
+        fun createRoute(code: String) = "join/$code"
     }
     object Settings        : Screen("settings")
 }
@@ -113,6 +117,15 @@ fun NavGraph() {
             ApprovalRequestsScreen(
                 navController = navController,
                 groupId = back.arguments?.getString("groupId") ?: ""
+            )
+        }
+        composable(
+            Screen.JoinGroup.route,
+            deepLinks = listOf(navDeepLink { uriPattern = "muwanchat://join/{code}" })
+        ) { back ->
+            JoinGroupScreen(
+                navController = navController,
+                code = back.arguments?.getString("code") ?: ""
             )
         }
         composable(Screen.Settings.route) { SettingsScreen(navController) }
