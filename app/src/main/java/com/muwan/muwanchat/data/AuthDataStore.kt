@@ -70,4 +70,9 @@ object AuthDataStore {
     // noticeable jank nahi aata.
     fun getUidBlocking(context: Context): String =
         kotlinx.coroutines.runBlocking { getUid(context).first() } ?: ""
+
+    // Coil ke OkHttp interceptor (MuwanChatApp.kt) ke andar chahiye — image
+    // load suspend context mein nahi hota, isliye blocking read yahan bhi safe hai.
+    fun getTokenBlocking(context: Context): String =
+        kotlinx.coroutines.runBlocking { getToken(context).first() } ?: ""
 }
