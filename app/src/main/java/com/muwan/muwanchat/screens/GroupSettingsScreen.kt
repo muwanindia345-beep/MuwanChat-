@@ -5,12 +5,16 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -152,7 +156,11 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
             }
         } else {
             val g = group
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
 
                 SettingsSectionLabel("PERMISSIONS")
 
@@ -215,49 +223,43 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
                     }
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    OutlinedButton(
+                    InviteCircleButton(
+                        icon = Icons.Filled.Share,
+                        label = "Share",
+                        tint = DarkAccent,
+                        enabled = g?.inviteCode != null,
                         onClick = {
-                            val code = g?.inviteCode ?: return@OutlinedButton
+                            val code = g?.inviteCode ?: return@InviteCircleButton
                             val shareText = "Join \"${g.name}\" on MuwanChat: $INVITE_LINK_PREFIX$code"
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_TEXT, shareText)
                             }
                             context.startActivity(Intent.createChooser(intent, "Share invite link"))
-                        },
+                        }
+                    )
+                    InviteCircleButton(
+                        icon = Icons.Filled.ContentCopy,
+                        label = "Copy",
+                        tint = DarkAccent,
                         enabled = g?.inviteCode != null,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Filled.Share, contentDescription = null, tint = DarkAccent, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Share", color = Color.White, fontSize = 13.sp)
-                    }
-                    OutlinedButton(
                         onClick = {
-                            val code = g?.inviteCode ?: return@OutlinedButton
+                            val code = g?.inviteCode ?: return@InviteCircleButton
                             clipboard.setText(AnnotatedString("$INVITE_LINK_PREFIX$code"))
                             Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
-                        },
-                        enabled = g?.inviteCode != null,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Filled.ContentCopy, contentDescription = null, tint = DarkAccent, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Copy", color = Color.White, fontSize = 13.sp)
-                    }
-                    if (isAdmin) {
-                        OutlinedButton(
-                            onClick = { regenerateInvite() },
-                            enabled = !isBusy,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color(0xFFFF3B30), modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Reset", color = Color(0xFFFF3B30), fontSize = 13.sp)
                         }
+                    )
+                    if (isAdmin) {
+                        InviteCircleButton(
+                            icon = Icons.Filled.Refresh,
+                            label = "Reset",
+                            tint = Color(0xFFFF3B30),
+                            enabled = !isBusy,
+                            onClick = { regenerateInvite() }
+                        )
                     }
                 }
 
@@ -276,6 +278,35 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun InviteCircleButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val effectiveTint = if (enabled) tint else Color(0xFF555577)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(64.dp)
+            .clickable(enabled = enabled) { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(effectiveTint.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = label, tint = effectiveTint, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(label, color = effectiveTint, fontSize = 12.sp)
     }
 }
 
