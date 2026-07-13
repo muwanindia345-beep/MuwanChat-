@@ -258,6 +258,7 @@ fun CreateGroupScreen(navController: NavController) {
                                     CreateGroupRequest(
                                         name = groupName.ifBlank { "New Group" },
                                         avatar = avatarBase64,
+                                        description = description.ifBlank { null },
                                         memberUids = selectedMembers.map { it.uid }
                                     )
                                 )

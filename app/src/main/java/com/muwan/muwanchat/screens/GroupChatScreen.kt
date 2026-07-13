@@ -58,6 +58,7 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.DarkInputBg
+import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AudioRecorder
 import com.muwan.muwanchat.data.AuthDataStore
@@ -687,11 +688,7 @@ Column(
                 typingUsernames = typingUids.mapNotNull { memberNames[it] },
                 onBack = { navController.popBackStack() },
                 onHeaderTap = {
-                    // TEMPORARY: GroupInfoScreen abhi nahi bana — jab tak wo nahi banta
-                    // tab tak Coming Soon dikhayenge taaki navigate() crash na ho
-                    // (route registered nahi hai). GroupInfoScreen bante hi is line ko
-                    // navController.navigate(Screen.GroupInfo.createRoute(groupId)) se replace karna hai.
-                    comingSoonFeature = "👥 Group Info"
+                    navController.navigate(Screen.GroupInfo.createRoute(groupId))
                 },
                 onVideoCall = { comingSoonFeature = "📹 Group Video Call" },
                 onVoiceCall = { comingSoonFeature = "📞 Group Voice Call" },

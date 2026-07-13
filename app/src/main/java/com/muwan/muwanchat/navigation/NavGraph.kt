@@ -37,6 +37,9 @@ sealed class Screen(val route: String) {
         fun createRoute(groupId: String, groupName: String) =
             "group_chat/$groupId/${android.net.Uri.encode(groupName)}"
     }
+    object GroupInfo       : Screen("group_info/{groupId}") {
+        fun createRoute(groupId: String) = "group_info/$groupId"
+    }
 }
 
 @Composable
@@ -85,6 +88,12 @@ fun NavGraph() {
                 groupId = back.arguments?.getString("groupId") ?: "",
                 groupName = back.arguments?.getString("groupName") ?: "New Group",
                 groupAvatar = null
+            )
+        }
+        composable(Screen.GroupInfo.route) { back ->
+            GroupInfoScreen(
+                navController = navController,
+                groupId = back.arguments?.getString("groupId") ?: ""
             )
         }
     }
