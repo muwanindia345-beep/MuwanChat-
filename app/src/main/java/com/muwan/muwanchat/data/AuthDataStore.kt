@@ -1,27 +1,47 @@
 package com.muwan.muwanchat.data
 
 import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flow
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth")
+// Pehle ye plain DataStore (Preferences) use karta tha — JWT token +
+// MuwanDB secret_key/anon_key sab plaintext XML/proto file mein disk pe
+// padhe rehte the (rooted device ya adb backup se seedha extractable).
+// Ab EncryptedSharedPreferences use karte hain: values AES256-GCM se
+// encrypted, key Android Keystore mein hardware-backed rehti hai (app
+// uninstall hote hi key bhi gayab).
+//
+// Public API (function names/signatures) jaan-bujh kar same rakha hai jaisa
+// purana DataStore-based AuthDataStore tha — LoginScreen/SplashScreen/
+// ProfileScreen/etc. mein kahin kuch badalne ki zaroorat nahi.
+private const val PREFS_NAME = "auth_secure"
+
+private const val USERNAME_KEY   = "username"
+private const val EMAIL_KEY      = "email"
+private const val TOKEN_KEY      = "token"
+private const val UID_KEY        = "uid"
+private const val ANON_KEY       = "anon_key"
+private const val SECRET_KEY     = "secret_key"
+private const val DB_NAME_KEY    = "db_name"
+private const val LOGIN_TYPE_KEY = "login_type"
 
 object AuthDataStore {
 
-    private val USERNAME_KEY   = stringPreferencesKey("username")
-    private val EMAIL_KEY      = stringPreferencesKey("email")
-    private val TOKEN_KEY      = stringPreferencesKey("token")
-    private val UID_KEY        = stringPreferencesKey("uid")
-    private val ANON_KEY       = stringPreferencesKey("anon_key")
-    private val SECRET_KEY     = stringPreferencesKey("secret_key")
-    private val DB_NAME_KEY    = stringPreferencesKey("db_name")
-    private val LOGIN_TYPE_KEY = stringPreferencesKey("login_type")
+    private fun prefs(context: Context): SharedPreferences {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        return EncryptedSharedPreferences.create(
+            context,
+            PREFS_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
 
     suspend fun saveAuth(
         context: Context,
@@ -34,45 +54,52 @@ object AuthDataStore {
         dbName: String,
         loginType: String
     ) {
-        context.dataStore.edit { prefs ->
-            prefs[USERNAME_KEY]   = username
-            prefs[EMAIL_KEY]      = email
-            prefs[TOKEN_KEY]      = token
-            prefs[UID_KEY]        = uid
-            prefs[ANON_KEY]       = anonKey
-            prefs[SECRET_KEY]     = secretKey
-            prefs[DB_NAME_KEY]    = dbName
-            prefs[LOGIN_TYPE_KEY] = loginType
-        }
+        prefs(context).edit()
+            .putString(USERNAME_KEY, username)
+            .putString(EMAIL_KEY, email)
+            .putString(TOKEN_KEY, token)
+            .putString(UID_KEY, uid)
+            .putString(ANON_KEY, anonKey)
+            .putString(SECRET_KEY, secretKey)
+            .putString(DB_NAME_KEY, dbName)
+            .putString(LOGIN_TYPE_KEY, loginType)
+            .apply()
     }
 
-    fun getUsername(context: Context): Flow<String?>  = context.dataStore.data.map { it[USERNAME_KEY] }
-    fun getEmail(context: Context): Flow<String?>     = context.dataStore.data.map { it[EMAIL_KEY] }
-    fun getToken(context: Context): Flow<String?>     = context.dataStore.data.map { it[TOKEN_KEY] }
-    fun getUid(context: Context): Flow<String?>       = context.dataStore.data.map { it[UID_KEY] }
-    fun getAnonKey(context: Context): Flow<String?>   = context.dataStore.data.map { it[ANON_KEY] }
-    fun getSecretKey(context: Context): Flow<String?> = context.dataStore.data.map { it[SECRET_KEY] }
-    fun getDbName(context: Context): Flow<String?>    = context.dataStore.data.map { it[DB_NAME_KEY] }
-    fun getLoginType(context: Context): Flow<String?> = context.dataStore.data.map { it[LOGIN_TYPE_KEY] }
+    private fun getString(context: Context, key: String): Flow<String?> =
+        flow { emit(prefs(context).getString(key, null)) }
+
+    fun getUsername(context: Context): Flow<String?>  = getString(context, USERNAME_KEY)
+    fun getEmail(context: Context): Flow<String?>     = getString(context, EMAIL_KEY)
+    fun getToken(context: Context): Flow<String?>     = getString(context, TOKEN_KEY)
+    fun getUid(context: Context): Flow<String?>       = getString(context, UID_KEY)
+    fun getAnonKey(context: Context): Flow<String?>   = getString(context, ANON_KEY)
+    fun getSecretKey(context: Context): Flow<String?> = getString(context, SECRET_KEY)
+    fun getDbName(context: Context): Flow<String?>    = getString(context, DB_NAME_KEY)
+    fun getLoginType(context: Context): Flow<String?> = getString(context, LOGIN_TYPE_KEY)
 
     fun isLoggedIn(context: Context): Flow<Boolean> =
-        context.dataStore.data.map { !it[TOKEN_KEY].isNullOrEmpty() }
+        flow { emit(!prefs(context).getString(TOKEN_KEY, null).isNullOrEmpty()) }
 
     suspend fun clearAuth(context: Context) {
-        context.dataStore.edit { it.clear() }
+        prefs(context).edit().clear().apply()
     }
 
-    // Composable ke remember{} block ke andar uid turant chahiye hota hai
-    // (Room DB banane ke liye, jo per-account file use karta hai) — wahan
-    // Flow.first() suspend hone ki wajah se seedha use nahi ho sakta.
-    // Yeh ek chhota blocking local-disk read hai (DataStore pehle se hi
-    // in-memory cached rehta hai app ke chalte hue), toh UI thread pe
-    // noticeable jank nahi aata.
+    // SharedPreferences reads already synchronous/in-memory-cached hain,
+    // isliye ab runBlocking ki bhi zaroorat nahi (purane DataStore version
+    // mein thi) — Room DB init aur Coil interceptor dono ke liye safe.
     fun getUidBlocking(context: Context): String =
-        kotlinx.coroutines.runBlocking { getUid(context).first() } ?: ""
+        prefs(context).getString(UID_KEY, null) ?: ""
 
-    // Coil ke OkHttp interceptor (MuwanChatApp.kt) ke andar chahiye — image
-    // load suspend context mein nahi hota, isliye blocking read yahan bhi safe hai.
     fun getTokenBlocking(context: Context): String =
-        kotlinx.coroutines.runBlocking { getToken(context).first() } ?: ""
+        prefs(context).getString(TOKEN_KEY, null) ?: ""
+
+    // Purana plaintext DataStore file (agar pehle se installed app upgrade
+    // ho raha hai) disk pe padha reh sakta tha token/secret_key ke saath —
+    // ek baar app start pe delete kar do taaki plaintext copy na bache.
+    // User ko sirf ek dafa dobara login karna padega, uske baad normal.
+    fun wipeLegacyPlaintextStore(context: Context) {
+        val legacyFile = java.io.File(context.filesDir, "datastore/auth.preferences_pb")
+        if (legacyFile.exists()) legacyFile.delete()
+    }
 }

@@ -11,11 +11,12 @@ import com.muwan.muwanchat.data.AuthDataStore
 import okhttp3.OkHttpClient
 
 class MuwanChatApp : Application(), ImageLoaderFactory {
+    override fun onCreate() {
+        super.onCreate()
+        AuthDataStore.wipeLegacyPlaintextStore(applicationContext)
+    }
+
     override fun newImageLoader(): ImageLoader {
-        // /chat/media/:id ab auth-protected hai (pehle public tha). Coil khud
-        // Retrofit token use nahi karta, isliye har request pe Authorization
-        // header yahan interceptor se attach karo — warna avatars/photos/GIFs
-        // load hona silently band ho jayenge.
         val okHttpClient = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val token = AuthDataStore.getTokenBlocking(applicationContext)
