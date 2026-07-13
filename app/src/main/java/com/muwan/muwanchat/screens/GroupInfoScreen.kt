@@ -452,8 +452,16 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
                 if (isAdmin) {
                     // Add Members
                     InfoActionRow(
-                        icon = Icons.Filled.PersonAdd,
-                        label = "Add Members",
+                        icon = Icons.Filled.Person,
+                        label = "Add from Contacts",
+                        onClick = {
+                            navController.navigate(Screen.AddFromContacts.route)
+                        }
+                    )
+
+                    InfoActionRow(
+                        icon = Icons.Filled.Search,
+                        label = "Search Members",
                         onClick = {
                             navController.navigate(Screen.SearchMembersForGroup.route)
                         }
