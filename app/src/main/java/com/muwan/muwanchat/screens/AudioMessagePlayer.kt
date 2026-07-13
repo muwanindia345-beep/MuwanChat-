@@ -16,10 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import android.net.Uri
+import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muwan.muwanchat.DarkAccent
+import com.muwan.muwanchat.data.AuthDataStore
 import kotlinx.coroutines.delay
 
 // Message bubble ke andar voice note player — play/pause button + animated
@@ -33,10 +36,16 @@ fun AudioMessagePlayer(url: String, sent: Boolean) {
     var positionMs by remember(url) { mutableStateOf(0) }
 
     val player = remember(url) { MediaPlayer() }
+    val context = LocalContext.current
 
     DisposableEffect(url) {
         try {
-            player.setDataSource(url)
+            // /chat/media/:id ab authMiddleware ke peeche hai (backend security patch),
+            // isliye Coil jaisa hi Bearer token header bhejna zaroori hai — plain
+            // setDataSource(url) 401 khata hai aur MediaPlayer chup-chaap fail ho jata hai.
+            val token = AuthDataStore.getTokenBlocking(context)
+            val headers = if (token.isNotEmpty()) mapOf("Authorization" to "Bearer $token") else emptyMap()
+            player.setDataSource(context, Uri.parse(url), headers)
             player.setOnPreparedListener {
                 isPrepared = true
                 durationMs = it.duration
@@ -45,8 +54,16 @@ fun AudioMessagePlayer(url: String, sent: Boolean) {
                 isPlaying = false
                 positionMs = 0
             }
+            player.setOnErrorListener { _, what, extra ->
+                Log.e("AudioMessagePlayer", "MediaPlayer error what=$what extra=$extra url=$url")
+                isPlaying = false
+                isPrepared = false
+                true
+            }
             player.prepareAsync()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e("AudioMessagePlayer", "setDataSource failed for $url", e)
+        }
         onDispose {
             try { player.release() } catch (_: Exception) {}
         }
