@@ -59,10 +59,18 @@ private const val LINK_TAG = "URL"
 // Sent bubble pe white-ish + underline, received bubble pe DarkAccent — dono jagah contrast guaranteed.
 private val LinkColorOnSent = Color(0xFFFFE0B2)
 
+// muwanchat://join/{code} jaisa custom-scheme invite link Patterns.WEB_URL se
+// match nahi hota (wo sirf http/https/www samajhta hai), isliye alag se
+// regex chahiye. Overlap avoid karne ke liye already-covered ranges track
+// karte hain taaki WEB_URL match par dobara annotation na lage.
+private val CUSTOM_SCHEME_LINK = Regex("""muwanchat://\S+""")
+
 private fun linkifyText(text: String, sent: Boolean): AnnotatedString {
     val builder = AnnotatedString.Builder(text)
-    val matcher = Patterns.WEB_URL.matcher(text)
     val linkColor = if (sent) LinkColorOnSent else DarkAccent
+    val coveredRanges = mutableListOf<IntRange>()
+
+    val matcher = Patterns.WEB_URL.matcher(text)
     while (matcher.find()) {
         val start = matcher.start()
         val end = matcher.end()
@@ -73,7 +81,21 @@ private fun linkifyText(text: String, sent: Boolean): AnnotatedString {
             start, end
         )
         builder.addStringAnnotation(tag = LINK_TAG, annotation = url, start = start, end = end)
+        coveredRanges.add(start until end)
     }
+
+    CUSTOM_SCHEME_LINK.findAll(text).forEach { match ->
+        val start = match.range.first
+        val end = match.range.last + 1
+        if (coveredRanges.none { it.first < end && start < it.last + 1 }) {
+            builder.addStyle(
+                SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+                start, end
+            )
+            builder.addStringAnnotation(tag = LINK_TAG, annotation = match.value, start = start, end = end)
+        }
+    }
+
     return builder.toAnnotatedString()
 }
 
