@@ -92,8 +92,30 @@ fun MessageBubble(
     onLinkTap: (String) -> Unit = {},
     onRetry: (ChatMessage) -> Unit = {},
     onReplyTap: (String) -> Unit = {},
-    onLongPress: (ChatMessage) -> Unit = {}
+    onLongPress: (ChatMessage) -> Unit = {},
+    senderAvatar: String? = null,
+    senderName: String? = null
 ) {
+    if (message.type == "system") {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 6.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0x33000000))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    message.text,
+                    color = Color(0xFFCCCCCC),
+                    fontSize = 12.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        }
+        return
+    }
+
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
 
@@ -133,9 +155,28 @@ fun MessageBubble(
         }
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = if (message.sent) Arrangement.End else Arrangement.Start
+            horizontalArrangement = if (message.sent) Arrangement.End else Arrangement.Start,
+            verticalAlignment = Alignment.Bottom
         ) {
+        if (!message.sent && senderName != null) {
+            AvatarView(
+                avatarBase64 = senderAvatar,
+                fallbackText = senderName,
+                size = 26.dp,
+                fontSize = 11.sp
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
         Column(horizontalAlignment = if (message.sent) Alignment.End else Alignment.Start) {
+        if (!message.sent && senderName != null) {
+            Text(
+                senderName,
+                color = DarkAccent,
+                fontSize = 12.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                modifier = Modifier.padding(start = 12.dp, bottom = 2.dp)
+            )
+        }
         Box(
             contentAlignment = if (message.sent) Alignment.BottomEnd else Alignment.BottomStart
         ) {

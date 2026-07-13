@@ -289,6 +289,7 @@ fun GroupChatScreen(
     // Member uid -> username map — group info se ek baar load hota hai, typing
     // display aur future GroupInfoScreen navigation ke liye use hoga
     var memberNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var memberAvatars by remember { mutableStateOf<Map<String, String?>>(emptyMap()) }
     var memberCount by remember { mutableStateOf(0) }
 
     // Group mein multiple log type kar sakte hain — shared typingUsers map
@@ -530,6 +531,7 @@ fun GroupChatScreen(
             val res = RetrofitClient.chatApi.getGroup("Bearer $token", groupId)
             res.body()?.group?.let { g ->
                 memberNames = g.memberProfiles.associate { it.uid to it.username }
+                memberAvatars = g.memberProfiles.associate { it.uid to it.avatar }
                 memberCount = g.members.size
             }
         } catch (_: Exception) {}
@@ -719,6 +721,8 @@ Column(
                     MessageBubble(
                         message = msg,
                         myUid = myUid,
+                        senderAvatar = memberAvatars[msg.senderUid],
+                        senderName = if (msg.senderUid != myUid) memberNames[msg.senderUid] else null,
                         onReactionLongPress = { id, emoji -> sendReaction(id, emoji) },
                         isSelectionMode = isSelectionMode,
                         isSelected = selectedMessageIds.contains(msg.id),

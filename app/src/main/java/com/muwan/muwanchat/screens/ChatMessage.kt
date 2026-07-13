@@ -25,7 +25,7 @@ data class ChatMessage(
     val text: String,
     val sent: Boolean,
     val time: String,
-    val type: String = "text",       // text, image, video, document
+    val type: String = "text",       // text, image, video, document, system
     val mediaUrl: String? = null,
     val fileName: String? = null,
     val mimeType: String? = null,
@@ -34,7 +34,8 @@ data class ChatMessage(
     val status: String = "SENT",
     val isDeleted: Boolean = false,
     val isEdited: Boolean = false,
-    val reactions: List<MessageReaction> = emptyList()
+    val reactions: List<MessageReaction> = emptyList(),
+    val senderUid: String = ""
 )
 
 fun formatMessageTime(raw: String): String {
@@ -63,7 +64,8 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     status = "SENT",
     isDeleted = deleted,
     isEdited = edited,
-    reactions = reactions ?: emptyList()
+    reactions = reactions ?: emptyList(),
+    senderUid = sender_uid
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
@@ -79,7 +81,8 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     status = status,
     isDeleted = deleted,
     isEdited = edited,
-    reactions = parseReactionsJson(reactions)
+    reactions = parseReactionsJson(reactions),
+    senderUid = senderUid
 )
 
 fun nowTime(): String {
