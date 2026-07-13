@@ -40,6 +40,7 @@ sealed class Screen(val route: String) {
     object GroupInfo       : Screen("group_info/{groupId}") {
         fun createRoute(groupId: String) = "group_info/$groupId"
     }
+    object Settings        : Screen("settings")
 }
 
 @Composable
@@ -96,5 +97,6 @@ fun NavGraph() {
                 groupId = back.arguments?.getString("groupId") ?: ""
             )
         }
+        composable(Screen.Settings.route) { SettingsScreen(navController) }
     }
 }

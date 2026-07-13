@@ -27,6 +27,7 @@ private const val ANON_KEY       = "anon_key"
 private const val SECRET_KEY     = "secret_key"
 private const val DB_NAME_KEY    = "db_name"
 private const val LOGIN_TYPE_KEY = "login_type"
+private const val NOTIFICATIONS_ENABLED_KEY = "notifications_enabled"
 
 object AuthDataStore {
 
@@ -77,6 +78,13 @@ object AuthDataStore {
     fun getSecretKey(context: Context): Flow<String?> = getString(context, SECRET_KEY)
     fun getDbName(context: Context): Flow<String?>    = getString(context, DB_NAME_KEY)
     fun getLoginType(context: Context): Flow<String?> = getString(context, LOGIN_TYPE_KEY)
+
+    fun getNotificationsEnabled(context: Context): Flow<Boolean> =
+        flow { emit(prefs(context).getBoolean(NOTIFICATIONS_ENABLED_KEY, true)) }
+
+    suspend fun setNotificationsEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(NOTIFICATIONS_ENABLED_KEY, enabled).apply()
+    }
 
     fun isLoggedIn(context: Context): Flow<Boolean> =
         flow { emit(!prefs(context).getString(TOKEN_KEY, null).isNullOrEmpty()) }

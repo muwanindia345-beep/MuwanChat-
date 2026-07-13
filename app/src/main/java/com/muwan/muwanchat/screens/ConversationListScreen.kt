@@ -347,18 +347,9 @@ fun ConversationListScreen(navController: NavController) {
                             }
                         }
                         IconButton(onClick = {
-                            scope.launch {
-                                AppSocketManager.disconnect()
-                                AuthDataStore.clearAuth(context)
-                                // Room ab clear nahi karte — har account ki apni alag DB
-                                // file hai ("muwanchat_db_<uid>"), toh isi account ka
-                                // cache safe hai.
-                                navController.navigate(Screen.Login.route) {
-                                    popUpTo(Screen.ConversationList.route) { inclusive = true }
-                                }
-                            }
+                            navController.navigate(Screen.Settings.route)
                         }) {
-                            Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = Color(0xFF888888))
+                            Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = DarkAccent)
                         }
                     }
                 }
