@@ -40,6 +40,12 @@ sealed class Screen(val route: String) {
     object GroupInfo       : Screen("group_info/{groupId}") {
         fun createRoute(groupId: String) = "group_info/$groupId"
     }
+    object GroupSettings   : Screen("group_settings/{groupId}") {
+        fun createRoute(groupId: String) = "group_settings/$groupId"
+    }
+    object ApprovalRequests: Screen("approval_requests/{groupId}") {
+        fun createRoute(groupId: String) = "approval_requests/$groupId"
+    }
     object Settings        : Screen("settings")
 }
 
@@ -93,6 +99,18 @@ fun NavGraph() {
         }
         composable(Screen.GroupInfo.route) { back ->
             GroupInfoScreen(
+                navController = navController,
+                groupId = back.arguments?.getString("groupId") ?: ""
+            )
+        }
+        composable(Screen.GroupSettings.route) { back ->
+            GroupSettingsScreen(
+                navController = navController,
+                groupId = back.arguments?.getString("groupId") ?: ""
+            )
+        }
+        composable(Screen.ApprovalRequests.route) { back ->
+            ApprovalRequestsScreen(
                 navController = navController,
                 groupId = back.arguments?.getString("groupId") ?: ""
             )

@@ -95,6 +95,16 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
         isLoading = false
     }
 
+    // Naya join request aaye (link se ya kisi member ke add karne se) toh
+    // group turant refetch karo -- red dot bina manual refresh ke aa jaayega.
+    LaunchedEffect(groupId) {
+        com.muwan.muwanchat.data.AppSocketManager.events.collect { event ->
+            if (event is com.muwan.muwanchat.data.SocketEvent.JoinRequest && event.roomId == groupId) {
+                try { refreshGroup() } catch (_: Exception) {}
+            }
+        }
+    }
+
     // Naya avatar crop hoke aaya -- turant edit call karo
     LaunchedEffect(croppedAvatar) {
         if (croppedAvatar != null) {
@@ -303,7 +313,13 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
             IconButton(onClick = { navController.popBackStack() }) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
-            Text("Group Info", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                "Group Info", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = { navController.navigate(Screen.GroupSettings.createRoute(groupId)) }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "Group Settings", tint = Color.White)
+            }
         }
 
         if (isLoading) {
@@ -484,17 +500,12 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
 
                     Spacer(Modifier.height(4.dp))
 
-                    // Join Requests -- backend abhi nahi bana, structure ready hai
                     InfoActionRow(
                         icon = Icons.Filled.HowToReg,
                         label = "Join Requests",
-                        badgeCount = 0,
+                        showRedDot = g.pendingRequests.isNotEmpty(),
                         onClick = {
-                            Toast.makeText(
-                                context,
-                                "Join Requests jald aa raha hai — abhi group sirf direct-add se banta hai",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            navController.navigate(Screen.ApprovalRequests.createRoute(groupId))
                         }
                     )
 
@@ -576,6 +587,7 @@ private fun InfoActionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     badgeCount: Int? = null,
+    showRedDot: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -590,7 +602,15 @@ private fun InfoActionRow(
         Icon(icon, contentDescription = null, tint = DarkAccent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Text(label, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        if (badgeCount != null && badgeCount > 0) {
+        if (showRedDot) {
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color(0xFFFF3B30))
+                    .size(10.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+        } else if (badgeCount != null && badgeCount > 0) {
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
