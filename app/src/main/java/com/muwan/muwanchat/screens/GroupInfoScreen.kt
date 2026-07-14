@@ -465,7 +465,10 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
 
                 Spacer(Modifier.height(22.dp))
 
-                if (isAdmin) {
+                // Admin hamesha add kar sakta hai; regular member sirf
+                // tab jab group owner ne "Allow members to add members" ON kiya ho.
+                val canAddMembers = isAdmin || group?.membersCanAdd == true
+                if (canAddMembers) {
                     // Add Members
                     InfoActionRow(
                         icon = Icons.Filled.Person,
