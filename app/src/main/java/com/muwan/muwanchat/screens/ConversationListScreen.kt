@@ -83,7 +83,9 @@ fun ConversationListScreen(navController: NavController) {
                 lastSenderUid = e.lastSenderUid,
                 isGroup = e.isGroup,
                 memberCount = e.memberCount,
-                onlineCount = e.onlineCount
+                onlineCount = e.onlineCount,
+                isRemoved = e.isRemoved,
+                removedByUsername = e.removedByUsername
             )
         }
     }
@@ -195,6 +197,17 @@ fun ConversationListScreen(navController: NavController) {
                 is SocketEvent.NewRequest -> {
                     // Koi nayi request aayi — badge turant badhao, koi refetch nahi chahiye
                     incomingCount += 1
+                }
+                is SocketEvent.GroupRemoved -> {
+                    // selfLeave case yahan kabhi nahi aata -- khud-leave turant
+                    // deleteChatsLocally se list se hi hat jaata hai (GroupInfoScreen).
+                    // Yahan sirf admin/owner-triggered removal handle hota hai.
+                    if (!event.selfLeave) {
+                        db.conversationDao().markRemoved(
+                            event.roomId,
+                            event.removedByUsername ?: "Admin"
+                        )
+                    }
                 }
                 is SocketEvent.RequestAccepted -> {
                     // Chahe humne accept kiya ho ya doosre ne — dono taraf superfast
@@ -481,8 +494,17 @@ fun ConversationRow(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                if (isTyping) "typing..." else conv.lastMessage.ifBlank { "Say hi! 👋" },
-                color = if (isTyping) DarkAccent else if (hasUnread) Color.White else Color(0xFF888888),
+                when {
+                    conv.isRemoved -> "You were removed from this group by @${conv.removedByUsername ?: "Admin"}"
+                    isTyping -> "typing..."
+                    else -> conv.lastMessage.ifBlank { "Say hi! 👋" }
+                },
+                color = when {
+                    conv.isRemoved -> Color(0xFFFF6B6B)
+                    isTyping -> DarkAccent
+                    hasUnread -> Color.White
+                    else -> Color(0xFF888888)
+                },
                 fontWeight = if (isTyping || hasUnread) FontWeight.Bold else FontWeight.Normal,
                 fontSize = 13.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis

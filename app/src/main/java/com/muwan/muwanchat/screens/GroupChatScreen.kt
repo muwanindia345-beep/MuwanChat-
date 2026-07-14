@@ -594,6 +594,14 @@ fun GroupChatScreen(
                         }
                     }
                 }
+                is SocketEvent.GroupRemoved -> {
+                    if (event.roomId == groupId && !event.selfLeave) {
+                        db.conversationDao().markRemoved(
+                            groupId,
+                            event.removedByUsername ?: "Admin"
+                        )
+                    }
+                }
                 is SocketEvent.MessagesSeen -> {
                     if (event.roomId == groupId) {
                         db.messageDao().markMySentAsSeen(groupId, myUid)
@@ -827,47 +835,64 @@ Column(
         AnimatedVisibility(visible = showEmojiPicker) {
             EmojiPickerRow { emoji -> input += emoji }
         }
-        ChatInputBar(
-            input = input,
-            onInputChange = {
-                input = it
-                if (showEmojiPicker) showEmojiPicker = false
+        if (conversationEntity?.isRemoved == true) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkInputBg)
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "You were removed from this group by @${conversationEntity?.removedByUsername ?: "Admin"}",
+                    color = Color(0xFFFF6B6B),
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        } else {
+            ChatInputBar(
+                input = input,
+                onInputChange = {
+                    input = it
+                    if (showEmojiPicker) showEmojiPicker = false
 
-                if (AppSocketManager.isConnected) {
-                    if (it.isNotBlank()) {
-                        AppSocketManager.sendGroupTyping(groupId)
-                        typingJob?.cancel()
-                        typingJob = scope.launch {
-                            delay(2500)
+                    if (AppSocketManager.isConnected) {
+                        if (it.isNotBlank()) {
+                            AppSocketManager.sendGroupTyping(groupId)
+                            typingJob?.cancel()
+                            typingJob = scope.launch {
+                                delay(2500)
+                                AppSocketManager.sendGroupStopTyping(groupId)
+                            }
+                        } else {
+                            typingJob?.cancel()
                             AppSocketManager.sendGroupStopTyping(groupId)
                         }
+                    }
+                },
+                showEmojiPicker = showEmojiPicker,
+                onToggleEmojiPicker = {
+                    showEmojiPicker = !showEmojiPicker
+                    if (showEmojiPicker) keyboardController?.hide() else keyboardController?.show()
+                },
+                onPickImage = { showMediaSheet = true },
+                onSend = { sendMessage() },
+                onGifReceived = { uri, _, release ->
+                    scope.launch {
+                        uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db, skipCompression = true, setUploading = { uploadingMedia = it })
+                        release()
+                    }
+                },
+                onVoiceMessage = {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        showVoiceRecorder = true
                     } else {
-                        typingJob?.cancel()
-                        AppSocketManager.sendGroupStopTyping(groupId)
+                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 }
-            },
-            showEmojiPicker = showEmojiPicker,
-            onToggleEmojiPicker = {
-                showEmojiPicker = !showEmojiPicker
-                if (showEmojiPicker) keyboardController?.hide() else keyboardController?.show()
-            },
-            onPickImage = { showMediaSheet = true },
-            onSend = { sendMessage() },
-            onGifReceived = { uri, _, release ->
-                scope.launch {
-                    uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db, skipCompression = true, setUploading = { uploadingMedia = it })
-                    release()
-                }
-            },
-            onVoiceMessage = {
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    showVoiceRecorder = true
-                } else {
-                    recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                }
-            }
-        )
+            )
+        }
     }
 
     if (showMediaSheet) {

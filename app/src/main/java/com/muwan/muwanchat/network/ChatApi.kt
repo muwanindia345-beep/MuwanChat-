@@ -17,7 +17,9 @@ data class ConversationItem(
     val isTyping: Boolean = false,
     val isGroup: Boolean = false,
     val memberCount: Int = 0,
-    val onlineCount: Int = 0
+    val onlineCount: Int = 0,
+    val isRemoved: Boolean = false,
+    val removedByUsername: String? = null
 )
 
 data class ConversationsResponse(

@@ -38,6 +38,9 @@ interface ConversationDao {
     @Query("DELETE FROM conversations WHERE roomId = :roomId")
     suspend fun deleteByRoom(roomId: String)
 
+    @Query("UPDATE conversations SET isRemoved = 1, removedByUsername = :removedByUsername WHERE roomId = :roomId")
+    suspend fun markRemoved(roomId: String, removedByUsername: String)
+
     @Query("DELETE FROM conversations")
     suspend fun clearAll()
 }
