@@ -22,6 +22,11 @@ data class ConversationItem(
     val removedByUsername: String? = null
 )
 
+data class RemovalStatusResponse(
+    val removed: Boolean,
+    val removedByUsername: String? = null
+)
+
 data class ConversationsResponse(
     val conversations: List<ConversationItem>
 )
@@ -291,6 +296,12 @@ interface ChatApi {
         @Path("roomId") roomId: String,
         @Path("uid") uid: String
     ): Response<GroupActionResponse>
+
+    @GET("groups/{roomId}/removal-status")
+    suspend fun getRemovalStatus(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String
+    ): Response<RemovalStatusResponse>
 
     @DELETE("groups/{roomId}")
     suspend fun deleteGroup(
