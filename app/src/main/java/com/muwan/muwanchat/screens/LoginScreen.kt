@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
@@ -32,6 +34,7 @@ import kotlinx.coroutines.launch
 fun LoginScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     var selectedTab by remember { mutableStateOf(0) }
     var email by remember { mutableStateOf("") }
@@ -45,6 +48,7 @@ fun LoginScreen(navController: NavController) {
             errorMsg = "Email and password required"
             return
         }
+        focusManager.clearFocus()
         isLoading = true
         errorMsg = ""
         scope.launch {
@@ -80,6 +84,7 @@ fun LoginScreen(navController: NavController) {
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
+            .imePadding()
             .verticalScroll(rememberScrollState()),
         contentAlignment = Alignment.Center
     ) {
@@ -126,7 +131,8 @@ fun LoginScreen(navController: NavController) {
                     label = { Text("Email") },
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = DarkAccent,
                         unfocusedBorderColor = Color.Gray,
@@ -154,7 +160,8 @@ fun LoginScreen(navController: NavController) {
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { handleLogin() }),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = DarkAccent,
                         unfocusedBorderColor = Color.Gray,
@@ -204,9 +211,32 @@ fun LoginScreen(navController: NavController) {
 @Composable
 fun PhoneLoginSection(navController: NavController) {
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     var phone by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf("") }
+
+    fun sendOtp() {
+        if (phone.isBlank()) {
+            errorMsg = "Phone number required"
+            return
+        }
+        focusManager.clearFocus()
+        isLoading = true
+        scope.launch {
+            try {
+                val res = RetrofitClient.authApi.phoneSend(PhoneSendRequest(phone.trim()))
+                if (res.isSuccessful) {
+                    navController.navigate(Screen.PhoneOTP.createRoute(phone.trim()))
+                } else {
+                    errorMsg = res.body()?.error ?: "Failed to send OTP"
+                }
+            } catch (e: Exception) {
+                errorMsg = "Error: ${e.message}"
+            }
+            isLoading = false
+        }
+    }
 
     OutlinedTextField(
         value = phone,
@@ -215,7 +245,8 @@ fun PhoneLoginSection(navController: NavController) {
         leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
         placeholder = { Text("+91XXXXXXXXXX") },
         modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { sendOtp() }),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = DarkAccent,
             unfocusedBorderColor = Color.Gray,
@@ -236,26 +267,7 @@ fun PhoneLoginSection(navController: NavController) {
     Spacer(modifier = Modifier.height(12.dp))
 
     Button(
-        onClick = {
-            if (phone.isBlank()) {
-                errorMsg = "Phone number required"
-                return@Button
-            }
-            isLoading = true
-            scope.launch {
-                try {
-                    val res = RetrofitClient.authApi.phoneSend(PhoneSendRequest(phone.trim()))
-                    if (res.isSuccessful) {
-                        navController.navigate(Screen.PhoneOTP.createRoute(phone.trim()))
-                    } else {
-                        errorMsg = res.body()?.error ?: "Failed to send OTP"
-                    }
-                } catch (e: Exception) {
-                    errorMsg = "Error: ${e.message}"
-                }
-                isLoading = false
-            }
-        },
+        onClick = { sendOtp() },
         modifier = Modifier.fillMaxWidth().height(52.dp),
         colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
         shape = RoundedCornerShape(14.dp),
