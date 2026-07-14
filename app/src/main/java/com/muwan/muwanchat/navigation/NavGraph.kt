@@ -51,6 +51,7 @@ sealed class Screen(val route: String) {
         fun createRoute(code: String) = "join/$code"
     }
     object Settings        : Screen("settings")
+    object AcceptedUsers   : Screen("accepted_users")
 }
 
 @Composable
@@ -129,5 +130,6 @@ fun NavGraph() {
             )
         }
         composable(Screen.Settings.route) { SettingsScreen(navController) }
+        composable(Screen.AcceptedUsers.route) { AcceptedUsersScreen(navController) }
     }
 }

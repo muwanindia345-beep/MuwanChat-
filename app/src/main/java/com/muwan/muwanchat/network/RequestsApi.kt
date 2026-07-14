@@ -64,4 +64,13 @@ interface RequestsApi {
     suspend fun getAccepted(
         @Header("Authorization") token: String
     ): Response<UsersSearchResponse>
+
+    // Permanent unfriend -- "Accepted Users" settings screen se call hota hai.
+    // Backend accepted request record delete karta hai + shared room data saaf
+    // karta hai, aur otherUid ko "connection_removed" socket event emit karta hai.
+    @DELETE("requests/accepted/{otherUid}")
+    suspend fun removeConnection(
+        @Header("Authorization") token: String,
+        @Path("otherUid") otherUid: String
+    ): Response<SimpleResponse>
 }
