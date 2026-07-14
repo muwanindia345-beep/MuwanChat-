@@ -53,11 +53,11 @@ fun formatMessageTime(raw: String): String {
 
 fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     id = id,
-    text = if (type == "text") content else "",
+    text = if (type == "text" || type == "system") content else "",
     sent = sender_uid == myUid,
     time = formatMessageTime(created_at),
     type = type,
-    mediaUrl = if (type != "text") content else null,
+    mediaUrl = if (type != "text" && type != "system") content else null,
     fileName = file_name,
     mimeType = mime_type,
     replyToId = reply_to_id,
@@ -70,11 +70,11 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     id = id,
-    text = if (type == "text") content else "",
+    text = if (type == "text" || type == "system") content else "",
     sent = senderUid == myUid,
     time = formatMessageTime(createdAt),
     type = type,
-    mediaUrl = if (type != "text") content else null,
+    mediaUrl = if (type != "text" && type != "system") content else null,
     fileName = fileName,
     mimeType = mimeType,
     replyToId = replyToId,
