@@ -179,7 +179,13 @@ fun RegisterScreen(navController: NavController) {
                     unfocusedBorderColor = Color(0xFF444444),
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    cursorColor = DarkAccent
+                    cursorColor = DarkAccent,
+                    errorBorderColor = Color(0xFFFF5555),
+                    errorTextColor = Color.White,
+                    errorLabelColor = Color(0xFFFF5555),
+                    errorCursorColor = DarkAccent,
+                    errorLeadingIconColor = DarkAccent,
+                    errorTrailingIconColor = Color(0xFF888888)
                 ),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
@@ -204,7 +210,13 @@ fun RegisterScreen(navController: NavController) {
                     unfocusedBorderColor = Color(0xFF444444),
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    cursorColor = DarkAccent
+                    cursorColor = DarkAccent,
+                    errorBorderColor = Color(0xFFFF5555),
+                    errorTextColor = Color.White,
+                    errorLabelColor = Color(0xFFFF5555),
+                    errorCursorColor = DarkAccent,
+                    errorLeadingIconColor = DarkAccent,
+                    errorTrailingIconColor = Color(0xFF888888)
                 ),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
@@ -238,7 +250,13 @@ fun RegisterScreen(navController: NavController) {
                     unfocusedBorderColor = Color(0xFF444444),
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    cursorColor = DarkAccent
+                    cursorColor = DarkAccent,
+                    errorBorderColor = Color(0xFFFF5555),
+                    errorTextColor = Color.White,
+                    errorLabelColor = Color(0xFFFF5555),
+                    errorCursorColor = DarkAccent,
+                    errorLeadingIconColor = DarkAccent,
+                    errorTrailingIconColor = Color(0xFF888888)
                 ),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
@@ -289,7 +307,13 @@ fun RegisterScreen(navController: NavController) {
                     unfocusedBorderColor = Color(0xFF444444),
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    cursorColor = DarkAccent
+                    cursorColor = DarkAccent,
+                    errorBorderColor = Color(0xFFFF5555),
+                    errorTextColor = Color.White,
+                    errorLabelColor = Color(0xFFFF5555),
+                    errorCursorColor = DarkAccent,
+                    errorLeadingIconColor = DarkAccent,
+                    errorTrailingIconColor = Color(0xFF888888)
                 ),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
