@@ -285,6 +285,13 @@ interface ChatApi {
         @Body request: SetAdminRequest
     ): Response<GroupActionResponse>
 
+    @PUT("groups/{roomId}/owner/{uid}")
+    suspend fun transferOwnership(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String,
+        @Path("uid") uid: String
+    ): Response<GroupActionResponse>
+
     @DELETE("groups/{roomId}")
     suspend fun deleteGroup(
         @Header("Authorization") token: String,

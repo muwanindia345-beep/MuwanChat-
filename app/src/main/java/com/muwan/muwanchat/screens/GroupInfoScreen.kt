@@ -62,6 +62,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
     var showLeaveConfirm by remember { mutableStateOf(false) }
     var isBusy by remember { mutableStateOf(false) }
     var selectedMemberForSheet by remember { mutableStateOf<GroupMemberProfile?>(null) }
+    var memberPendingOwnershipTransfer by remember { mutableStateOf<GroupMemberProfile?>(null) }
     val sheetState = rememberModalBottomSheetState()
 
     val isAdmin = group?.admins?.contains(myUid) == true
@@ -202,6 +203,26 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
         }
     }
 
+    fun transferOwnership(uid: String) {
+        scope.launch {
+            isBusy = true
+            try {
+                val token = AuthDataStore.getToken(context).first() ?: return@launch
+                val res = RetrofitClient.chatApi.transferOwnership("Bearer $token", groupId, uid)
+                if (res.isSuccessful && res.body()?.success == true) {
+                    memberPendingOwnershipTransfer = null
+                    selectedMemberForSheet = null
+                    refreshGroup()
+                } else {
+                    Toast.makeText(context, "Ownership transfer nahi ho paya", Toast.LENGTH_SHORT).show()
+                }
+            } catch (_: Exception) {
+                Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
+            }
+            isBusy = false
+        }
+    }
+
     fun kickMember(uid: String) {
         scope.launch {
             isBusy = true
@@ -246,8 +267,35 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
         )
     }
 
+    memberPendingOwnershipTransfer?.let { target ->
+        AlertDialog(
+            onDismissRequest = { memberPendingOwnershipTransfer = null },
+            containerColor = DarkHeader,
+            title = { Text("Transfer Ownership?", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "@${target.username} is group ka naya owner ban jayega. Tum admin rahoge, apni marzi se khud ko admin se hata sakte ho.",
+                    color = Color(0xFFAAAAAA)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { transferOwnership(target.uid) }) {
+                    Text("Transfer", color = Color(0xFFFF3B30), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { memberPendingOwnershipTransfer = null }) {
+                    Text("Cancel", color = Color.White)
+                }
+            }
+        )
+    }
+
     selectedMemberForSheet?.let { member ->
-        val canToggleAdmin = isOwner && !member.isOwner
+        // "Give/Remove Admin" ab koi bhi admin kar sakta hai (sirf owner nahi) --
+        // par owner ka khud ka admin status kisi se bhi change nahi hota.
+        val canToggleAdmin = isAdmin && !member.isOwner
+        val canTransferOwnership = isOwner && !member.isOwner
         val canKick = isAdmin && !member.isOwner && member.uid != myUid
 
         ModalBottomSheet(
@@ -281,6 +329,12 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
                         SheetOptionRow(icon = Icons.Filled.AdminPanelSettings, label = "Give Admin") {
                             setMemberAdmin(member.uid, true)
                         }
+                    }
+                }
+
+                if (canTransferOwnership) {
+                    SheetOptionRow(icon = Icons.Filled.Star, label = "Transfer Ownership") {
+                        memberPendingOwnershipTransfer = member
                     }
                 }
 
