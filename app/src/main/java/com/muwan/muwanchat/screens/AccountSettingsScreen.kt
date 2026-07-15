@@ -46,7 +46,7 @@ private fun usernameError(u: String): String? {
 
 private fun emailError(e: String): String? {
     if (e.isBlank()) return null
-    if (!EMAIL_REGEX.matchEntire(e.trim())) return "Invalid email format"
+    if (EMAIL_REGEX.matchEntire(e.trim()) == null) return "Invalid email format"
     return null
 }
 
