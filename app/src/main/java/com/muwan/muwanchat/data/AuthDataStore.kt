@@ -79,6 +79,14 @@ object AuthDataStore {
     fun getDbName(context: Context): Flow<String?>    = getString(context, DB_NAME_KEY)
     fun getLoginType(context: Context): Flow<String?> = getString(context, LOGIN_TYPE_KEY)
 
+    suspend fun setUsername(context: Context, username: String) {
+        prefs(context).edit().putString(USERNAME_KEY, username).apply()
+    }
+
+    suspend fun setEmail(context: Context, email: String) {
+        prefs(context).edit().putString(EMAIL_KEY, email).apply()
+    }
+
     fun getNotificationsEnabled(context: Context): Flow<Boolean> =
         flow { emit(prefs(context).getBoolean(NOTIFICATIONS_ENABLED_KEY, true)) }
 

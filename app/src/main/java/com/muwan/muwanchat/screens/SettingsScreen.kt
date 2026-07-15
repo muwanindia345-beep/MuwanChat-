@@ -29,15 +29,10 @@ fun SettingsScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var showComingSoon by remember { mutableStateOf(false) }
     var notificationsEnabled by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         notificationsEnabled = AuthDataStore.getNotificationsEnabled(context).first()
-    }
-
-    if (showComingSoon) {
-        ComingSoonDialog(feature = "Account Settings", onDismiss = { showComingSoon = false })
     }
 
     Column(
@@ -59,11 +54,11 @@ fun SettingsScreen(navController: NavController) {
             Text("Settings", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
 
-        // 1. Account Settings — coming soon
+        // 1. Account Settings
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { showComingSoon = true }
+                .clickable { navController.navigate(Screen.AccountSettings.route) }
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
