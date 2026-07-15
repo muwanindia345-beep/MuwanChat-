@@ -1,1 +1,4 @@
 google-services.json
+*.keystore
+keystore_base64.txt
+test_decode.keystore
