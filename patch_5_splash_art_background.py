@@ -1,4 +1,12 @@
-package com.muwan.muwanchat.screens
+#!/usr/bin/env python3
+import pathlib, sys
+
+TARGET = pathlib.Path("app/src/main/java/com/muwan/muwanchat/screens/SplashScreen.kt")
+IMG = pathlib.Path("app/src/main/res/drawable-nodpi/splash_bg.jpg")
+
+MARKER = "R.drawable.splash_bg"
+
+NEW_CONTENT = '''package com.muwan.muwanchat.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -49,3 +57,27 @@ fun SplashScreen(navController: NavController) {
             .alpha(alpha)
     )
 }
+'''
+
+def main():
+    if not TARGET.exists():
+        print(f"ERROR: {TARGET} not found. Run from repo root.")
+        sys.exit(1)
+
+    existing = TARGET.read_text(encoding="utf-8")
+    if MARKER in existing:
+        print("Already patched, nothing to do.")
+    else:
+        TARGET.write_text(NEW_CONTENT, encoding="utf-8")
+        print(f"Patched: {TARGET}")
+
+    if not IMG.exists():
+        print(f"\nWARNING: {IMG} not found yet.")
+        print("Move the image there first, e.g.:")
+        print("  mkdir -p app/src/main/res/drawable-nodpi")
+        print("  mv ~/storage/downloads/splash_bg.jpg app/src/main/res/drawable-nodpi/splash_bg.jpg")
+    else:
+        print(f"Found image at: {IMG}")
+
+if __name__ == "__main__":
+    main()
