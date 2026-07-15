@@ -1,0 +1,55 @@
+name: MuwanChat Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Release tag (e.g. v2.0.0)'
+        required: true
+        default: 'v2.0.0'
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Create google-services.json
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f release.keystore
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version_tag }}
+          name: MuwanChat ${{ github.event.inputs.version_tag }}
+          files: app/build/outputs/apk/release/app-release.apk
