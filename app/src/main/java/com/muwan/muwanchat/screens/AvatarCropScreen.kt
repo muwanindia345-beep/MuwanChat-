@@ -86,10 +86,12 @@ fun AvatarCropScreen(navController: NavController) {
         isLoading = false
     }
 
-    // "Fill" base scale: whole circle is covered by the image (shorter dimension matched to
-    // the circle size), matching Instagram/WhatsApp-style default zoom. Kept function name
-    // fitScale() unchanged so call sites below don't need edits.
-    fun fitScale(bitmap: Bitmap): Float = containerPx / min(bitmap.width, bitmap.height).toFloat()
+    // "Fit"/contain base scale: poori image circle ke andar visible rehti hai (longer
+    // dimension container size se match hoti hai) -- non-square image ke liye baaki jagah
+    // dark margin dikhta hai. User phir khud pinch karke zoom-in/crop kar sakta hai.
+    // Pehle ye min() use karta tha jo "cover" scale tha -- longer dimension crop ho jaata
+    // tha (tall/wide images ka aadha hissa gayab), isliye max() se badla.
+    fun fitScale(bitmap: Bitmap): Float = containerPx / max(bitmap.width, bitmap.height).toFloat()
 
     // Clamp pan so you can't drag the image completely away; at zoom=1 (fit) this allows no pan.
     fun clampOffset(newOffset: Offset, currentZoom: Float, bitmap: Bitmap): Offset {
