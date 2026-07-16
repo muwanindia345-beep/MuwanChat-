@@ -7,6 +7,13 @@ on:
         description: 'Release tag (e.g. v2.0.0)'
         required: true
         default: 'v2.0.0'
+      changelog:
+        description: 'Changelog for this release'
+        required: true
+        default: 'Bug fixes and improvements'
+      version_code:
+        description: 'versionCode (match build.gradle.kts)'
+        required: true
 
 jobs:
   build-release:
@@ -54,4 +61,5 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.version_tag }}
           name: MuwanChat ${{ github.event.inputs.version_tag }}
+          body: "VERSION_CODE:${{ github.event.inputs.version_code }}\n${{ github.event.inputs.changelog }}"
           files: app/build/outputs/apk/release/app-release.apk

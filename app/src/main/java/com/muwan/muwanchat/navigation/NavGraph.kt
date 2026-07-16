@@ -53,6 +53,7 @@ sealed class Screen(val route: String) {
     object Settings        : Screen("settings")
     object AccountSettings : Screen("account_settings")
     object AcceptedUsers   : Screen("accepted_users")
+    object CheckUpdates    : Screen("check_updates")
 }
 
 @Composable
@@ -133,5 +134,31 @@ fun NavGraph() {
         composable(Screen.Settings.route) { SettingsScreen(navController) }
         composable(Screen.AccountSettings.route) { AccountSettingsScreen(navController) }
         composable(Screen.AcceptedUsers.route) { AcceptedUsersScreen(navController) }
+        composable(Screen.CheckUpdates.route) { CheckUpdatesScreen(navController) }
+    }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var pendingUpdate by remember { mutableStateOf<com.muwan.muwanchat.network.AppVersionInfo?>(null) }
+    var sheetDismissed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val info = com.muwan.muwanchat.data.UpdateManager.checkForUpdate(context)
+        if (info != null) {
+            if (com.muwan.muwanchat.data.UpdateManager.hasUnseenUpdate(context, info)) {
+                pendingUpdate = info
+            } else {
+                com.muwan.muwanchat.data.UpdateManager.showUpdateNotification(context, info)
+            }
+        }
+    }
+
+    if (pendingUpdate != null && !sheetDismissed) {
+        com.muwan.muwanchat.screens.UpdateBottomSheet(
+            info = pendingUpdate!!,
+            onUpdate = {
+                sheetDismissed = true
+                navController.navigate(Screen.CheckUpdates.route)
+            },
+            onCancel = { sheetDismissed = true }
+        )
     }
 }
