@@ -35,7 +35,17 @@ class MuwanFirebaseService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         val title = message.notification?.title ?: message.data["title"] ?: "MuwanChat"
         val body = message.notification?.body ?: message.data["body"] ?: "New message"
-        showNotification(title, body)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val notificationsEnabled = try {
+                AuthDataStore.getNotificationsEnabled(applicationContext).first()
+            } catch (_: Exception) {
+                true // read fail ho jaye to fail-open (notification na khoye)
+            }
+            if (!notificationsEnabled) return@launch
+
+            showNotification(title, body)
+        }
     }
 
     private fun showNotification(title: String, body: String) {
