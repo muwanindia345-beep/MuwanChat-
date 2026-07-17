@@ -260,8 +260,14 @@ fun ChatScreen(
         }
     }
 
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadMediaMessage(context, it, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                uris.forEach { uri ->
+                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it }
+                }
+            }
+        }
     }
 
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -270,6 +276,10 @@ fun ChatScreen(
 
     val docPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri?.let { scope.launch { uploadMediaMessage(context, it, "document", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
+    }
+
+    val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { scope.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
     }
 
     fun sendMessageWithId(
@@ -729,7 +739,8 @@ fun ChatScreen(
             onDismiss = { showMediaSheet = false },
             onSelectPhoto = { photoPicker.launch("image/*") },
             onSelectVideo = { videoPicker.launch("video/*") },
-            onSelectDocument = { docPicker.launch(arrayOf("*/*")) }
+            onSelectDocument = { docPicker.launch(arrayOf("*/*")) },
+            onSelectMusic = { musicPicker.launch("audio/*") }
         )
     }
 

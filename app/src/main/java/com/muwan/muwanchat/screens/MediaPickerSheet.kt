@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,13 +27,15 @@ fun MediaPickerSheet(
     onDismiss: () -> Unit,
     onSelectPhoto: () -> Unit,
     onSelectVideo: () -> Unit,
-    onSelectDocument: () -> Unit
+    onSelectDocument: () -> Unit,
+    onSelectMusic: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkHeader) {
         Column(modifier = Modifier.padding(bottom = 24.dp)) {
             MediaPickerOption(Icons.Filled.Image, "Photo") { onSelectPhoto(); onDismiss() }
             MediaPickerOption(Icons.Filled.Videocam, "Video") { onSelectVideo(); onDismiss() }
             MediaPickerOption(Icons.Filled.Description, "Document") { onSelectDocument(); onDismiss() }
+            MediaPickerOption(Icons.Filled.MusicNote, "Music") { onSelectMusic(); onDismiss() }
         }
     }
 }

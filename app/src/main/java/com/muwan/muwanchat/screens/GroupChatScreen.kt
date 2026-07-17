@@ -424,8 +424,14 @@ fun GroupChatScreen(
         }
     }
 
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "image", myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it } } }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                uris.forEach { uri ->
+                    uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it }
+                }
+            }
+        }
     }
 
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -434,6 +440,10 @@ fun GroupChatScreen(
 
     val docPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "document", myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it } } }
+    }
+
+    val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "audio", myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it } } }
     }
 
     // ── Send logic — receiverUid ki jagah room_id-based group send ──
@@ -900,7 +910,8 @@ Column(
             onDismiss = { showMediaSheet = false },
             onSelectPhoto = { photoPicker.launch("image/*") },
             onSelectVideo = { videoPicker.launch("video/*") },
-            onSelectDocument = { docPicker.launch(arrayOf("*/*")) }
+            onSelectDocument = { docPicker.launch(arrayOf("*/*")) },
+            onSelectMusic = { musicPicker.launch("audio/*") }
         )
     }
 
