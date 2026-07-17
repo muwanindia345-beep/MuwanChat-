@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.AutofillNode
 import androidx.compose.ui.autofill.AutofillType
 import androidx.compose.ui.composed
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalAutofill
@@ -33,6 +34,4 @@ fun Modifier.autofill(
 }
 
 private fun Modifier.onFocusEventCompat(onFocus: (Boolean) -> Unit): Modifier =
-    this.then(
-        androidx.compose.ui.focus.onFocusChanged { onFocus(it.isFocused) }
-    )
+    this.onFocusChanged { onFocus(it.isFocused) }
