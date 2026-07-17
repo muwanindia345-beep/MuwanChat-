@@ -7,19 +7,21 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
 import android.util.Base64
+import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -61,7 +63,7 @@ fun AvatarCropScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf("") }
 
-    // zoom = 1f means "whole image visible" (fit), zoom > 1 zooms in from there.
+    // zoom = 1f means "cover" (circle fully filled, no gaps), zoom > 1 zooms in further.
     var zoom by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
@@ -86,16 +88,16 @@ fun AvatarCropScreen(navController: NavController) {
         isLoading = false
     }
 
-    // "Fit"/contain base scale: poori image circle ke andar visible rehti hai (longer
-    // dimension container size se match hoti hai) -- non-square image ke liye baaki jagah
-    // dark margin dikhta hai. User phir khud pinch karke zoom-in/crop kar sakta hai.
-    // Pehle ye min() use karta tha jo "cover" scale tha -- longer dimension crop ho jaata
-    // tha (tall/wide images ka aadha hissa gayab), isliye max() se badla.
-    fun fitScale(bitmap: Bitmap): Float = containerPx / max(bitmap.width, bitmap.height).toFloat()
+    // "Cover" base scale: shorter dimension container size se match hoti hai, taaki circle
+    // hamesha poori tarah image se covered rahe (no gaps/margin andar kabhi nahi aayega).
+    // Longer dimension container se bada rehta hai -- wo hissa circle ke bahar, dimmed
+    // overlay ke peeche visible rehta hai (Instagram jaisa), aur user use pan/zoom kar sakta hai.
+    fun coverScale(bitmap: Bitmap): Float = containerPx / min(bitmap.width, bitmap.height).toFloat()
 
-    // Clamp pan so you can't drag the image completely away; at zoom=1 (fit) this allows no pan.
+    // Clamp pan so you can't drag the image completely away; at zoom=1 (cover) circle ke
+    // andar hamesha image rehti hai, sirf non-square image ka extra bahar wala hissa hi pan hota hai.
     fun clampOffset(newOffset: Offset, currentZoom: Float, bitmap: Bitmap): Offset {
-        val totalScale = fitScale(bitmap) * currentZoom
+        val totalScale = coverScale(bitmap) * currentZoom
         val maxOffsetX = max(0f, (bitmap.width * totalScale - containerPx) / 2f)
         val maxOffsetY = max(0f, (bitmap.height * totalScale - containerPx) / 2f)
         return Offset(
@@ -141,15 +143,15 @@ fun AvatarCropScreen(navController: NavController) {
                         val currentOffset = offset
                         scope.launch {
                             val base64 = withContext(Dispatchers.IO) {
-                                val totalScale = fitScale(bitmap) * currentZoom
+                                val totalScale = coverScale(bitmap) * currentZoom
                                 val outputScale = totalScale * (OUTPUT_SIZE / containerPx)
                                 val panOutputX = currentOffset.x * (OUTPUT_SIZE / containerPx)
                                 val panOutputY = currentOffset.y * (OUTPUT_SIZE / containerPx)
 
                                 // Map source bitmap onto the OUTPUT_SIZE x OUTPUT_SIZE square exactly
-                                // as it's shown inside the crop circle - zoomed in parts get cropped,
-                                // and if the user hasn't zoomed to fill, the empty margin around a
-                                // non-square image is kept as a dark background (matches the preview).
+                                // as it's shown inside the crop circle - cover scale guarantees the
+                                // circle area is always fully covered by image pixels, so this dark
+                                // fill is just a safety fallback and should never actually show.
                                 val output = Bitmap.createBitmap(OUTPUT_SIZE, OUTPUT_SIZE, Bitmap.Config.ARGB_8888)
                                 val canvas = Canvas(output)
                                 canvas.drawColor(android.graphics.Color.rgb(0x11, 0x11, 0x11))
@@ -182,20 +184,21 @@ fun AvatarCropScreen(navController: NavController) {
                 }
             }
 
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 when {
                     isLoading -> CircularProgressIndicator(color = DarkAccent)
                     errorMsg.isNotEmpty() -> Text(errorMsg, color = Color.Red)
                     sourceBitmap != null -> {
                         val bitmap = sourceBitmap!!
-                        val baseScale = fitScale(bitmap)
+                        val baseScale = coverScale(bitmap)
                         val wDp = with(density) { (bitmap.width * baseScale).toDp() }
                         val hDp = with(density) { (bitmap.height * baseScale).toDp() }
                         Box(
                             modifier = Modifier
-                                .size(CIRCLE_SIZE_DP)
-                                .clip(CircleShape)
-                                .background(Color(0xFF111111))
+                                .fillMaxSize()
                                 .pointerInput(bitmap) {
                                     detectTransformGestures { _, pan, gestureZoom, _ ->
                                         val newZoom = (zoom * gestureZoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
@@ -205,6 +208,8 @@ fun AvatarCropScreen(navController: NavController) {
                                 },
                             contentAlignment = Alignment.Center
                         ) {
+                            // Poori image hamesha visible rehti hai (no clip) - sirf circle ke
+                            // bahar wala hissa neeche wale dim overlay se dhak jaata hai.
                             Image(
                                 bitmap = bitmap.asImageBitmap(),
                                 contentDescription = "Preview",
@@ -218,6 +223,31 @@ fun AvatarCropScreen(navController: NavController) {
                                         translationY = offset.y
                                     )
                             )
+
+                            // Dim overlay with a circular "hole" punched out (BlendMode.Clear)
+                            // so only the crop area stays fully bright - Instagram-style.
+                            // Offscreen compositing zaroori hai warna Clear puri screen clear kar dega.
+                            ComposeCanvas(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                            ) {
+                                val circleRadius = containerPx / 2f
+                                val center = Offset(size.width / 2f, size.height / 2f)
+                                drawRect(color = Color.Black.copy(alpha = 0.65f))
+                                drawCircle(
+                                    color = Color.Transparent,
+                                    radius = circleRadius,
+                                    center = center,
+                                    blendMode = BlendMode.Clear
+                                )
+                                drawCircle(
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    radius = circleRadius,
+                                    center = center,
+                                    style = Stroke(width = 2.dp.toPx())
+                                )
+                            }
                         }
                     }
                 }
