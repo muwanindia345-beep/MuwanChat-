@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -358,10 +362,18 @@ fun RegisterScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { navController.popBackStack() }) {
-                Text("Already have an account? ", color = Color(0xFF888888))
-                Text("Login", color = DarkAccent, fontWeight = FontWeight.Bold)
+            val registerFooterText = buildAnnotatedString {
+                withStyle(SpanStyle(color = Color(0xFF888888))) {
+                    append("Already have an account? ")
+                }
+                withStyle(SpanStyle(color = DarkAccent, fontWeight = FontWeight.Bold)) {
+                    append("Login")
+                }
             }
+            ClickableText(
+                text = registerFooterText,
+                onClick = { navController.popBackStack() }
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
         }

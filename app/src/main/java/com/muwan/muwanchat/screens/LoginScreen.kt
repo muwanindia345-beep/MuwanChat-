@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.autofill.AutofillType
 import com.muwan.muwanchat.ui.autofill
@@ -204,10 +208,18 @@ fun LoginScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            TextButton(onClick = { navController.navigate(Screen.Register.route) }) {
-                Text("Don't have an account? ", color = Color.Gray)
-                Text("Register", color = DarkAccent, fontWeight = FontWeight.Bold)
+            val loginFooterText = buildAnnotatedString {
+                withStyle(SpanStyle(color = Color.Gray)) {
+                    append("Don't have an account? ")
+                }
+                withStyle(SpanStyle(color = DarkAccent, fontWeight = FontWeight.Bold)) {
+                    append("Register")
+                }
             }
+            ClickableText(
+                text = loginFooterText,
+                onClick = { navController.navigate(Screen.Register.route) }
+            )
 
             Spacer(modifier = Modifier.height(40.dp))
         }
