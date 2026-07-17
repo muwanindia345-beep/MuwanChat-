@@ -57,7 +57,7 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun NavGraph() {
+fun NavGraph(openUpdateScreen: Boolean = false) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
@@ -141,13 +141,19 @@ fun NavGraph() {
     var sheetDismissed by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        // Notification tap se aaye hain to seedha Check Updates screen —
+        // popup ki zaroorat nahi, wahi screen sab dikha degi.
+        if (openUpdateScreen) {
+            navController.navigate(Screen.CheckUpdates.route)
+            return@LaunchedEffect
+        }
+
+        // Ye check sirf tab chalta hai jab app already foreground/open hai,
+        // isliye notification bhejne ka yahan koi matlab nahi — user already
+        // screen dekh raha hai. Sirf in-app popup dikhega.
         val info = com.muwan.muwanchat.data.UpdateManager.checkForUpdate(context)
-        if (info != null) {
-            if (com.muwan.muwanchat.data.UpdateManager.hasUnseenUpdate(context, info)) {
-                pendingUpdate = info
-            } else {
-                com.muwan.muwanchat.data.UpdateManager.showUpdateNotification(context, info)
-            }
+        if (info != null && com.muwan.muwanchat.data.UpdateManager.hasUnseenUpdate(context, info)) {
+            pendingUpdate = info
         }
     }
 

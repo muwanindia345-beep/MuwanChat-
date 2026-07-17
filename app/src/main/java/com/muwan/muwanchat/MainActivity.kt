@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.WindowCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.UpdateManager
 import com.muwan.muwanchat.navigation.NavGraph
 import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.CoroutineScope
@@ -42,8 +43,12 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // "Update Available" notification pe tap kiya hai to seedha
+        // Check Updates screen khulni chahiye — is extra se pata chalta hai.
+        val openUpdateScreen = intent?.getBooleanExtra(UpdateManager.EXTRA_OPEN_UPDATE_SCREEN, false) ?: false
+
         setContent {
-            NavGraph()
+            NavGraph(openUpdateScreen = openUpdateScreen)
         }
     }
 }
