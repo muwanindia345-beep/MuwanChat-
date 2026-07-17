@@ -479,13 +479,18 @@ fun ChatScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
             .systemBarsPadding()
-            .imePadding()
     ) {
+        WallpaperPreviewBackground(currentWallpaper)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+        ) {
         if (isSelectionMode) {
             Row(
                 modifier = Modifier
@@ -558,7 +563,6 @@ fun ChatScreen(
         }
 
         Box(modifier = Modifier.weight(1f)) {
-            WallpaperPreviewBackground(currentWallpaper)
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -821,6 +825,7 @@ fun ChatScreen(
                 }
             }
         }
+    }
     }
 
     if (showBulkDeleteConfirm) {

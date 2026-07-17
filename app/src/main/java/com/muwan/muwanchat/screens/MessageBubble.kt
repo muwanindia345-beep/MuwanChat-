@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
@@ -142,6 +144,8 @@ fun MessageBubble(
     val clipboardManager = LocalClipboardManager.current
 
     var offsetX by remember { mutableFloatStateOf(0f) }
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val annotatedText = remember(message.text, message.sent) { linkifyText(message.text, message.sent) }
     val animatedOffset by animateFloatAsState(
         targetValue = offsetX,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
@@ -220,7 +224,18 @@ fun MessageBubble(
                 .pointerInput(message.id, isSelectionMode) {
                     detectTapGestures(
                         onLongPress = { if (!message.isDeleted) onLongPress(message) },
-                        onTap = { if (isSelectionMode) onTap() },
+                        onTap = { tapOffset ->
+                            if (isSelectionMode) {
+                                onTap()
+                            } else if (!message.isDeleted && message.text.isNotBlank()) {
+                                val layout = textLayoutResult
+                                if (layout != null) {
+                                    val charOffset = layout.getOffsetForPosition(tapOffset)
+                                    val link = annotatedText.getStringAnnotations(LINK_TAG, charOffset, charOffset).firstOrNull()
+                                    if (link != null) onLinkTap(link.item)
+                                }
+                            }
+                        },
                         onDoubleTap = {
                             if (!isSelectionMode && !message.isDeleted) {
                                 val textToCopy = message.text.ifBlank { message.fileName ?: "" }
@@ -406,14 +421,10 @@ fun MessageBubble(
                         // Selection mode me poore bubble ka tap select/deselect ke liye reserved hai
                         Text(message.text, color = Color.White, fontSize = 15.sp)
                     } else {
-                        val annotated = remember(message.text, message.sent) { linkifyText(message.text, message.sent) }
-                        ClickableText(
-                            text = annotated,
+                        Text(
+                            text = annotatedText,
                             style = TextStyle(color = Color.White, fontSize = 15.sp),
-                            onClick = { offset ->
-                                val link = annotated.getStringAnnotations(LINK_TAG, offset, offset).firstOrNull()
-                                if (link != null) onLinkTap(link.item)
-                            }
+                            onTextLayout = { textLayoutResult = it }
                         )
                     }
                 }
