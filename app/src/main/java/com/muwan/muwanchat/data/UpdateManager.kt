@@ -95,7 +95,7 @@ object UpdateManager {
         apkUrl: String,
         onProgress: (Int) -> Unit
     ) = withContext(Dispatchers.IO) {
-        val response = downloadClient.newCall(Request.Builder().url(apkUrl).build()).execute()
+        val response = downloadClient.newCall(Request.Builder().url(apkUrl).addHeader("Accept-Encoding", "identity").build()).execute()
         if (!response.isSuccessful) throw Exception("Download failed: ${response.code}")
 
         val body = response.body ?: throw Exception("Empty response body")
