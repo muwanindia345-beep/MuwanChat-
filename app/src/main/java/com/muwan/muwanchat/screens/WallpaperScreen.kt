@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -143,40 +144,47 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
         ) {
-            // ── Preview ──
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .padding(vertical = 16.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            ) {
-                WallpaperPreviewBackground(current)
-            }
-
             // ── Gallery + Remove row ──
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
                     onClick = { galleryPicker.launch("image/*") },
                     modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = DarkAccent)
                 ) {
                     Icon(Icons.Filled.Image, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Gallery")
+                    Text("Gallery", maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { removeWallpaper() },
                     modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE05555))
                 ) {
                     Icon(Icons.Filled.DeleteOutline, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Remove")
+                    Text("Remove", maxLines = 1)
                 }
+            }
+
+            // ── Preview Wallpaper button ──
+            OutlinedButton(
+                onClick = {
+                    navController.navigate(
+                        com.muwan.muwanchat.navigation.Screen.WallpaperPreview.createRoute(roomId)
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+            ) {
+                Icon(Icons.Filled.Visibility, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Preview Wallpaper", maxLines = 1)
             }
 
             Text("Solid Colors", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp,

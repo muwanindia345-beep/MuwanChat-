@@ -34,6 +34,9 @@ sealed class Screen(val route: String) {
     object Wallpaper       : Screen("wallpaper/{roomId}") {
         fun createRoute(roomId: String) = "wallpaper/$roomId"
     }
+    object WallpaperPreview : Screen("wallpaper_preview/{roomId}") {
+        fun createRoute(roomId: String) = "wallpaper_preview/$roomId"
+    }
     object GroupChat       : Screen("group_chat/{groupId}/{groupName}") {
         fun createRoute(groupId: String, groupName: String) =
             "group_chat/$groupId/${android.net.Uri.encode(groupName)}"
@@ -92,6 +95,12 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         }
         composable(Screen.Wallpaper.route) { back ->
             WallpaperScreen(
+                navController = navController,
+                roomId = back.arguments?.getString("roomId") ?: ""
+            )
+        }
+        composable(Screen.WallpaperPreview.route) { back ->
+            WallpaperPreviewScreen(
                 navController = navController,
                 roomId = back.arguments?.getString("roomId") ?: ""
             )
