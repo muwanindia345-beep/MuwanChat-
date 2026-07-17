@@ -18,6 +18,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
+import androidx.compose.ui.autofill.AutofillType
+import com.muwan.muwanchat.ui.autofill
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -130,7 +132,9 @@ fun LoginScreen(navController: NavController) {
                     onValueChange = { email = it; errorMsg = "" },
                     label = { Text("Email") },
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .autofill(listOf(AutofillType.EmailAddress)) { email = it; errorMsg = "" },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -159,7 +163,9 @@ fun LoginScreen(navController: NavController) {
                         }
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .autofill(listOf(AutofillType.Password)) { password = it; errorMsg = "" },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { handleLogin() }),
                     colors = OutlinedTextFieldDefaults.colors(
