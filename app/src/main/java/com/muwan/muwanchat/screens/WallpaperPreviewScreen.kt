@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkBubbleReceived
 import com.muwan.muwanchat.DarkBubbleSent
+import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.MuwanChatDb
 
@@ -41,28 +42,26 @@ fun WallpaperPreviewScreen(navController: NavController, roomId: String) {
     val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
     val current by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // ── Wallpaper background, full screen ──
-        WallpaperPreviewBackground(current)
-
-        Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
-            // ── Header (transparent, floats over wallpaper) ──
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0x66000000))
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                }
-                Text("Preview Wallpaper", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+    Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+        // ── Header, solid/opaque — ChatScreen jaisa, wallpaper ke peeche nahi ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(DarkHeader)
+                .padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { navController.popBackStack() }) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
+            Text("Preview Wallpaper", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        }
 
-            // ── Dummy chat bubbles ──
+        // ── Wallpaper + dummy chat bubbles, sirf isi box tak limited ──
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            WallpaperPreviewBackground(current)
             LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
