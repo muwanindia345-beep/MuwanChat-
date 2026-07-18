@@ -14,6 +14,8 @@ object RetrofitClient {
         .connectTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(120, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
+        .dns(RetryingDns())
+        .addInterceptor(NetworkRetryInterceptor())
         .addInterceptor(UploadProgressInterceptor())
         .build()
 
