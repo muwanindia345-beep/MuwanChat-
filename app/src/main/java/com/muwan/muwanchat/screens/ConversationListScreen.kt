@@ -456,6 +456,10 @@ fun ConversationListScreen(navController: NavController) {
                                     isSelectionMode = true
                                     selectedRoomIds = setOf(conv.room_id)
                                 }
+                            },
+                            onAvatarClick = {
+                                AvatarViewerSelection.set(conv.avatar, conv.username)
+                                navController.navigate(Screen.ViewAvatar.route)
                             }
                         )
                         HorizontalDivider(color = Color(0xFF1E2040), thickness = 0.5.dp)
@@ -473,7 +477,8 @@ fun ConversationRow(
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onClick: () -> Unit,
-    onLongClick: () -> Unit = {}
+    onLongClick: () -> Unit = {},
+    onAvatarClick: (() -> Unit)? = null
 ) {
     val hasUnread = conv.unreadCount > 0
 
@@ -493,7 +498,8 @@ fun ConversationRow(
                 avatarBase64 = conv.avatar,
                 fallbackText = conv.username,
                 size = 50.dp,
-                fontSize = 20.sp
+                fontSize = 20.sp,
+                onClick = if (!isSelectionMode) onAvatarClick else null
             )
             if (isSelectionMode) {
                 Box(
