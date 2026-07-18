@@ -43,6 +43,7 @@ fun CheckUpdatesScreen(navController: NavController) {
     var state by remember { mutableStateOf(UpdateState.CHECKING) }
     var versionInfo by remember { mutableStateOf<AppVersionInfo?>(null) }
     var progress by remember { mutableStateOf(0) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         val info = UpdateManager.checkForUpdate(context)
@@ -102,7 +103,10 @@ fun CheckUpdatesScreen(navController: NavController) {
                         Spacer(modifier = Modifier.height(24.dp))
 
                         if (state == UpdateState.ERROR) {
-                            Text("Update failed. Check your connection and try again.", color = Color(0xFFFF5555), fontSize = 13.sp)
+                            Text(
+                                errorMessage ?: "Update failed. Check your connection and try again.",
+                                color = Color(0xFFFF5555), fontSize = 13.sp
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
@@ -116,8 +120,10 @@ fun CheckUpdatesScreen(navController: NavController) {
                                 progress = 0
                                 scope.launch {
                                     try {
+                                        errorMessage = null
                                         UpdateManager.downloadAndInstall(context, apkUrl) { p -> progress = p }
-                                    } catch (_: Exception) {
+                                    } catch (e: Exception) {
+                                        errorMessage = e.message
                                         state = UpdateState.ERROR
                                     }
                                 }

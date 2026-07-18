@@ -23,6 +23,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
+class InsufficientStorageException(message: String) : Exception(message)
+
 object UpdateManager {
 
     private const val PREFS_NAME = "update_prefs"
@@ -102,6 +104,21 @@ object UpdateManager {
         val totalBytes = body.contentLength().takeIf { it > 0 } ?: -1L
 
         val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
+
+        // Install (download se alag) me extra space lagta hai — dexopt compile ke liye
+        // aur purana version rollback-safety ke liye disk pe rakha jaata hai jab tak
+        // naya verify na ho. Isliye kam se kam APK size ka 3x ya 150MB, jo bhi zyada ho.
+        val minRequired = 150L * 1024 * 1024
+        val requiredSpace = if (totalBytes > 0) maxOf(totalBytes * 3, minRequired) else minRequired
+        val availableSpace = updatesDir.usableSpace
+        if (availableSpace < requiredSpace) {
+            val requiredMb = requiredSpace / (1024 * 1024)
+            val availableMb = availableSpace / (1024 * 1024)
+            throw InsufficientStorageException(
+                "Storage kam hai — update install karne ke liye kam se kam ${requiredMb}MB free space chahiye, sirf ${availableMb}MB available hai. Kuch jagah free karke try karo."
+            )
+        }
+
         val apkFile = File(updatesDir, "MuwanChat-update.apk")
 
         body.byteStream().use { input ->
