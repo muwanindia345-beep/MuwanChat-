@@ -127,6 +127,7 @@ private suspend fun uploadGroupMediaMessage(
     groupName: String,
     db: MuwanChatDb,
     skipCompression: Boolean = false,
+    displayType: String = category,
     setUploading: (Boolean) -> Unit
 ) {
     val id = UUID.randomUUID().toString()
@@ -136,7 +137,7 @@ private suspend fun uploadGroupMediaMessage(
     if (!isNetworkAvailable(context)) {
         ChatRepository.recordMessage(
             db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
-            content = uri.toString(), type = category, createdAt = nowIso(), myUid = myUid,
+            content = uri.toString(), type = displayType, createdAt = nowIso(), myUid = myUid,
             otherUsername = groupName, status = "FAILED",
             fileName = filename, mimeType = guessedMime
         )
@@ -145,7 +146,7 @@ private suspend fun uploadGroupMediaMessage(
 
     ChatRepository.recordMessage(
         db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
-        content = uri.toString(), type = category, createdAt = nowIso(), myUid = myUid,
+        content = uri.toString(), type = displayType, createdAt = nowIso(), myUid = myUid,
         otherUsername = groupName, status = "UPLOADING",
         fileName = filename, mimeType = guessedMime
     )
@@ -167,7 +168,7 @@ private suspend fun uploadGroupMediaMessage(
             res.body()?.let { body ->
                 db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
-                    AppSocketManager.sendGroupMessage(id, roomId, body.url, category, body.file_name ?: filename, body.mime_type ?: mime) { success ->
+                    AppSocketManager.sendGroupMessage(id, roomId, body.url, displayType, body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
                             db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
                         }
@@ -496,7 +497,7 @@ fun GroupChatScreen(
     }
 
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "audio", myToken, groupId, myUid, groupId, groupName, db) {} } }
+        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "audio", myToken, groupId, myUid, groupId, groupName, db, displayType = "music") {} } }
     }
 
     // ── Send logic — receiverUid ki jagah room_id-based group send ──

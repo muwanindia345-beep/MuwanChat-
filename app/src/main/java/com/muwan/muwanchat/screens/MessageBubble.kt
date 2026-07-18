@@ -154,7 +154,7 @@ fun MessageBubble(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "swipe"
     )
-    val isMedia = message.type == "image" || message.type == "gif" || message.type == "video" || message.type == "audio"
+    val isMedia = message.type == "image" || message.type == "gif" || message.type == "video" || message.type == "audio" || message.type == "music"
     // Sticker/GIF ka apna pattern hai: koi chat-bubble background/padding nahi (WhatsApp jaisa),
     // bada size, aur timestamp seedha image ke corner pe overlay hota hai — niche alag row nahi.
     val isSticker = message.type == "gif"
@@ -390,7 +390,7 @@ fun MessageBubble(
                         Spacer(Modifier.height(4.dp))
                     }
 
-                    "audio" -> message.mediaUrl?.let { url ->
+                    "audio", "music" -> message.mediaUrl?.let { url ->
                         AudioMessagePlayer(url = url, sent = message.sent)
                     }
 

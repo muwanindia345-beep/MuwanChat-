@@ -280,7 +280,7 @@ fun ChatScreen(
     }
 
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+        uri?.let { scope.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db, displayType = "music") {} } }
     }
 
     fun sendMessageWithId(
@@ -893,6 +893,7 @@ private suspend fun uploadMediaMessage(
     receiverUsername: String,
     db: MuwanChatDb,
     skipCompression: Boolean = false,
+    displayType: String = category,
     setUploading: (Boolean) -> Unit
 ) {
     val id = UUID.randomUUID().toString()
@@ -903,7 +904,7 @@ private suspend fun uploadMediaMessage(
     if (!isNetworkAvailable(context)) {
         ChatRepository.recordMessage(
             db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
-            content = uri.toString(), type = category, createdAt = nowIso(), myUid = myUid,
+            content = uri.toString(), type = displayType, createdAt = nowIso(), myUid = myUid,
             otherUsername = receiverUsername, status = "FAILED",
             fileName = filename, mimeType = guessedMime
         )
@@ -913,7 +914,7 @@ private suspend fun uploadMediaMessage(
     // Bubble turant local file se dikhega, upload background me chalega
     ChatRepository.recordMessage(
         db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
-        content = uri.toString(), type = category, createdAt = nowIso(), myUid = myUid,
+        content = uri.toString(), type = displayType, createdAt = nowIso(), myUid = myUid,
         otherUsername = receiverUsername, status = "UPLOADING",
         fileName = filename, mimeType = guessedMime
     )
@@ -935,7 +936,7 @@ private suspend fun uploadMediaMessage(
             res.body()?.let { body ->
                 db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
-                    AppSocketManager.sendMessage(id, receiverUid, body.url, category, body.file_name ?: filename, body.mime_type ?: mime) { success ->
+                    AppSocketManager.sendMessage(id, receiverUid, body.url, displayType, body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
                             db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
                         }
@@ -944,7 +945,7 @@ private suspend fun uploadMediaMessage(
                     try {
                         val sendRes = RetrofitClient.chatApi.sendMessage(
                             "Bearer $token",
-                            SendMessageRequest(receiverUid, body.url, category, body.file_name ?: filename, body.mime_type ?: mime)
+                            SendMessageRequest(receiverUid, body.url, displayType, body.file_name ?: filename, body.mime_type ?: mime)
                         )
                         db.messageDao().updateStatus(id, if (sendRes.isSuccessful) "SENT" else "FAILED")
                     } catch (_: Exception) {

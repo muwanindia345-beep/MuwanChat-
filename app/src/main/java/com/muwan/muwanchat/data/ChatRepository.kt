@@ -49,6 +49,7 @@ object ChatRepository {
             "image" -> "📷 Photo"
             "video" -> "🎥 Video"
             "audio" -> "🎤 Voice message"
+            "music" -> "🎵 ${fileName ?: "Music"}"
             "document" -> "📄 ${fileName ?: "Document"}"
             else -> content
         }
