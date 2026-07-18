@@ -23,7 +23,8 @@ sealed class SocketEvent {
         val type: String = "text",
         val fileName: String? = null,
         val mimeType: String? = null,
-        val replyToId: String? = null
+        val replyToId: String? = null,
+        val isForwarded: Boolean = false
     ) : SocketEvent()
 
     data class UserOnline(val uid: String) : SocketEvent()
@@ -124,7 +125,8 @@ object AppSocketManager {
                         type = json.optString("type", "text"),
                         fileName = if (json.isNull("file_name")) null else json.optString("file_name"),
                         mimeType = if (json.isNull("mime_type")) null else json.optString("mime_type"),
-                        replyToId = if (json.isNull("reply_to_id")) null else json.optString("reply_to_id")
+                        replyToId = if (json.isNull("reply_to_id")) null else json.optString("reply_to_id"),
+                        isForwarded = json.optBoolean("is_forwarded", false)
                     )
                 )
             }
@@ -273,6 +275,7 @@ object AppSocketManager {
         fileName: String? = null,
         mimeType: String? = null,
         replyToId: String? = null,
+        isForwarded: Boolean = false,
         onAck: (Boolean) -> Unit = {}
     ) {
         val s = socket
@@ -288,6 +291,7 @@ object AppSocketManager {
             put("file_name", fileName)
             put("mime_type", mimeType)
             put("reply_to_id", replyToId)
+            put("is_forwarded", isForwarded)
         }
         s.emit("send_message", arrayOf(json), Ack { args ->
             val res = args.getOrNull(0) as? JSONObject
@@ -318,6 +322,7 @@ object AppSocketManager {
         fileName: String? = null,
         mimeType: String? = null,
         replyToId: String? = null,
+        isForwarded: Boolean = false,
         onAck: (Boolean) -> Unit = {}
     ) {
         val s = socket
@@ -333,6 +338,7 @@ object AppSocketManager {
             put("file_name", fileName)
             put("mime_type", mimeType)
             put("reply_to_id", replyToId)
+            put("is_forwarded", isForwarded)
         }
         s.emit("send_message", arrayOf(json), Ack { args ->
             val res = args.getOrNull(0) as? JSONObject

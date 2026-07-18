@@ -65,7 +65,8 @@ data class SendMessageRequest(
     val type: String = "text",
     val file_name: String? = null,
     val mime_type: String? = null,
-    val reply_to_id: String? = null
+    val reply_to_id: String? = null,
+    val is_forwarded: Boolean = false
 )
 
 data class SendMessageResponse(

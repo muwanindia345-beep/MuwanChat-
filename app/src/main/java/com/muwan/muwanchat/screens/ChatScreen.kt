@@ -430,7 +430,8 @@ fun ChatScreen(
                             otherUsername = receiverUsername,
                             fileName = event.fileName,
                             mimeType = event.mimeType,
-                            replyToId = event.replyToId
+                            replyToId = event.replyToId,
+                            isForwarded = event.isForwarded
                         )
                         if (event.senderUid != myUid) {
                             isReceiverTyping = false

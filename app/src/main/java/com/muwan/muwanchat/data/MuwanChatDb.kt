@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Database(
     entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class, MyProfileEntity::class, ChatWallpaperEntity::class, DeletedMessageEntity::class],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 abstract class MuwanChatDb : RoomDatabase() {

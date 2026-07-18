@@ -19,5 +19,6 @@ data class MessageEntity(
     val replyToId: String? = null,
     val deleted: Boolean = false,   // true = "delete for everyone" ho chuka hai
     val edited: Boolean = false,
-    val reactions: String? = null   // JSON array string: [{"emoji":"👍","userIds":["u1"]}]
+    val reactions: String? = null,   // JSON array string: [{"emoji":"👍","userIds":["u1"]}]
+    val isForwarded: Boolean = false
 )

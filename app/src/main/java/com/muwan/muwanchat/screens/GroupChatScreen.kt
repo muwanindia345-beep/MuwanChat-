@@ -648,7 +648,8 @@ fun GroupChatScreen(
                             otherUsername = groupName,
                             fileName = event.fileName,
                             mimeType = event.mimeType,
-                            replyToId = event.replyToId
+                            replyToId = event.replyToId,
+                            isForwarded = event.isForwarded
                         )
                         if (event.senderUid != myUid) {
                             try {
