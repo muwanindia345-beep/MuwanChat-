@@ -560,7 +560,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
                     InfoActionRow(
                         icon = Icons.Filled.HowToReg,
                         label = "Join Requests",
-                        showRedDot = g.pendingRequests.isNotEmpty(),
+                        showRedDot = (g.pendingRequests ?: emptyList()).isNotEmpty(),
                         onClick = {
                             navController.navigate(Screen.ApprovalRequests.createRoute(groupId))
                         }
