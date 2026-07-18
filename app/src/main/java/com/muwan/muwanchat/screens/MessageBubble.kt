@@ -22,7 +22,9 @@ import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import com.muwan.muwanchat.data.UploadProgressTracker
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -42,6 +44,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -349,6 +352,7 @@ fun MessageBubble(
                                 if (message.sent) {
                                     Spacer(Modifier.width(3.dp))
                                     val (icon, tint) = when (message.status) {
+                                        "UPLOADING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
                                         "PENDING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
                                         "SEEN" -> Icons.Filled.DoneAll to Color(0xFF4CAF50)
                                         "FAILED" -> Icons.Filled.ErrorOutline to Color(0xFFE53935)
@@ -451,6 +455,7 @@ fun MessageBubble(
                     if (message.sent) {
                         Spacer(Modifier.width(4.dp))
                         val (icon, tint) = when (message.status) {
+                            "UPLOADING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
                             "PENDING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
                             "SEEN" -> Icons.Filled.DoneAll to Color(0xFF4CAF50)
                             "FAILED" -> Icons.Filled.ErrorOutline to Color(0xFFE53935)
@@ -461,6 +466,38 @@ fun MessageBubble(
                             contentDescription = message.status,
                             tint = tint,
                             modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+
+                // Real-time upload % layer — jab tak upload chal raha hai tabhi dikhta hai,
+                // complete hote hi (status UPLOADING se hat jaate hi) automatically gayab
+                if (message.status == "UPLOADING") {
+                    val pct = UploadProgressTracker.progress[message.id]
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(top = 4.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFFF7A1A))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        LinearProgressIndicator(
+                            progress = { (pct ?: 0) / 100f },
+                            modifier = Modifier
+                                .width(70.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color = Color.White,
+                            trackColor = Color(0x55FFFFFF)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "${pct ?: 0}%",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

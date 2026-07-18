@@ -51,6 +51,11 @@ interface MessageDao {
     @Query("UPDATE messages SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: String, status: String)
 
+    // Media message ka local content:// uri, upload complete hone ke baad asal
+    // server URL se replace karta hai — status ek saath hi update ho jata hai
+    @Query("UPDATE messages SET content = :content, status = :status WHERE id = :id")
+    suspend fun updateMediaContent(id: String, content: String, status: String)
+
     // Doosre banda ne dekh liya to hamare bheje saare messages SEEN ho jaate hai
     @Query("UPDATE messages SET status = 'SEEN' WHERE roomId = :roomId AND senderUid = :myUid AND status != 'SEEN'")
     suspend fun markMySentAsSeen(roomId: String, myUid: String)

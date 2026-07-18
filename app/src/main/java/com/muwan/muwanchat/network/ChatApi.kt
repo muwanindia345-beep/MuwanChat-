@@ -373,14 +373,16 @@ interface ChatApi {
     @POST("chat/upload")
     suspend fun uploadMedia(
         @Header("Authorization") token: String,
-        @Body request: UploadMediaRequest
+        @Body request: UploadMediaRequest,
+        @Header("X-Upload-Track-Id") uploadId: String? = null
     ): Response<UploadMediaResponse>
 
     @Multipart
     @POST("chat/upload-video")
     suspend fun uploadVideo(
         @Header("Authorization") token: String,
-        @Part video: MultipartBody.Part
+        @Part video: MultipartBody.Part,
+        @Header("X-Upload-Track-Id") uploadId: String? = null
     ): Response<UploadMediaResponse>
 
     @GET("chat/link-preview")

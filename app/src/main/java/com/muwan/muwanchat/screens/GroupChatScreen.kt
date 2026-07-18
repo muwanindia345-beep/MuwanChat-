@@ -67,12 +67,14 @@ import com.muwan.muwanchat.data.ChatWallpaperEntity
 import com.muwan.muwanchat.data.DeletedMessageEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
+import com.muwan.muwanchat.data.UploadProgressTracker
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import com.muwan.muwanchat.network.EditMessageRequest
 import com.muwan.muwanchat.network.ReactRequest
 import com.google.gson.Gson
 import com.muwan.muwanchat.network.UploadMediaRequest
+import com.muwan.muwanchat.util.isNetworkAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -127,29 +129,43 @@ private suspend fun uploadGroupMediaMessage(
     skipCompression: Boolean = false,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = withContext(Dispatchers.IO) { groupChatGetFileName(context, uri) }
+    val guessedMime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
+            content = uri.toString(), type = category, createdAt = nowIso(), myUid = myUid,
+            otherUsername = groupName, status = "FAILED",
+            fileName = filename, mimeType = guessedMime
+        )
+        return
+    }
+
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
+        content = uri.toString(), type = category, createdAt = nowIso(), myUid = myUid,
+        otherUsername = groupName, status = "UPLOADING",
+        fileName = filename, mimeType = guessedMime
+    )
+    UploadProgressTracker.start(id)
     try {
         val (base64Data, mime) = withContext(Dispatchers.IO) {
             if (category == "image" && !skipCompression) groupCompressImageToBase64(context, uri)
             else {
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
-                Base64.encodeToString(bytes, Base64.NO_WRAP) to (context.contentResolver.getType(uri) ?: "application/octet-stream")
+                Base64.encodeToString(bytes, Base64.NO_WRAP) to guessedMime
             }
         }
-        val filename = withContext(Dispatchers.IO) { groupChatGetFileName(context, uri) }
         val res = RetrofitClient.chatApi.uploadMedia(
             "Bearer $token",
-            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = category)
+            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = category),
+            uploadId = id
         )
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
-                    content = body.url, type = category, createdAt = nowIso(), myUid = myUid,
-                    otherUsername = groupName, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendGroupMessage(id, roomId, body.url, category, body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
@@ -161,10 +177,14 @@ private suspend fun uploadGroupMediaMessage(
                     // offline hone par message FAILED reh jayega, reconnect hote hi retry se send hoga
                     db.messageDao().updateStatus(id, "FAILED")
                 }
-            }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
         }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
     }
 }
@@ -181,25 +201,37 @@ private suspend fun uploadGroupVideoMessage(
     db: MuwanChatDb,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = withContext(Dispatchers.IO) { groupChatGetFileName(context, uri) }
+    val mime = context.contentResolver.getType(uri) ?: "video/mp4"
+
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
+            content = uri.toString(), type = "video", createdAt = nowIso(), myUid = myUid,
+            otherUsername = groupName, status = "FAILED",
+            fileName = filename, mimeType = mime
+        )
+        return
+    }
+
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
+        content = uri.toString(), type = "video", createdAt = nowIso(), myUid = myUid,
+        otherUsername = groupName, status = "UPLOADING",
+        fileName = filename, mimeType = mime
+    )
+    UploadProgressTracker.start(id)
     try {
-        val filename = withContext(Dispatchers.IO) { groupChatGetFileName(context, uri) }
-        val mime = context.contentResolver.getType(uri) ?: "video/mp4"
         val bytes = withContext(Dispatchers.IO) {
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
         }
         val requestBody = bytes.toRequestBody(mime.toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("video", filename, requestBody)
-        val res = RetrofitClient.chatApi.uploadVideo("Bearer $token", part)
+        val res = RetrofitClient.chatApi.uploadVideo("Bearer $token", part, uploadId = id)
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
-                    content = body.url, type = "video", createdAt = nowIso(), myUid = myUid,
-                    otherUsername = groupName, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendGroupMessage(id, roomId, body.url, "video", body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
@@ -209,10 +241,14 @@ private suspend fun uploadGroupVideoMessage(
                 } else {
                     db.messageDao().updateStatus(id, "FAILED")
                 }
-            }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
         }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
     }
 }
@@ -229,26 +265,40 @@ private suspend fun uploadGroupAudioMessage(
     db: MuwanChatDb,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = file.name
+    val mime = "audio/mp4"
+    val localUri = Uri.fromFile(file).toString()
+
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
+            content = localUri, type = "audio", createdAt = nowIso(), myUid = myUid,
+            otherUsername = groupName, status = "FAILED",
+            fileName = filename, mimeType = mime
+        )
+        return
+    }
+
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
+        content = localUri, type = "audio", createdAt = nowIso(), myUid = myUid,
+        otherUsername = groupName, status = "UPLOADING",
+        fileName = filename, mimeType = mime
+    )
+    UploadProgressTracker.start(id)
     try {
         val base64Data = withContext(Dispatchers.IO) {
             Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
         }
-        val filename = file.name
-        val mime = "audio/mp4"
         val res = RetrofitClient.chatApi.uploadMedia(
             "Bearer $token",
-            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = "audio")
+            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = "audio"),
+            uploadId = id
         )
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = groupId,
-                    content = body.url, type = "audio", createdAt = nowIso(), myUid = myUid,
-                    otherUsername = groupName, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendGroupMessage(id, roomId, body.url, "audio", body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
@@ -258,10 +308,14 @@ private suspend fun uploadGroupAudioMessage(
                 } else {
                     db.messageDao().updateStatus(id, "FAILED")
                 }
-            }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
         }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
         file.delete()
     }
@@ -319,7 +373,6 @@ fun GroupChatScreen(
     var fullscreenVideo by remember { mutableStateOf<String?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaSheet by remember { mutableStateOf(false) }
-    var uploadingMedia by remember { mutableStateOf(false) }
     var showVoiceRecorder by remember { mutableStateOf(false) }
     val audioRecorder = remember { AudioRecorder(context) }
     val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
@@ -428,22 +481,22 @@ fun GroupChatScreen(
         if (uris.isNotEmpty()) {
             scope.launch {
                 uris.forEach { uri ->
-                    uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it }
+                    uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db) {}
                 }
             }
         }
     }
 
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadGroupVideoMessage(context, it, myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it } } }
+        uri?.let { scope.launch { uploadGroupVideoMessage(context, it, myToken, groupId, myUid, groupId, groupName, db) {} } }
     }
 
     val docPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "document", myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it } } }
+        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "document", myToken, groupId, myUid, groupId, groupName, db) {} } }
     }
 
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "audio", myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it } } }
+        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "audio", myToken, groupId, myUid, groupId, groupName, db) {} } }
     }
 
     // ── Send logic — receiverUid ki jagah room_id-based group send ──
@@ -798,9 +851,6 @@ Column(
             }
         }
 
-        AnimatedVisibility(visible = uploadingMedia) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DarkAccent)
-        }
 
         AnimatedVisibility(visible = replyTo != null) {
             replyTo?.let { reply ->
@@ -890,7 +940,7 @@ Column(
                 onSend = { sendMessage() },
                 onGifReceived = { uri, _, release ->
                     scope.launch {
-                        uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db, skipCompression = true, setUploading = { uploadingMedia = it })
+                        uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db, skipCompression = true, setUploading = {})
                         release()
                     }
                 },
@@ -922,7 +972,7 @@ Column(
             onSend = { file ->
                 showVoiceRecorder = false
                 scope.launch {
-                    uploadGroupAudioMessage(context, file, myToken, groupId, myUid, groupId, groupName, db) { uploadingMedia = it }
+                    uploadGroupAudioMessage(context, file, myToken, groupId, myUid, groupId, groupName, db) {}
                 }
             }
         )

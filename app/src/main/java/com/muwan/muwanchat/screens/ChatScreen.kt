@@ -62,12 +62,14 @@ import com.muwan.muwanchat.data.ChatWallpaperEntity
 import com.muwan.muwanchat.data.DeletedMessageEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
+import com.muwan.muwanchat.data.UploadProgressTracker
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import com.muwan.muwanchat.network.EditMessageRequest
 import com.muwan.muwanchat.network.ReactRequest
 import com.google.gson.Gson
 import com.muwan.muwanchat.network.UploadMediaRequest
+import com.muwan.muwanchat.util.isNetworkAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -147,7 +149,6 @@ fun ChatScreen(
     var fullscreenVideo by remember { mutableStateOf<String?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaSheet by remember { mutableStateOf(false) }
-    var uploadingMedia by remember { mutableStateOf(false) }
     // ── Voice message recording state ──
     var showVoiceRecorder by remember { mutableStateOf(false) }
     val audioRecorder = remember { AudioRecorder(context) }
@@ -264,22 +265,22 @@ fun ChatScreen(
         if (uris.isNotEmpty()) {
             scope.launch {
                 uris.forEach { uri ->
-                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it }
+                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) {}
                 }
             }
         }
     }
 
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadVideoMessage(context, it, myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
+        uri?.let { scope.launch { uploadVideoMessage(context, it, myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
     }
 
     val docPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadMediaMessage(context, it, "document", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
+        uri?.let { scope.launch { uploadMediaMessage(context, it, "document", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
     }
 
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
+        uri?.let { scope.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
     }
 
     fun sendMessageWithId(
@@ -641,10 +642,6 @@ fun ChatScreen(
             }
         }
 
-        AnimatedVisibility(visible = uploadingMedia) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DarkAccent)
-        }
-
         AnimatedVisibility(visible = replyTo != null) {
             replyTo?.let { reply ->
                 Row(
@@ -720,7 +717,7 @@ fun ChatScreen(
                     // Backend sirf "image" | "document" category accept karta hai — "gif" bhejne se
                     // type silently "text" pe fallback ho jata tha aur chat me raw URL dikhta tha.
                     // "image" bhejo, MessageBubble already isko AsyncImage se render karta hai.
-                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, setUploading = { uploadingMedia = it })
+                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, setUploading = {})
                     release()
                 }
             },
@@ -751,7 +748,7 @@ fun ChatScreen(
             onSend = { file ->
                 showVoiceRecorder = false
                 scope.launch {
-                    uploadAudioMessage(context, file, myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it }
+                    uploadAudioMessage(context, file, myToken, roomId, myUid, receiverUid, receiverUsername, db) {}
                 }
             }
         )
@@ -898,29 +895,45 @@ private suspend fun uploadMediaMessage(
     skipCompression: Boolean = false,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
+    val guessedMime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+
+    // Network hi nahi hai — seedha FAILED, koi "uploading" progress layer nahi dikhega
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+            content = uri.toString(), type = category, createdAt = nowIso(), myUid = myUid,
+            otherUsername = receiverUsername, status = "FAILED",
+            fileName = filename, mimeType = guessedMime
+        )
+        return
+    }
+
+    // Bubble turant local file se dikhega, upload background me chalega
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+        content = uri.toString(), type = category, createdAt = nowIso(), myUid = myUid,
+        otherUsername = receiverUsername, status = "UPLOADING",
+        fileName = filename, mimeType = guessedMime
+    )
+    UploadProgressTracker.start(id)
     try {
         val (base64Data, mime) = withContext(Dispatchers.IO) {
             if (category == "image" && !skipCompression) compressImageToBase64(context, uri)
             else {
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
-                Base64.encodeToString(bytes, Base64.NO_WRAP) to (context.contentResolver.getType(uri) ?: "application/octet-stream")
+                Base64.encodeToString(bytes, Base64.NO_WRAP) to guessedMime
             }
         }
-        val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
         val res = RetrofitClient.chatApi.uploadMedia(
             "Bearer $token",
-            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = category)
+            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = category),
+            uploadId = id
         )
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
-                    content = body.url, type = category, createdAt = nowIso(), myUid = myUid,
-                    otherUsername = receiverUsername, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendMessage(id, receiverUid, body.url, category, body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
@@ -938,10 +951,14 @@ private suspend fun uploadMediaMessage(
                         db.messageDao().updateStatus(id, "FAILED")
                     }
                 }
-            }
-      }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
+        }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
     }
 }
@@ -957,25 +974,37 @@ private suspend fun uploadVideoMessage(
     db: MuwanChatDb,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
+    val mime = context.contentResolver.getType(uri) ?: "video/mp4"
+
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+            content = uri.toString(), type = "video", createdAt = nowIso(), myUid = myUid,
+            otherUsername = receiverUsername, status = "FAILED",
+            fileName = filename, mimeType = mime
+        )
+        return
+    }
+
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+        content = uri.toString(), type = "video", createdAt = nowIso(), myUid = myUid,
+        otherUsername = receiverUsername, status = "UPLOADING",
+        fileName = filename, mimeType = mime
+    )
+    UploadProgressTracker.start(id)
     try {
-        val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
-        val mime = context.contentResolver.getType(uri) ?: "video/mp4"
         val bytes = withContext(Dispatchers.IO) {
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
         }
         val requestBody = bytes.toRequestBody(mime.toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("video", filename, requestBody)
-        val res = RetrofitClient.chatApi.uploadVideo("Bearer $token", part)
+        val res = RetrofitClient.chatApi.uploadVideo("Bearer $token", part, uploadId = id)
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
-                    content = body.url, type = "video", createdAt = nowIso(), myUid = myUid,
-                    otherUsername = receiverUsername, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendMessage(id, receiverUid, body.url, "video", body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
@@ -993,10 +1022,14 @@ private suspend fun uploadVideoMessage(
                         db.messageDao().updateStatus(id, "FAILED")
                     }
                 }
-            }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
         }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
     }
 }
@@ -1013,26 +1046,40 @@ private suspend fun uploadAudioMessage(
     db: MuwanChatDb,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = file.name
+    val mime = "audio/mp4"
+    val localUri = Uri.fromFile(file).toString()
+
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+            content = localUri, type = "audio", createdAt = nowIso(), myUid = myUid,
+            otherUsername = receiverUsername, status = "FAILED",
+            fileName = filename, mimeType = mime
+        )
+        return
+    }
+
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+        content = localUri, type = "audio", createdAt = nowIso(), myUid = myUid,
+        otherUsername = receiverUsername, status = "UPLOADING",
+        fileName = filename, mimeType = mime
+    )
+    UploadProgressTracker.start(id)
     try {
         val base64Data = withContext(Dispatchers.IO) {
             Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
         }
-        val filename = file.name
-        val mime = "audio/mp4"
         val res = RetrofitClient.chatApi.uploadMedia(
             "Bearer $token",
-            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = "audio")
+            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = "audio"),
+            uploadId = id
         )
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
-                    content = body.url, type = "audio", createdAt = nowIso(), myUid = myUid,
-                    otherUsername = receiverUsername, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendMessage(id, receiverUid, body.url, "audio", body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
@@ -1050,10 +1097,14 @@ private suspend fun uploadAudioMessage(
                         db.messageDao().updateStatus(id, "FAILED")
                     }
                 }
-            }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
         }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
         file.delete()
     }
