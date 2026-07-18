@@ -855,6 +855,7 @@ Column(
                             if (!isSelectionMode) {
                                 isSelectionMode = true
                                 selectedMessageIds = setOf(it.id)
+                                if (!it.isDeleted) showReactionPicker = true
                             }
                         }
                     )
