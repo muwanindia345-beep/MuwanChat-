@@ -19,7 +19,7 @@ object MediaSaver {
 
     suspend fun saveImage(context: Context, url: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val bytes = downloadBytes(url) ?: return@withContext false
+            val bytes = downloadBytes(context, url) ?: return@withContext false
             val fileName = "MuwanChat_${System.currentTimeMillis()}.jpg"
             val resolver = context.contentResolver
 
@@ -49,7 +49,7 @@ object MediaSaver {
 
     suspend fun saveVideo(context: Context, url: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val bytes = downloadBytes(url) ?: return@withContext false
+            val bytes = downloadBytes(context, url) ?: return@withContext false
             val fileName = "MuwanChat_${System.currentTimeMillis()}.mp4"
             val resolver = context.contentResolver
 
@@ -77,9 +77,13 @@ object MediaSaver {
         }
     }
 
-    private fun downloadBytes(url: String): ByteArray? {
+    private fun downloadBytes(context: Context, url: String): ByteArray? {
         return try {
-            val request = Request.Builder().url(url).build()
+            val token = AuthDataStore.getTokenBlocking(context)
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer $token")
+                .build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) null else response.body?.bytes()
             }

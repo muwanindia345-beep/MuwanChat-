@@ -59,6 +59,7 @@ import com.muwan.muwanchat.data.AudioRecorder
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatRepository
 import com.muwan.muwanchat.data.ChatWallpaperEntity
+import com.muwan.muwanchat.data.DocumentOpener
 import com.muwan.muwanchat.data.DeletedMessageEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
@@ -602,27 +603,11 @@ fun ChatScreen(
                         onSwipeReply = { replyTo = it },
                         onImageTap = { url -> fullscreenImage = url },
                         onVideoTap = { url -> fullscreenVideo = url },
-                        onDocumentTap = { url, _, mimeType ->
-                            val resolvedMime = mimeType?.takeIf { it.isNotBlank() } ?: run {
-                                val ext = MimeTypeMap.getFileExtensionFromUrl(url)
-                                MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
-                            }
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    if (resolvedMime != null) setDataAndType(Uri.parse(url), resolvedMime)
-                                    else data = Uri.parse(url)
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                try {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                    )
-                                } catch (_: Exception) {}
+                        onDocumentTap = { url, fileName, mimeType ->
+                            scope.launch {
+                                DocumentOpener.openDocument(
+                                    context, url, myToken, fileName ?: "document", mimeType
+                                )
                             }
                         },
                         onLinkTap = { url ->
