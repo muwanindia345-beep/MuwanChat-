@@ -45,6 +45,15 @@ sealed class SocketEvent {
     // Reaction add/remove ka result — reactionsJson poori updated list hai (server se aata hai)
     data class ReactionUpdate(val id: String, val roomId: String, val reactionsJson: String) : SocketEvent()
 
+    data class MessagePreview(
+        val id: String,
+        val roomId: String,
+        val title: String?,
+        val description: String?,
+        val image: String?,
+        val url: String?
+    ) : SocketEvent()
+
     data class NewRequest(
         val id: String,
         val senderUid: String,
@@ -199,6 +208,22 @@ object AppSocketManager {
                 val reactionsJson = json.optJSONArray("reactions")?.toString() ?: "[]"
                 _events.tryEmit(
                     SocketEvent.ReactionUpdate(json.optString("id"), json.optString("room_id"), reactionsJson)
+                )
+            }
+
+            s.on("message_preview") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                val preview = json.optJSONObject("preview") ?: return@on
+                fun field(name: String) = preview.optString(name, "").ifEmpty { null }
+                _events.tryEmit(
+                    SocketEvent.MessagePreview(
+                        id = json.optString("id"),
+                        roomId = json.optString("room_id"),
+                        title = field("title"),
+                        description = field("description"),
+                        image = field("image"),
+                        url = field("url")
+                    )
                 )
             }
 

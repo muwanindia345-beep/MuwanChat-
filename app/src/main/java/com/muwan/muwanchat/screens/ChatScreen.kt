@@ -480,6 +480,15 @@ fun ChatScreen(
                         scope.launch { db.messageDao().updateReactions(event.id, event.reactionsJson) }
                     }
                 }
+                is SocketEvent.MessagePreview -> {
+                    if (event.roomId == roomId) {
+                        scope.launch {
+                            db.messageDao().updateLinkPreview(
+                                event.id, event.title, event.description, event.image, event.url
+                            )
+                        }
+                    }
+                }
                 else -> {}
             }
         }

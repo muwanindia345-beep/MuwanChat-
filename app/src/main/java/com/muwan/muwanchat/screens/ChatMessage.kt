@@ -35,7 +35,11 @@ data class ChatMessage(
     val isDeleted: Boolean = false,
     val isEdited: Boolean = false,
     val reactions: List<MessageReaction> = emptyList(),
-    val senderUid: String = ""
+    val senderUid: String = "",
+    val previewTitle: String? = null,
+    val previewDescription: String? = null,
+    val previewImage: String? = null,
+    val previewUrl: String? = null
 )
 
 fun formatMessageTime(raw: String): String {
@@ -65,7 +69,11 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     isDeleted = deleted,
     isEdited = edited,
     reactions = reactions ?: emptyList(),
-    senderUid = sender_uid
+    senderUid = sender_uid,
+    previewTitle = link_preview?.title,
+    previewDescription = link_preview?.description,
+    previewImage = link_preview?.image,
+    previewUrl = link_preview?.url
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
@@ -82,7 +90,11 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     isDeleted = deleted,
     isEdited = edited,
     reactions = parseReactionsJson(reactions),
-    senderUid = senderUid
+    senderUid = senderUid,
+    previewTitle = previewTitle,
+    previewDescription = previewDescription,
+    previewImage = previewImage,
+    previewUrl = previewUrl
 )
 
 fun nowTime(): String {

@@ -40,6 +40,13 @@ data class MessageReaction(
     val userIds: List<String>
 )
 
+data class LinkPreview(
+    val url: String?,
+    val title: String?,
+    val description: String?,
+    val image: String?
+)
+
 data class MessageItem(
     val id: String,
     val sender_uid: String,
@@ -56,7 +63,8 @@ data class MessageItem(
     val reply_to_id: String? = null,
     val deleted: Boolean = false,
     val edited: Boolean = false,
-    val reactions: List<MessageReaction>? = null
+    val reactions: List<MessageReaction>? = null,
+    val link_preview: LinkPreview? = null
 )
 
 data class SendMessageRequest(

@@ -170,7 +170,11 @@ object ChatRepository {
                 replyToId = it.reply_to_id,
                 deleted = it.deleted,
                 edited = it.edited,
-                reactions = it.reactions?.let { r -> gson.toJson(r) }
+                reactions = it.reactions?.let { r -> gson.toJson(r) },
+                previewTitle = it.link_preview?.title,
+                previewDescription = it.link_preview?.description,
+                previewImage = it.link_preview?.image,
+                previewUrl = it.link_preview?.url
             )
         }
         db.messageDao().insertAll(entities)

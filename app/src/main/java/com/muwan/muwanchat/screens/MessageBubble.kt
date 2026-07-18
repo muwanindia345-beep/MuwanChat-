@@ -433,6 +433,52 @@ fun MessageBubble(
                     }
                 }
 
+                if (!message.previewUrl.isNullOrBlank() &&
+                    (!message.previewTitle.isNullOrBlank() || !message.previewImage.isNullOrBlank())
+                ) {
+                    Spacer(Modifier.height(6.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(DarkInputBg)
+                            .clickable(enabled = !isSelectionMode) { onLinkTap(message.previewUrl) }
+                    ) {
+                        if (!message.previewImage.isNullOrBlank()) {
+                            AsyncImage(
+                                model = message.previewImage,
+                                contentDescription = "Link preview",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            if (!message.previewTitle.isNullOrBlank()) {
+                                Text(
+                                    message.previewTitle,
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            if (!message.previewDescription.isNullOrBlank()) {
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    message.previewDescription,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 11.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+
                 if (!isSticker) {
                 Row(
                     modifier = Modifier.align(Alignment.End),
