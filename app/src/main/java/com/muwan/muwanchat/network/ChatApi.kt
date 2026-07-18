@@ -64,7 +64,8 @@ data class MessageItem(
     val deleted: Boolean = false,
     val edited: Boolean = false,
     val reactions: List<MessageReaction>? = null,
-    val link_preview: LinkPreview? = null
+    val link_preview: LinkPreview? = null,
+    val is_forwarded: Boolean = false
 )
 
 data class SendMessageRequest(
