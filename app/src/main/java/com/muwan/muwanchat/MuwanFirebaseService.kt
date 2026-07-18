@@ -33,6 +33,22 @@ class MuwanFirebaseService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
+
+        if (message.data["type"] == "app_update") {
+            val versionCode = message.data["versionCode"]?.toIntOrNull() ?: return
+            if (versionCode > com.muwan.muwanchat.data.UpdateManager.getLastSeenVersionCode(applicationContext)) {
+                val info = com.muwan.muwanchat.network.AppVersionInfo(
+                    versionCode = versionCode,
+                    versionName = message.data["versionName"] ?: "",
+                    changelog = message.data["changelog"] ?: "",
+                    apkUrl = message.data["apkUrl"],
+                    releaseDate = null
+                )
+                com.muwan.muwanchat.data.UpdateManager.showUpdateNotification(applicationContext, info)
+            }
+            return
+        }
+
         val title = message.notification?.title ?: message.data["title"] ?: "MuwanChat"
         val body = message.notification?.body ?: message.data["body"] ?: "New message"
 
