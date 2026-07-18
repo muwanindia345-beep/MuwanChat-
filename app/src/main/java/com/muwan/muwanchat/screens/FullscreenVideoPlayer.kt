@@ -40,9 +40,13 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.muwan.muwanchat.data.MediaSaver
+import com.muwan.muwanchat.data.VideoCacheProvider
 import kotlinx.coroutines.launch
 
 @Composable
@@ -57,7 +61,17 @@ fun FullscreenVideoPlayer(url: String, onDismiss: () -> Unit) {
     var playbackError by remember { mutableStateOf<String?>(null) }
 
     fun buildPlayer(ctx: android.content.Context): ExoPlayer {
-        return ExoPlayer.Builder(ctx).build().apply {
+        // Cache-aware datasource — pehli baar network se video aata hai aur disk pe
+        // cache ho jata hai, dobara wahi video play karo to seedha disk se milega
+        // (offline bhi chalega, data bhi kam lagega)
+        val cacheDataSourceFactory = CacheDataSource.Factory()
+            .setCache(VideoCacheProvider.get(ctx))
+            .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory())
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+        return ExoPlayer.Builder(ctx)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(cacheDataSourceFactory))
+            .build().apply {
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(state: Int) {
                     isBuffering = state == Player.STATE_BUFFERING
