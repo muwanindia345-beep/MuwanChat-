@@ -607,7 +607,11 @@ fun ChatScreen(
                 onBack = { navController.popBackStack() },
                 onVideoCall = { comingSoonFeature = "📹 Video Call" },
                 onVoiceCall = { comingSoonFeature = "📞 Voice Call" },
-                onMenuClick = { showMenuSheet = true }
+                onMenuClick = { showMenuSheet = true },
+                onAvatarClick = {
+                    AvatarViewerSelection.set(conversationEntity?.avatar, receiverUsername)
+                    navController.navigate(com.muwan.muwanchat.navigation.Screen.ViewAvatar.route)
+                }
             )
         }
 

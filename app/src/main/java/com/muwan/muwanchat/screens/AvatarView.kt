@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -30,7 +31,8 @@ fun AvatarView(
     avatarBase64: String?,
     fallbackText: String,
     size: Dp = 46.dp,
-    fontSize: TextUnit = 18.sp
+    fontSize: TextUnit = 18.sp,
+    onClick: (() -> Unit)? = null
 ) {
     val bmp = remember(avatarBase64) {
         avatarBase64?.let {
@@ -46,7 +48,8 @@ fun AvatarView(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(DarkAccent),
+            .background(DarkAccent)
+            .let { m -> if (onClick != null) m.clickable { onClick() } else m },
         contentAlignment = Alignment.Center
     ) {
         if (bmp != null) {

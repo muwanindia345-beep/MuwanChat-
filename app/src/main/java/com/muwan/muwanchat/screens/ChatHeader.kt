@@ -30,7 +30,8 @@ fun ChatHeader(
     onBack: () -> Unit,
     onVideoCall: () -> Unit,
     onVoiceCall: () -> Unit,
-    onMenuClick: () -> Unit = {}
+    onMenuClick: () -> Unit = {},
+    onAvatarClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -51,7 +52,8 @@ fun ChatHeader(
                 avatarBase64 = avatarBase64,
                 fallbackText = receiverUsername,
                 size = 38.dp,
-                fontSize = 16.sp
+                fontSize = 16.sp,
+                onClick = onAvatarClick
             )
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f, fill = false)) {
