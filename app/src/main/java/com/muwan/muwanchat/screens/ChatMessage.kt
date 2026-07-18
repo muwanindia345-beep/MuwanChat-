@@ -39,7 +39,8 @@ data class ChatMessage(
     val previewTitle: String? = null,
     val previewDescription: String? = null,
     val previewImage: String? = null,
-    val previewUrl: String? = null
+    val previewUrl: String? = null,
+    val isForwarded: Boolean = false
 )
 
 fun formatMessageTime(raw: String): String {
@@ -73,7 +74,8 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     previewTitle = link_preview?.title,
     previewDescription = link_preview?.description,
     previewImage = link_preview?.image,
-    previewUrl = link_preview?.url
+    previewUrl = link_preview?.url,
+    isForwarded = is_forwarded
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
@@ -94,7 +96,8 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     previewTitle = previewTitle,
     previewDescription = previewDescription,
     previewImage = previewImage,
-    previewUrl = previewUrl
+    previewUrl = previewUrl,
+    isForwarded = isForwarded
 )
 
 fun nowTime(): String {

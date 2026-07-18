@@ -57,6 +57,7 @@ sealed class Screen(val route: String) {
     object AccountSettings : Screen("account_settings")
     object AcceptedUsers   : Screen("accepted_users")
     object CheckUpdates    : Screen("check_updates")
+    object Forward          : Screen("forward")
 }
 
 @Composable
@@ -81,6 +82,7 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.AvatarCrop.route) { AvatarCropScreen(navController) }
         composable(Screen.CreateGroup.route) { CreateGroupScreen(navController) }
         composable(Screen.AddFromContacts.route) { AddFromContactsScreen(navController) }
+        composable(Screen.Forward.route) { ForwardScreen(navController) }
         composable(Screen.SearchMembersForGroup.route) { SearchMembersForGroupScreen(navController) }
         composable(Screen.UserProfile.route) { back ->
             UserProfileScreen(navController, back.arguments?.getString("uid") ?: "")

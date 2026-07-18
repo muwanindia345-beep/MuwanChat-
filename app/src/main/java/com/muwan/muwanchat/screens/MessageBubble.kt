@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -301,6 +302,24 @@ fun MessageBubble(
                 }
             } else {
             Column {
+                if (message.isForwarded) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Send,
+                            contentDescription = "Forwarded",
+                            tint = Color(0xFFAAAAAA),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "Forwarded",
+                            color = Color(0xFFAAAAAA),
+                            fontSize = 12.sp,
+                            fontStyle = FontStyle.Italic
+                        )
+                    }
+                    Spacer(Modifier.height(2.dp))
+                }
                 message.replyTo?.let { reply ->
                     Box(
                         modifier = Modifier

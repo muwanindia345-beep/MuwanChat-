@@ -174,7 +174,8 @@ object ChatRepository {
                 previewTitle = it.link_preview?.title,
                 previewDescription = it.link_preview?.description,
                 previewImage = it.link_preview?.image,
-                previewUrl = it.link_preview?.url
+                previewUrl = it.link_preview?.url,
+                isForwarded = it.is_forwarded
             )
         }
         db.messageDao().insertAll(entities)

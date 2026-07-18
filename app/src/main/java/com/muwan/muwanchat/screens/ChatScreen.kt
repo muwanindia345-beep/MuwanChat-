@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Send
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
@@ -547,6 +548,20 @@ fun ChatScreen(
                 if (canReact) {
                     IconButton(onClick = { showReactionPicker = true }) {
                         Icon(Icons.Filled.EmojiEmotions, contentDescription = "React", tint = Color.White)
+                    }
+                }
+
+                val canForward = selectedMessageIds.isNotEmpty() &&
+                    selectedMessageIds.all { id -> messages.firstOrNull { it.id == id }?.isDeleted == false }
+
+                if (canForward) {
+                    IconButton(onClick = {
+                        val toForward = messages.filter { selectedMessageIds.contains(it.id) }
+                        ForwardMessageSelection.set(toForward)
+                        exitSelectionMode()
+                        navController.navigate(com.muwan.muwanchat.navigation.Screen.Forward.route)
+                    }) {
+                        Icon(Icons.Filled.Send, contentDescription = "Forward", tint = Color.White)
                     }
                 }
 
