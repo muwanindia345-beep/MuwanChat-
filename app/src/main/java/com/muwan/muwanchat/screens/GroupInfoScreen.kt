@@ -364,6 +364,8 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
