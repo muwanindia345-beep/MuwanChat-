@@ -1352,7 +1352,10 @@ private fun GroupChatHeader(
             )
             Spacer(Modifier.width(10.dp))
             Column {
-                Text(groupName, color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    groupName, color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
                 val statusText = when {
                     typingUsernames.isNotEmpty() ->
                         if (typingUsernames.size == 1) "${typingUsernames[0]} is typing..."
