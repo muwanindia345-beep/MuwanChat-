@@ -161,8 +161,8 @@ fun ChatScreen(
     val listState = rememberLazyListState()
 
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
-    var fullscreenImage by remember { mutableStateOf<String?>(null) }
-    var fullscreenVideo by remember { mutableStateOf<String?>(null) }
+    var fullscreenImage by remember { mutableStateOf<ChatMessage?>(null) }
+    var fullscreenVideo by remember { mutableStateOf<ChatMessage?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaSheet by remember { mutableStateOf(false) }
     // ── Voice message recording state ──
@@ -724,8 +724,8 @@ fun ChatScreen(
                         isSelected = selectedMessageIds.contains(msg.id),
                         onTap = { toggleMessageSelection(msg.id) },
                         onSwipeReply = { replyTo = it },
-                        onImageTap = { url -> fullscreenImage = url },
-                        onVideoTap = { url -> fullscreenVideo = url },
+                        onImageTap = { _ -> fullscreenImage = msg },
+                        onVideoTap = { _ -> fullscreenVideo = msg },
                         onDocumentTap = { url, fileName, mimeType ->
                             scope.launch {
                                 DocumentOpener.openDocument(
@@ -879,12 +879,26 @@ fun ChatScreen(
         ComingSoonDialog(feature = feature, onDismiss = { comingSoonFeature = null })
     }
 
-    fullscreenImage?.let { url ->
-        FullscreenImageViewer(model = url, onDismiss = { fullscreenImage = null })
+    fullscreenImage?.let { mediaMsg ->
+        FullscreenImageViewer(
+            model = mediaMsg.mediaUrl ?: "",
+            onDismiss = { fullscreenImage = null },
+            onSendReply = { replyText ->
+                sendMessageWithId(UUID.randomUUID().toString(), replyText, nowIso(), isRetry = false, replyToId = mediaMsg.id)
+                fullscreenImage = null
+            }
+        )
     }
 
-    fullscreenVideo?.let { url ->
-        FullscreenVideoPlayer(url = url, onDismiss = { fullscreenVideo = null })
+    fullscreenVideo?.let { mediaMsg ->
+        FullscreenVideoPlayer(
+            url = mediaMsg.mediaUrl ?: "",
+            onDismiss = { fullscreenVideo = null },
+            onSendReply = { replyText ->
+                sendMessageWithId(UUID.randomUUID().toString(), replyText, nowIso(), isRetry = false, replyToId = mediaMsg.id)
+                fullscreenVideo = null
+            }
+        )
     }
 
     if (showReactionPicker) {
