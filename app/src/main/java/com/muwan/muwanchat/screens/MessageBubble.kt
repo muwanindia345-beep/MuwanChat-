@@ -580,7 +580,7 @@ fun MessageBubble(
                         .align(if (message.sent) Alignment.End else Alignment.Start)
                         .offset(
                             x = if (message.sent) (-6).dp else 6.dp,
-                            y = (-10).dp
+                            y = (-4).dp
                         )
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF2A2A45))
