@@ -28,6 +28,9 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.ChatRepository
+import com.muwan.muwanchat.data.MuwanChatDb
+import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.GroupData
 import com.muwan.muwanchat.network.GroupSettingsRequest
 import com.muwan.muwanchat.network.MuteRequest
@@ -54,6 +57,8 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
     var muted by remember { mutableStateOf(false) }
 
     val isAdmin = group?.admins?.contains(myUid) == true
+    val isOwner = group?.owner == myUid
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     suspend fun refreshGroup() {
         val token = AuthDataStore.getToken(context).first() ?: return
@@ -128,6 +133,29 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
                 Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
             }
             isBusy = false
+        }
+    }
+
+    fun deleteGroupPermanently() {
+        scope.launch {
+            isBusy = true
+            try {
+                val token = AuthDataStore.getToken(context).first() ?: return@launch
+                val res = RetrofitClient.chatApi.deleteGroup("Bearer $token", groupId)
+                if (res.isSuccessful) {
+                    val db = MuwanChatDb.get(context, myUid)
+                    ChatRepository.deleteChatsLocally(db, setOf(groupId))
+                    navController.navigate(Screen.ConversationList.route) {
+                        popUpTo(Screen.ConversationList.route) { inclusive = true }
+                    }
+                } else {
+                    Toast.makeText(context, "Group delete nahi hua", Toast.LENGTH_SHORT).show()
+                }
+            } catch (_: Exception) {
+                Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
+            }
+            isBusy = false
+            showDeleteConfirm = false
         }
     }
 
@@ -275,9 +303,50 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
                     onCheckedChange = { toggleMute(it) }
                 )
 
+                if (isOwner) {
+                    Spacer(Modifier.height(12.dp))
+                    SettingsSectionLabel("DANGER ZONE")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isBusy) { showDeleteConfirm = true }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.DeleteForever, contentDescription = null, tint = Color(0xFFFF3B30))
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text("Delete Group", color = Color(0xFFFF3B30), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Permanently deletes this group and all messages for everyone",
+                                color = Color(0xFF888888),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!isBusy) showDeleteConfirm = false },
+            title = { Text("Delete Group?") },
+            text = { Text("This permanently deletes \"${group?.name}\" and all its messages for every member. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { deleteGroupPermanently() }, enabled = !isBusy) {
+                    Text("Delete", color = Color(0xFFFF3B30))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }, enabled = !isBusy) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

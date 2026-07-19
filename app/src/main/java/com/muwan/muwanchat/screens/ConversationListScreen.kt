@@ -228,7 +228,7 @@ fun ConversationListScreen(navController: NavController) {
                     if (!event.selfLeave) {
                         db.conversationDao().markRemoved(
                             event.roomId,
-                            event.removedByUsername ?: "Admin"
+                            if (event.groupDeleted) "GROUP_DELETED" else (event.removedByUsername ?: "Admin")
                         )
                     }
                 }
@@ -531,6 +531,7 @@ fun ConversationRow(
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 when {
+                    conv.isRemoved && conv.removedByUsername == "GROUP_DELETED" -> "This group was deleted by the owner"
                     conv.isRemoved -> "You were removed from this group by @${conv.removedByUsername ?: "Admin"}"
                     isTyping -> "typing..."
                     else -> conv.lastMessage.ifBlank { "Say hi! 👋" }

@@ -91,13 +91,19 @@ sealed class SocketEvent {
     data class GroupRemoved(
         val roomId: String,
         val selfLeave: Boolean,
-        val removedByUsername: String?
+        val removedByUsername: String?,
+        val groupDeleted: Boolean = false
     ) : SocketEvent()
 
     // Dusre user ne "Accepted Users" screen se humein remove kiya --
     // uid us user ka hai jisne remove kiya. roomId consumer khud banata
     // hai (sorted myUid+uid), backend sirf uid bhejta hai.
     data class ConnectionRemoved(val uid: String) : SocketEvent()
+
+    // Group settings (onlyAdminsCanSend, membersCanAdd, etc.) admin ne change
+    // kiye -- poora group object backend bhejta hai lekin yahan sirf roomId
+    // nikalte hain, consumer REST se hi fresh GroupData fetch karta hai.
+    data class GroupUpdated(val roomId: String) : SocketEvent()
 }
 
 object AppSocketManager {
@@ -289,7 +295,8 @@ object AppSocketManager {
                     SocketEvent.GroupRemoved(
                         roomId = json.optString("roomId"),
                         selfLeave = json.optBoolean("selfLeave", true),
-                        removedByUsername = if (json.isNull("removedByUsername")) null else json.optString("removedByUsername")
+                        removedByUsername = if (json.isNull("removedByUsername")) null else json.optString("removedByUsername"),
+                        groupDeleted = json.optBoolean("groupDeleted", false)
                     )
                 )
             }
@@ -299,6 +306,14 @@ object AppSocketManager {
                 _events.tryEmit(
                     SocketEvent.ConnectionRemoved(uid = json.optString("uid"))
                 )
+            }
+
+            s.on("group_updated") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                val groupId = json.optJSONObject("group")?.optString("id")
+                if (!groupId.isNullOrBlank()) {
+                    _events.tryEmit(SocketEvent.GroupUpdated(groupId))
+                }
             }
 
             s.connect()
