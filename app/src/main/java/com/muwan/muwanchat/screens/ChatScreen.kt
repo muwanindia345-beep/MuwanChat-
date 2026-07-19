@@ -190,6 +190,17 @@ fun ChatScreen(
             }
         }
         scope.launch { db.messageDao().updateReactions(messageId, Gson().toJson(optimistic)) }
+        if (!hadSameEmoji) {
+            scope.launch {
+                db.conversationDao().updateLastMessage(
+                    roomId = roomId,
+                    lastMessage = "You reacted $emoji",
+                    lastTime = nowIso(),
+                    lastSenderUid = myUid,
+                    myUid = myUid
+                )
+            }
+        }
 
         scope.launch {
             try {
@@ -502,6 +513,17 @@ fun ChatScreen(
                 is SocketEvent.ReactionUpdate -> {
                     if (event.roomId == roomId) {
                         scope.launch { db.messageDao().updateReactions(event.id, event.reactionsJson) }
+                        if (event.added && event.emoji.isNotBlank()) {
+                            scope.launch {
+                                db.conversationDao().updateLastMessage(
+                                    roomId = roomId,
+                                    lastMessage = "$receiverUsername reacted ${event.emoji}",
+                                    lastTime = nowIso(),
+                                    lastSenderUid = receiverUid,
+                                    myUid = myUid
+                                )
+                            }
+                        }
                     }
                 }
                 is SocketEvent.MessagePreview -> {

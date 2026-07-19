@@ -43,7 +43,14 @@ sealed class SocketEvent {
     data class MessageEdited(val id: String, val roomId: String, val content: String) : SocketEvent()
 
     // Reaction add/remove ka result — reactionsJson poori updated list hai (server se aata hai)
-    data class ReactionUpdate(val id: String, val roomId: String, val reactionsJson: String) : SocketEvent()
+    data class ReactionUpdate(
+        val id: String,
+        val roomId: String,
+        val reactionsJson: String,
+        val reactorUid: String = "",
+        val emoji: String = "",
+        val added: Boolean = true
+    ) : SocketEvent()
 
     data class MessagePreview(
         val id: String,
@@ -212,7 +219,14 @@ object AppSocketManager {
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
                 val reactionsJson = json.optJSONArray("reactions")?.toString() ?: "[]"
                 _events.tryEmit(
-                    SocketEvent.ReactionUpdate(json.optString("id"), json.optString("room_id"), reactionsJson)
+                    SocketEvent.ReactionUpdate(
+                        id = json.optString("id"),
+                        roomId = json.optString("room_id"),
+                        reactionsJson = reactionsJson,
+                        reactorUid = json.optString("uid"),
+                        emoji = json.optString("emoji"),
+                        added = json.optBoolean("added", true)
+                    )
                 )
             }
 
