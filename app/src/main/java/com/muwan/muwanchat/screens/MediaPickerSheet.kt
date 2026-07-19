@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Videocam
@@ -30,11 +31,13 @@ fun MediaPickerSheet(
     onSelectVideo: () -> Unit,
     onSelectDocument: () -> Unit,
     onSelectMusic: () -> Unit,
-    onSelectCamera: () -> Unit
+    onSelectCamera: () -> Unit,
+    onSelectRecordVideo: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkHeader) {
         Column(modifier = Modifier.padding(bottom = 24.dp)) {
             MediaPickerOption(Icons.Filled.CameraAlt, "Camera") { onSelectCamera(); onDismiss() }
+            MediaPickerOption(Icons.Filled.FiberManualRecord, "Record Video") { onSelectRecordVideo(); onDismiss() }
             MediaPickerOption(Icons.Filled.Image, "Photo") { onSelectPhoto(); onDismiss() }
             MediaPickerOption(Icons.Filled.Videocam, "Video") { onSelectVideo(); onDismiss() }
             MediaPickerOption(Icons.Filled.Description, "Document") { onSelectDocument(); onDismiss() }

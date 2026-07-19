@@ -94,6 +94,12 @@ private fun createCameraCaptureUri(context: android.content.Context): Uri {
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
 }
 
+private fun createCameraVideoCaptureUri(context: android.content.Context): Uri {
+    val videosDir = File(context.cacheDir, "camera").apply { mkdirs() }
+    val videoFile = File(videosDir, "VID_${System.currentTimeMillis()}.mp4")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", videoFile)
+}
+
 private fun getFileName(context: android.content.Context, uri: Uri): String {
     var name = "file"
     context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -346,6 +352,29 @@ fun ChatScreen(
             cameraLauncher.launch(uri)
         } else {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    var cameraVideoUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
+        if (success) {
+            cameraVideoUri?.let { uri -> scope.launch { uploadVideoMessage(context, uri, myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+        }
+    }
+    val cameraVideoPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val uri = createCameraVideoCaptureUri(context)
+            cameraVideoUri = uri
+            cameraVideoLauncher.launch(uri)
+        }
+    }
+    fun launchVideoCamera() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            val uri = createCameraVideoCaptureUri(context)
+            cameraVideoUri = uri
+            cameraVideoLauncher.launch(uri)
+        } else {
+            cameraVideoPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
@@ -828,7 +857,8 @@ fun ChatScreen(
             onSelectVideo = { videoPicker.launch("video/*") },
             onSelectDocument = { docPicker.launch(arrayOf("*/*")) },
             onSelectMusic = { musicPicker.launch("audio/*") },
-            onSelectCamera = { launchCamera() }
+            onSelectCamera = { launchCamera() },
+            onSelectRecordVideo = { launchVideoCamera() }
         )
     }
 
