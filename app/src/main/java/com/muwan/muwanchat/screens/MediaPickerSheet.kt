@@ -3,6 +3,7 @@ package com.muwan.muwanchat.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MusicNote
@@ -28,10 +29,12 @@ fun MediaPickerSheet(
     onSelectPhoto: () -> Unit,
     onSelectVideo: () -> Unit,
     onSelectDocument: () -> Unit,
-    onSelectMusic: () -> Unit
+    onSelectMusic: () -> Unit,
+    onSelectCamera: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkHeader) {
         Column(modifier = Modifier.padding(bottom = 24.dp)) {
+            MediaPickerOption(Icons.Filled.CameraAlt, "Camera") { onSelectCamera(); onDismiss() }
             MediaPickerOption(Icons.Filled.Image, "Photo") { onSelectPhoto(); onDismiss() }
             MediaPickerOption(Icons.Filled.Videocam, "Video") { onSelectVideo(); onDismiss() }
             MediaPickerOption(Icons.Filled.Description, "Document") { onSelectDocument(); onDismiss() }

@@ -11,6 +11,7 @@ import android.util.Base64
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -83,9 +84,16 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.*
 
 // ─── Helpers: file info + image compression (upload se pehle) ─────────────
+private fun createCameraCaptureUri(context: android.content.Context): Uri {
+    val imagesDir = File(context.cacheDir, "camera").apply { mkdirs() }
+    val imageFile = File(imagesDir, "IMG_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
+}
+
 private fun getFileName(context: android.content.Context, uri: Uri): String {
     var name = "file"
     context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -316,6 +324,29 @@ fun ChatScreen(
 
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { scope.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db, displayType = "music") {} } }
+    }
+
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            cameraImageUri?.let { uri -> scope.launch { uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val uri = createCameraCaptureUri(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        }
+    }
+    fun launchCamera() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            val uri = createCameraCaptureUri(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     fun sendMessageWithId(
@@ -796,7 +827,8 @@ fun ChatScreen(
             onSelectPhoto = { photoPicker.launch("image/*") },
             onSelectVideo = { videoPicker.launch("video/*") },
             onSelectDocument = { docPicker.launch(arrayOf("*/*")) },
-            onSelectMusic = { musicPicker.launch("audio/*") }
+            onSelectMusic = { musicPicker.launch("audio/*") },
+            onSelectCamera = { launchCamera() }
         )
     }
 

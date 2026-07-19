@@ -11,6 +11,7 @@ import android.util.Base64
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -88,10 +89,17 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.*
 
 // ─── Helpers: file info + image compression (ChatScreen.kt se duplicate —
 // wo private hain us file mein, yahan se access nahi ho sakte) ─────────────
+private fun createGroupCameraCaptureUri(context: android.content.Context): Uri {
+    val imagesDir = File(context.cacheDir, "camera").apply { mkdirs() }
+    val imageFile = File(imagesDir, "IMG_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
+}
+
 private fun groupChatGetFileName(context: android.content.Context, uri: Uri): String {
     var name = "file"
     context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -524,6 +532,29 @@ fun GroupChatScreen(
 
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "audio", myToken, groupId, myUid, groupId, groupName, db, displayType = "music") {} } }
+    }
+
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            cameraImageUri?.let { uri -> scope.launch { uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db) {} } }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val uri = createGroupCameraCaptureUri(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        }
+    }
+    fun launchCamera() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            val uri = createGroupCameraCaptureUri(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     // ── Send logic — receiverUid ki jagah room_id-based group send ──
@@ -997,7 +1028,8 @@ Column(
             onSelectPhoto = { photoPicker.launch("image/*") },
             onSelectVideo = { videoPicker.launch("video/*") },
             onSelectDocument = { docPicker.launch(arrayOf("*/*")) },
-            onSelectMusic = { musicPicker.launch("audio/*") }
+            onSelectMusic = { musicPicker.launch("audio/*") },
+            onSelectCamera = { launchCamera() }
         )
     }
 
