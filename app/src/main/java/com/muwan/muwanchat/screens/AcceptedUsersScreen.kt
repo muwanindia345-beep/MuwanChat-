@@ -24,6 +24,7 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.util.friendlyErrorMessage
 import com.muwan.muwanchat.network.UserItem
@@ -72,6 +73,9 @@ fun AcceptedUsersScreen(navController: NavController) {
                 val res = RetrofitClient.requestsApi.removeConnection("Bearer $token", uid)
                 if (res.isSuccessful) {
                     users = users.filter { it.uid != uid }
+                    val myUid = AuthDataStore.getUidBlocking(context)
+                    val roomId = listOf(myUid, uid).sorted().joinToString("_")
+                    MuwanChatDb.get(context, myUid).conversationDao().deleteByRoom(roomId)
                     Toast.makeText(context, "User removed", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(context, "Remove nahi ho paya", Toast.LENGTH_SHORT).show()

@@ -232,6 +232,13 @@ fun ConversationListScreen(navController: NavController) {
                         )
                     }
                 }
+                is SocketEvent.ConnectionRemoved -> {
+                    // Dusre user ne humein "Accepted Users" se permanently remove
+                    // kiya -- humari taraf se bhi conversation + poori chat history
+                    // turant local se saaf, list se live disappear ho jaayegi.
+                    val roomId = listOf(myUid, event.uid).sorted().joinToString("_")
+                    ChatRepository.deleteChatsLocally(db, setOf(roomId))
+                }
                 is SocketEvent.RequestAccepted -> {
                     // Chahe humne accept kiya ho ya doosre ne — dono taraf superfast
                     // naya conversation list mein jud jaata hai, bina full refetch ke

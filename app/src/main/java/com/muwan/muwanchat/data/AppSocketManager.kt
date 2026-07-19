@@ -86,6 +86,11 @@ sealed class SocketEvent {
         val selfLeave: Boolean,
         val removedByUsername: String?
     ) : SocketEvent()
+
+    // Dusre user ne "Accepted Users" screen se humein remove kiya --
+    // uid us user ka hai jisne remove kiya. roomId consumer khud banata
+    // hai (sorted myUid+uid), backend sirf uid bhejta hai.
+    data class ConnectionRemoved(val uid: String) : SocketEvent()
 }
 
 object AppSocketManager {
@@ -272,6 +277,13 @@ object AppSocketManager {
                         selfLeave = json.optBoolean("selfLeave", true),
                         removedByUsername = if (json.isNull("removedByUsername")) null else json.optString("removedByUsername")
                     )
+                )
+            }
+
+            s.on("connection_removed") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.ConnectionRemoved(uid = json.optString("uid"))
                 )
             }
 
