@@ -190,8 +190,8 @@ fun FullscreenImageViewer(
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(Color(0xCC000000))
+                        .then(if (isReplying) Modifier.fillMaxWidth() else Modifier.wrapContentWidth())
+                        .navigationBarsPadding()
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -230,9 +230,9 @@ fun FullscreenImageViewer(
                     } else {
                         Row(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .wrapContentWidth()
                                 .clip(RoundedCornerShape(22.dp))
-                                .background(Color(0x33FFFFFF))
+                                .background(Color(0xCC2A2A2A))
                                 .clickable { isReplying = true }
                                 .padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
