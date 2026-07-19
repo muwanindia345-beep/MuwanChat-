@@ -25,6 +25,7 @@ import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import com.muwan.muwanchat.network.UserItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -58,7 +59,7 @@ fun AcceptedUsersScreen(navController: NavController) {
         try {
             refresh()
         } catch (e: Exception) {
-            errorMsg = e.message ?: "Network error"
+            errorMsg = friendlyErrorMessage(e)
         }
         isLoading = false
     }

@@ -25,6 +25,7 @@ import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.network.JoinRequestEntry
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -55,7 +56,7 @@ fun ApprovalRequestsScreen(navController: NavController, groupId: String) {
         try {
             refresh()
         } catch (e: Exception) {
-            errorMsg = e.message ?: "Network error"
+            errorMsg = friendlyErrorMessage(e)
         }
         isLoading = false
     }

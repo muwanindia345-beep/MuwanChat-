@@ -24,6 +24,7 @@ import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import com.muwan.muwanchat.network.UserItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -50,7 +51,7 @@ fun SearchMembersForGroupScreen(navController: NavController) {
                     users = (res.body()?.users ?: emptyList()).filter { it.uid != myUid }
                 } else errorMsg = "Couldn't load users"
             } catch (e: Exception) {
-                errorMsg = e.message ?: "Error"
+                errorMsg = friendlyErrorMessage(e)
             }
             isLoading = false
         }
@@ -80,7 +81,7 @@ fun SearchMembersForGroupScreen(navController: NavController) {
                     users = (res.body()?.users ?: emptyList()).filter { it.uid != myUid }
                 } else errorMsg = "Search failed"
             } catch (e: Exception) {
-                errorMsg = e.message ?: "Error"
+                errorMsg = friendlyErrorMessage(e)
             }
             isLoading = false
         }

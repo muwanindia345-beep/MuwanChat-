@@ -32,6 +32,7 @@ import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import com.muwan.muwanchat.network.LoginRequest
 import com.muwan.muwanchat.network.PhoneSendRequest
 import kotlinx.coroutines.launch
@@ -80,7 +81,7 @@ fun LoginScreen(navController: NavController) {
                     errorMsg = res.body()?.error ?: "Login failed"
                 }
             } catch (e: Exception) {
-                errorMsg = "Error: ${e.message}"
+                errorMsg = friendlyErrorMessage(e)
             }
             isLoading = false
         }
@@ -250,7 +251,7 @@ fun PhoneLoginSection(navController: NavController) {
                     errorMsg = res.body()?.error ?: "Failed to send OTP"
                 }
             } catch (e: Exception) {
-                errorMsg = "Error: ${e.message}"
+                errorMsg = friendlyErrorMessage(e)
             }
             isLoading = false
         }

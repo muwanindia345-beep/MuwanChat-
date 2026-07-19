@@ -34,6 +34,7 @@ import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.RegisterRequest
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import kotlinx.coroutines.launch
 
 private val ALLOWED_EMAIL_DOMAINS = setOf("gmail.com", "outlook.com", "hotmail.com", "yahoo.com")
@@ -142,7 +143,7 @@ fun RegisterScreen(navController: NavController) {
                     errorMsg = res.body()?.error ?: "Registration failed"
                 }
             } catch (e: Exception) {
-                errorMsg = "Network error: ${e.message}"
+                errorMsg = friendlyErrorMessage(e)
             }
             isLoading = false
         }

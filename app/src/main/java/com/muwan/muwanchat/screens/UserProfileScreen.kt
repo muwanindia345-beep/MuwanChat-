@@ -23,6 +23,7 @@ import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import com.muwan.muwanchat.network.SendRequestBody
 import com.muwan.muwanchat.network.UserItem
 import kotlinx.coroutines.flow.first
@@ -54,7 +55,7 @@ fun UserProfileScreen(navController: NavController, uid: String) {
             val statusRes = RetrofitClient.usersApi.getStatuses("Bearer $token", uid)
             if (statusRes.isSuccessful) status = statusRes.body()?.statuses?.get(uid) ?: "none"
         } catch (e: Exception) {
-            errorMsg = e.message ?: "Network error"
+            errorMsg = friendlyErrorMessage(e)
         }
         isLoading = false
     }
@@ -68,7 +69,7 @@ fun UserProfileScreen(navController: NavController, uid: String) {
                 if (res.isSuccessful) status = "sent"
                 else errorMsg = res.body()?.error ?: "Failed"
             } catch (e: Exception) {
-                errorMsg = e.message ?: "Error"
+                errorMsg = friendlyErrorMessage(e)
             }
             isSendingRequest = false
         }

@@ -23,6 +23,7 @@ import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import com.muwan.muwanchat.network.UserItem
 import kotlinx.coroutines.flow.first
 
@@ -54,7 +55,7 @@ fun AddFromContactsScreen(navController: NavController) {
                 }
             }
         } catch (e: Exception) {
-            errorMsg = e.message ?: "Error"
+            errorMsg = friendlyErrorMessage(e)
         }
         isLoading = false
     }

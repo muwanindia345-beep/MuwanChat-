@@ -27,6 +27,7 @@ import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.PhoneSendRequest
 import com.muwan.muwanchat.network.PhoneVerifyRequest
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -163,7 +164,7 @@ fun PhoneOTPScreen(navController: NavController, phone: String) {
                                 errorMsg = res.body()?.error ?: "Invalid OTP"
                             }
                         } catch (e: Exception) {
-                            errorMsg = "Network error: ${e.message}"
+                            errorMsg = friendlyErrorMessage(e)
                         }
                         isLoading = false
                     }
