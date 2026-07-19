@@ -28,6 +28,7 @@ import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendRequestBody
 import com.muwan.muwanchat.network.UserItem
+import com.muwan.muwanchat.util.friendlyErrorMessage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -76,7 +77,7 @@ fun UserSearchScreen(navController: NavController) {
                     refreshStatuses(users)
                 } else errorMsg = "Couldn't load users"
             } catch (e: Exception) {
-                errorMsg = e.message ?: "Error"
+                errorMsg = friendlyErrorMessage(e)
             }
             isLoading = false
         }
@@ -107,7 +108,7 @@ fun UserSearchScreen(navController: NavController) {
                     refreshStatuses(users)
                 } else errorMsg = "Search failed"
             } catch (e: Exception) {
-                errorMsg = e.message ?: "Error"
+                errorMsg = friendlyErrorMessage(e)
             }
             isLoading = false
         }
@@ -124,7 +125,7 @@ fun UserSearchScreen(navController: NavController) {
                 if (res.isSuccessful) statusMap[receiverUid] = "sent"
                 else errorMsg = res.body()?.error ?: "Failed"
             } catch (e: Exception) {
-                errorMsg = e.message ?: "Error"
+                errorMsg = friendlyErrorMessage(e)
             }
         }
     }
