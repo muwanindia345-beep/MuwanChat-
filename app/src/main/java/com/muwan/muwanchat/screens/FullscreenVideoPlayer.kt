@@ -6,23 +6,34 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Reply
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,10 +41,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -45,25 +62,31 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
+import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.data.MediaSaver
 import com.muwan.muwanchat.data.VideoCacheProvider
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun FullscreenVideoPlayer(url: String, onDismiss: () -> Unit) {
+fun FullscreenVideoPlayer(
+    url: String,
+    onDismiss: () -> Unit,
+    onSendReply: ((String) -> Unit)? = null
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isSaving by remember { mutableStateOf(false) }
 
-    // Player load/error state -- pehle koi feedback nahi tha, ab
-    // corrupt/unsupported-codec/network-drop cases pe user ko pata chalega
     var isBuffering by remember { mutableStateOf(true) }
     var playbackError by remember { mutableStateOf<String?>(null) }
 
+    var isReplying by remember { mutableStateOf(false) }
+    var replyText by remember { mutableStateOf("") }
+    val replyFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     fun buildPlayer(ctx: android.content.Context): ExoPlayer {
-        // Cache-aware datasource — pehli baar network se video aata hai aur disk pe
-        // cache ho jata hai, dobara wahi video play karo to seedha disk se milega
-        // (offline bhi chalega, data bhi kam lagega)
         val cacheDataSourceFactory = CacheDataSource.Factory()
             .setCache(VideoCacheProvider.get(ctx))
             .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory())
@@ -114,7 +137,6 @@ fun FullscreenVideoPlayer(url: String, onDismiss: () -> Unit) {
         }
     }
 
-    // Android 9 aur neeche ke liye hi runtime permission chahiye — 10+ pe scoped storage khud handle karta hai
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) saveVideo() else Toast.makeText(context, "Storage permission needed to save", Toast.LENGTH_SHORT).show()
     }
@@ -127,7 +149,25 @@ fun FullscreenVideoPlayer(url: String, onDismiss: () -> Unit) {
         }
     }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    LaunchedEffect(isReplying) {
+        if (isReplying) {
+            delay(120)
+            replyFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = {
+            if (isReplying) {
+                isReplying = false
+                replyText = ""
+            } else {
+                onDismiss()
+            }
+        },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             AndroidView(
                 factory = { ctx ->
@@ -184,6 +224,66 @@ fun FullscreenVideoPlayer(url: String, onDismiss: () -> Unit) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Icon(Icons.Filled.Download, contentDescription = "Save to gallery", tint = Color.White)
+                }
+            }
+
+            if (onSendReply != null) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .background(Color(0xCC000000))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .padding(bottom = 64.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isReplying) {
+                        OutlinedTextField(
+                            value = replyText,
+                            onValueChange = { replyText = it },
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(replyFocusRequester),
+                            placeholder = { Text("Reply...", color = Color(0xFF888888)) },
+                            textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = DarkAccent,
+                                unfocusedBorderColor = Color(0xFF555555),
+                                cursorColor = DarkAccent
+                            ),
+                            maxLines = 3
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            onClick = {
+                                val text = replyText.trim()
+                                if (text.isNotBlank()) {
+                                    onSendReply(text)
+                                    replyText = ""
+                                    isReplying = false
+                                }
+                            },
+                            modifier = Modifier
+                                .background(DarkAccent, CircleShape)
+                                .size(42.dp)
+                        ) {
+                            Icon(Icons.Filled.Send, contentDescription = "Send reply", tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(Color(0x33FFFFFF))
+                                .clickable { isReplying = true }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.Reply, contentDescription = "Reply", tint = Color.White, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Reply...", color = Color.White, fontSize = 14.sp)
+                        }
+                    }
                 }
             }
         }
