@@ -1,22 +1,12 @@
 name: MuwanChat Release Build
 
 on:
-  workflow_dispatch:
-    inputs:
-      version_tag:
-        description: 'Release tag (e.g. v2.0.0)'
-        required: true
-        default: 'v2.0.0'
-      changelog:
-        description: 'Changelog for this release'
-        required: true
-        default: 'Bug fixes and improvements'
-      version_code:
-        description: 'versionCode (match build.gradle.kts)'
-        required: true
+  push:
+    branches: [ main ]
 
 jobs:
   build-release:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,6 +14,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
@@ -37,14 +29,29 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Update version in build.gradle.kts
+      - name: Compute next version
+        id: ver
         run: |
-          VERSION_NAME="${{ github.event.inputs.version_tag }}"
-          VERSION_NAME="${VERSION_NAME#v}"
-          sed -i "s/versionCode = [0-9]*/versionCode = ${{ github.event.inputs.version_code }}/" app/build.gradle.kts
-          sed -i "s/versionName = \".*\"/versionName = \"$VERSION_NAME\"/" app/build.gradle.kts
-          echo "Updated to versionCode=${{ github.event.inputs.version_code }}, versionName=$VERSION_NAME"
+          CURRENT_CODE=$(grep -oE 'versionCode = [0-9]+' app/build.gradle.kts | grep -oE '[0-9]+')
+          NEW_CODE=$((CURRENT_CODE + 1))
+          NEW_NAME="2.$((NEW_CODE - 1)).0"
+          echo "new_code=$NEW_CODE" >> "$GITHUB_OUTPUT"
+          echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
+          echo "Bumping versionCode $CURRENT_CODE -> $NEW_CODE, versionName -> $NEW_NAME"
+
+      - name: Update build.gradle.kts
+        run: |
+          sed -i "s/versionCode = [0-9]*/versionCode = ${{ steps.ver.outputs.new_code }}/" app/build.gradle.kts
+          sed -i "s/versionName = \".*\"/versionName = \"${{ steps.ver.outputs.new_name }}\"/" app/build.gradle.kts
           grep -E "versionCode|versionName" app/build.gradle.kts
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/build.gradle.kts
+          git commit -m "chore: bump version to ${{ steps.ver.outputs.new_name }} [skip ci]"
+          git push
 
       - name: Create google-services.json
         run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
@@ -68,7 +75,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version_tag }}
-          name: MuwanChat ${{ github.event.inputs.version_tag }}
-          body: "VERSION_CODE:${{ github.event.inputs.version_code }}\n${{ github.event.inputs.changelog }}"
+          tag_name: v${{ steps.ver.outputs.new_name }}
+          name: MuwanChat v${{ steps.ver.outputs.new_name }}
+          body: "VERSION_CODE:${{ steps.ver.outputs.new_code }}\n${{ github.event.head_commit.message }}"
           files: app/build/outputs/apk/release/app-release.apk
