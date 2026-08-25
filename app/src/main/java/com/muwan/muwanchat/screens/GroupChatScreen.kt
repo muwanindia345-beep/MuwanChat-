@@ -1353,7 +1353,7 @@ private fun GroupChatHeader(
             Spacer(Modifier.width(10.dp))
             Column {
                 Text(
-                    groupName, color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    groupName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
                 val statusText = when {
@@ -1374,15 +1374,15 @@ private fun GroupChatHeader(
         Row {
             IconButton(onClick = onVideoCall) {
                 Icon(androidx.compose.material.icons.Icons.Filled.VideoCall, contentDescription = "Video",
-                    tint = DarkAccent, modifier = Modifier.size(22.dp))
+                    tint = Color.White, modifier = Modifier.size(22.dp))
             }
             IconButton(onClick = onVoiceCall) {
                 Icon(androidx.compose.material.icons.Icons.Filled.Call, contentDescription = "Call",
-                    tint = DarkAccent, modifier = Modifier.size(22.dp))
+                    tint = Color.White, modifier = Modifier.size(22.dp))
             }
             IconButton(onClick = onMenuClick) {
                 Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, contentDescription = "Menu",
-                    tint = DarkAccent, modifier = Modifier.size(22.dp))
+                    tint = Color.White, modifier = Modifier.size(22.dp))
             }
         }
     }

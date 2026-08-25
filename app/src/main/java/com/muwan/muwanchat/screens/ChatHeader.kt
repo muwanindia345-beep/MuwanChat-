@@ -65,7 +65,7 @@ fun ChatHeader(
             Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
                     receiverUsername,
-                    color = DarkAccent,
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     maxLines = 1,
@@ -93,16 +93,16 @@ fun ChatHeader(
         Row {
             IconButton(onClick = onVideoCall) {
                 Icon(Icons.Filled.VideoCall, contentDescription = "Video",
-                    tint = DarkAccent, modifier = Modifier.size(22.dp))
+                    tint = Color.White, modifier = Modifier.size(22.dp))
             }
             IconButton(onClick = onVoiceCall) {
                 Icon(Icons.Filled.Call, contentDescription = "Call",
-                    tint = DarkAccent, modifier = Modifier.size(22.dp))
+                    tint = Color.White, modifier = Modifier.size(22.dp))
             }
             Box {
                 IconButton(onClick = onMenuClick) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "Menu",
-                        tint = DarkAccent, modifier = Modifier.size(22.dp))
+                        tint = Color.White, modifier = Modifier.size(22.dp))
                 }
                 DropdownMenu(
                     expanded = showMenu,
