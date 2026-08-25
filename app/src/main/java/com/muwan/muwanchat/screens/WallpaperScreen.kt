@@ -308,7 +308,12 @@ fun WallpaperPreviewBackground(entity: ChatWallpaperEntity?) {
             )
         }
         else -> {
-            Box(Modifier.fillMaxSize().background(DarkBg))
+            AsyncImage(
+                model = com.muwan.muwanchat.R.drawable.default_chat_wallpaper,
+                contentDescription = "Default wallpaper",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
         }
     }
 }

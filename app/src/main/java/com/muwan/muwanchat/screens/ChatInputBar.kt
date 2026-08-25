@@ -46,7 +46,7 @@ fun ChatInputBar(
                 .weight(1f)
                 .heightIn(min = 44.dp, max = 120.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(DarkHeader)
+                .background(DarkSheet)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkSheet
 
 @Composable
 fun ChatHeader(
@@ -107,7 +108,7 @@ fun ChatHeader(
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = onMenuDismiss,
-                    modifier = Modifier.background(DarkHeader)
+                    modifier = Modifier.background(DarkSheet)
                 ) {
                     DropdownMenuItem(
                         text = { Text("Set Wallpaper", color = Color.White) },

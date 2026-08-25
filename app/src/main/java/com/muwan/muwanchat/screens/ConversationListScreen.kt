@@ -33,6 +33,7 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkSheet
 import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatRepository
@@ -405,7 +406,7 @@ fun ConversationListScreen(navController: NavController) {
                             DropdownMenu(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false },
-                                modifier = Modifier.background(DarkHeader)
+                                modifier = Modifier.background(DarkSheet)
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("Settings", color = Color.White) },
