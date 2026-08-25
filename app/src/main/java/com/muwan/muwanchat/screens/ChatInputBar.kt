@@ -20,7 +20,7 @@ import androidx.core.widget.addTextChangedListener
 import android.net.Uri
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
-import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkSheet
 
 @Composable
 fun ChatInputBar(

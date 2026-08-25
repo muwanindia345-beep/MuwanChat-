@@ -305,7 +305,7 @@ fun ConversationListScreen(navController: NavController) {
     }
 
     if (showFabSheet) {
-        ModalBottomSheet(onDismissRequest = { showFabSheet = false }, containerColor = DarkHeader) {
+        ModalBottomSheet(onDismissRequest = { showFabSheet = false }, containerColor = DarkSheet) {
             Column(modifier = Modifier.padding(bottom = 24.dp)) {
                 FabSheetOption(Icons.Filled.Search, "Search") {
                     showFabSheet = false
