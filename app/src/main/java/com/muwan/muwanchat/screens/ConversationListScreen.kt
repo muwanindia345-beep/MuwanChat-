@@ -398,10 +398,23 @@ fun ConversationListScreen(navController: NavController) {
                                 Icon(Icons.Filled.Notifications, contentDescription = "Requests", tint = DarkAccent)
                             }
                         }
-                        IconButton(onClick = {
-                            navController.navigate(Screen.Settings.route)
-                        }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "Settings", tint = DarkAccent)
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More Options", tint = DarkAccent)
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                containerColor = DarkHeader
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Settings", color = Color.White) },
+                                    onClick = {
+                                        showMenu = false
+                                        navController.navigate(Screen.Settings.route)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
