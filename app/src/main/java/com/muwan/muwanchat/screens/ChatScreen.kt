@@ -690,19 +690,15 @@ fun ChatScreen(
                 onVideoCall = { comingSoonFeature = "📹 Video Call" },
                 onVoiceCall = { comingSoonFeature = "📞 Voice Call" },
                 onMenuClick = { showMenuSheet = true },
-                onAvatarClick = {
-                    AvatarViewerSelection.set(conversationEntity?.avatar, receiverUsername)
-                    navController.navigate(com.muwan.muwanchat.navigation.Screen.ViewAvatar.route)
-                }
-            )
-        }
-
-        if (showMenuSheet) {
-            ChatWallpaperSheet(
-                onDismiss = { showMenuSheet = false },
+                showMenu = showMenuSheet,
+                onMenuDismiss = { showMenuSheet = false },
                 onSetWallpaper = {
                     showMenuSheet = false
                     navController.navigate(com.muwan.muwanchat.navigation.Screen.Wallpaper.createRoute(roomId))
+                },
+                onAvatarClick = {
+                    AvatarViewerSelection.set(conversationEntity?.avatar, receiverUsername)
+                    navController.navigate(com.muwan.muwanchat.navigation.Screen.ViewAvatar.route)
                 }
             )
         }

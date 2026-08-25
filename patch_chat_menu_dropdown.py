@@ -1,4 +1,19 @@
-package com.muwan.muwanchat.screens
+import os
+import sys
+
+def find_file(name):
+    for root, dirs, files in os.walk("."):
+        if name in files:
+            return os.path.join(root, name)
+    return None
+
+# ---------- 1. ChatHeader.kt: pura overwrite (chhoti file, structure same) ----------
+header_path = find_file("ChatHeader.kt")
+if not header_path:
+    print("[-] ChatHeader.kt nahi mili!")
+    sys.exit(1)
+
+header_content = '''package com.muwan.muwanchat.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -124,3 +139,78 @@ fun ChatHeader(
         }
     }
 }
+'''
+
+with open(header_path, "w", encoding="utf-8") as f:
+    f.write(header_content)
+print(f"[+] ChatHeader.kt update ho gayi: {header_path}")
+
+# ---------- 2. ChatScreen.kt: sirf targeted str_replace (bada file, kuch aur nahi chhedna) ----------
+screen_path = find_file("ChatScreen.kt")
+if not screen_path:
+    print("[-] ChatScreen.kt nahi mili!")
+    sys.exit(1)
+
+with open(screen_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+old_block = """            ChatHeader(
+                receiverUsername = receiverUsername,
+                isOnline = isReceiverOnline,
+                isTyping = isReceiverTyping,
+                avatarBase64 = conversationEntity?.avatar,
+                onBack = { navController.popBackStack() },
+                onVideoCall = { comingSoonFeature = "\U0001F4F9 Video Call" },
+                onVoiceCall = { comingSoonFeature = "\U0001F4DE Voice Call" },
+                onMenuClick = { showMenuSheet = true },
+                onAvatarClick = {
+                    AvatarViewerSelection.set(conversationEntity?.avatar, receiverUsername)
+                    navController.navigate(com.muwan.muwanchat.navigation.Screen.ViewAvatar.route)
+                }
+            )
+        }
+
+        if (showMenuSheet) {
+            ChatWallpaperSheet(
+                onDismiss = { showMenuSheet = false },
+                onSetWallpaper = {
+                    showMenuSheet = false
+                    navController.navigate(com.muwan.muwanchat.navigation.Screen.Wallpaper.createRoute(roomId))
+                }
+            )
+        }"""
+
+new_block = """            ChatHeader(
+                receiverUsername = receiverUsername,
+                isOnline = isReceiverOnline,
+                isTyping = isReceiverTyping,
+                avatarBase64 = conversationEntity?.avatar,
+                onBack = { navController.popBackStack() },
+                onVideoCall = { comingSoonFeature = "\U0001F4F9 Video Call" },
+                onVoiceCall = { comingSoonFeature = "\U0001F4DE Voice Call" },
+                onMenuClick = { showMenuSheet = true },
+                showMenu = showMenuSheet,
+                onMenuDismiss = { showMenuSheet = false },
+                onSetWallpaper = {
+                    showMenuSheet = false
+                    navController.navigate(com.muwan.muwanchat.navigation.Screen.Wallpaper.createRoute(roomId))
+                },
+                onAvatarClick = {
+                    AvatarViewerSelection.set(conversationEntity?.avatar, receiverUsername)
+                    navController.navigate(com.muwan.muwanchat.navigation.Screen.ViewAvatar.route)
+                }
+            )
+        }"""
+
+if old_block in content:
+    content = content.replace(old_block, new_block)
+    with open(screen_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"[+] ChatScreen.kt update ho gayi: {screen_path}")
+    print("[+] Chat screen ka 3-dot ab dropdown menu kholega (bottom sheet ki jagah)")
+elif "showMenu = showMenuSheet" in content:
+    print("[*] Patch pehle se hi applied lag raha hai, kuch nahi kiya.")
+else:
+    print("[-] Old block match nahi hua — file already modified/different hai.")
+    print("    Manually check karo ya mujhe current ChatScreen.kt ka relevant hissa bhejo.")
+    sys.exit(1)
