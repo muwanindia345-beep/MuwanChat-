@@ -381,12 +381,12 @@ fun ConversationListScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("MuwanChat", color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    Text("MuwanChat", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                     Row {
                         IconButton(onClick = {
                             navController.navigate(Screen.Profile.createRoute("edit"))
                         }) {
-                            Icon(Icons.Filled.Person, contentDescription = "Profile", tint = DarkAccent)
+                            Icon(Icons.Filled.Person, contentDescription = "Profile", tint = Color.White)
                         }
                         BadgedBox(badge = {
                             if (incomingCount > 0) Badge { Text("$incomingCount") }
@@ -395,12 +395,12 @@ fun ConversationListScreen(navController: NavController) {
                                 incomingCount = 0
                                 navController.navigate(Screen.Requests.route)
                             }) {
-                                Icon(Icons.Filled.Notifications, contentDescription = "Requests", tint = DarkAccent)
+                                Icon(Icons.Filled.Notifications, contentDescription = "Requests", tint = Color.White)
                             }
                         }
                         Box {
                             IconButton(onClick = { showMenu = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "More Options", tint = DarkAccent)
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More Options", tint = Color.White)
                             }
                             DropdownMenu(
                                 expanded = showMenu,
