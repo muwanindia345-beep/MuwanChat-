@@ -20,8 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.muwan.muwanchat.DarkAccent
-import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +33,7 @@ fun MediaPickerSheet(
     onSelectCamera: () -> Unit,
     onSelectRecordVideo: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkHeader) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkSheet) {
         Column(modifier = Modifier.padding(bottom = 24.dp)) {
             MediaPickerOption(Icons.Filled.CameraAlt, "Camera") { onSelectCamera(); onDismiss() }
             MediaPickerOption(Icons.Filled.FiberManualRecord, "Record Video") { onSelectRecordVideo(); onDismiss() }
@@ -55,7 +54,7 @@ private fun MediaPickerOption(icon: ImageVector, label: String, onClick: () -> U
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = label, tint = DarkAccent, modifier = Modifier.size(24.dp))
+        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(16.dp))
         Text(label, color = Color.White, fontSize = 16.sp)
     }
