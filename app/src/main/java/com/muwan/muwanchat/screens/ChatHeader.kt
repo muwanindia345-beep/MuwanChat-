@@ -107,7 +107,7 @@ fun ChatHeader(
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = onMenuDismiss,
-                    containerColor = DarkHeader
+                    modifier = Modifier.background(DarkHeader)
                 ) {
                     DropdownMenuItem(
                         text = { Text("Set Wallpaper", color = Color.White) },
