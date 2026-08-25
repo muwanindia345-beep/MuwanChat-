@@ -405,7 +405,7 @@ fun ConversationListScreen(navController: NavController) {
                             DropdownMenu(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false },
-                                containerColor = DarkHeader
+                                modifier = Modifier.background(DarkHeader)
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("Settings", color = Color.White) },
