@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,6 +40,7 @@ fun ChatHeader(
     showMenu: Boolean = false,
     onMenuDismiss: () -> Unit = {},
     onSetWallpaper: () -> Unit = {},
+    onMessageTheme: () -> Unit = {},
     onAvatarClick: (() -> Unit)? = null
 ) {
     Row(
@@ -121,6 +123,16 @@ fun ChatHeader(
                         onClick = {
                             onMenuDismiss()
                             onSetWallpaper()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Message Theme", color = Color.White) },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Palette, contentDescription = null, tint = DarkAccent)
+                        },
+                        onClick = {
+                            onMenuDismiss()
+                            onMessageTheme()
                         }
                     )
                 }

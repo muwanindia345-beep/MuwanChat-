@@ -697,6 +697,10 @@ fun ChatScreen(
                     showMenuSheet = false
                     navController.navigate(com.muwan.muwanchat.navigation.Screen.Wallpaper.createRoute(roomId))
                 },
+                onMessageTheme = {
+                    showMenuSheet = false
+                    comingSoonFeature = "🎨 Message Theme"
+                },
                 onAvatarClick = {
                     navController.navigate(
                         com.muwan.muwanchat.navigation.Screen.UserProfile.createRoute(receiverUid)

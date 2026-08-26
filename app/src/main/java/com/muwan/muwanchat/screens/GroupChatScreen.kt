@@ -60,6 +60,10 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Wallpaper
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
@@ -898,16 +902,16 @@ Column(
                 },
                 onVideoCall = { comingSoonFeature = "📹 Group Video Call" },
                 onVoiceCall = { comingSoonFeature = "📞 Group Voice Call" },
-                onMenuClick = { showMenuSheet = true }
-            )
-        }
-
-        if (showMenuSheet) {
-            ChatWallpaperSheet(
-                onDismiss = { showMenuSheet = false },
+                onMenuClick = { showMenuSheet = true },
+                showMenu = showMenuSheet,
+                onMenuDismiss = { showMenuSheet = false },
                 onSetWallpaper = {
                     showMenuSheet = false
                     navController.navigate(com.muwan.muwanchat.navigation.Screen.Wallpaper.createRoute(groupId))
+                },
+                onMessageTheme = {
+                    showMenuSheet = false
+                    comingSoonFeature = "🎨 Message Theme"
                 }
             )
         }
@@ -1329,7 +1333,11 @@ private fun GroupChatHeader(
     onHeaderTap: () -> Unit,
     onVideoCall: () -> Unit,
     onVoiceCall: () -> Unit,
-    onMenuClick: () -> Unit = {}
+    onMenuClick: () -> Unit = {},
+    showMenu: Boolean = false,
+    onMenuDismiss: () -> Unit = {},
+    onSetWallpaper: () -> Unit = {},
+    onMessageTheme: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -1384,9 +1392,37 @@ private fun GroupChatHeader(
                 Icon(androidx.compose.material.icons.Icons.Filled.Call, contentDescription = "Call",
                     tint = Color.White, modifier = Modifier.size(22.dp))
             }
-            IconButton(onClick = onMenuClick) {
-                Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, contentDescription = "Menu",
-                    tint = Color.White, modifier = Modifier.size(22.dp))
+            Box {
+                IconButton(onClick = onMenuClick) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, contentDescription = "Menu",
+                        tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = onMenuDismiss,
+                    modifier = Modifier.background(DarkSheet)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Set Wallpaper", color = Color.White) },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Wallpaper, contentDescription = null, tint = DarkAccent)
+                        },
+                        onClick = {
+                            onMenuDismiss()
+                            onSetWallpaper()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Message Theme", color = Color.White) },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Palette, contentDescription = null, tint = DarkAccent)
+                        },
+                        onClick = {
+                            onMenuDismiss()
+                            onMessageTheme()
+                        }
+                    )
+                }
             }
         }
     }
