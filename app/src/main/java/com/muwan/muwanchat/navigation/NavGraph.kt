@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navDeepLink
+import androidx.navigation.navArgument
 import com.muwan.muwanchat.screens.*
 
 sealed class Screen(val route: String) {
@@ -92,7 +93,10 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         ) { back ->
             val fromChat = back.arguments?.getString("fromChat")?.toBoolean() ?: false
             UserProfileScreen(
-                fromChat = fromChat,navController, back.arguments?.getString("uid") ?: "")
+                navController = navController,
+                uid = back.arguments?.getString("uid") ?: "",
+                fromChat = fromChat
+            )
         }
         composable(Screen.Chat.route) { back ->
             ChatScreen(
