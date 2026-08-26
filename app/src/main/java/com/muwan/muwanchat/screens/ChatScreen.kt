@@ -698,8 +698,9 @@ fun ChatScreen(
                     navController.navigate(com.muwan.muwanchat.navigation.Screen.Wallpaper.createRoute(roomId))
                 },
                 onAvatarClick = {
-                    AvatarViewerSelection.set(conversationEntity?.avatar, receiverUsername)
-                    navController.navigate(com.muwan.muwanchat.navigation.Screen.ViewAvatar.route)
+                    navController.navigate(
+                        com.muwan.muwanchat.navigation.Screen.UserProfile.createRoute(receiverUid)
+                    )
                 }
             )
         }
