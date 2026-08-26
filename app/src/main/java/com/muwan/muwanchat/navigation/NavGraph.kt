@@ -24,8 +24,8 @@ sealed class Screen(val route: String) {
     object CreateGroup     : Screen("create_group")
     object AddFromContacts : Screen("add_from_contacts")
     object SearchMembersForGroup : Screen("search_members_for_group")
-    object UserProfile     : Screen("user_profile/{uid}") {
-        fun createRoute(uid: String) = "user_profile/$uid"
+    object UserProfile     : Screen("user_profile/{uid}?fromChat={fromChat}") {
+        fun createRoute(uid: String, fromChat: Boolean = false) = "user_profile/$uid?fromChat=$fromChat"
     }
     object Chat            : Screen("chat/{uid}/{username}/{roomId}") {
         fun createRoute(uid: String, username: String, roomId: String) =
@@ -86,8 +86,13 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.Forward.route) { ForwardScreen(navController) }
         composable(Screen.ViewAvatar.route) { ViewAvatarScreen(navController) }
         composable(Screen.SearchMembersForGroup.route) { SearchMembersForGroupScreen(navController) }
-        composable(Screen.UserProfile.route) { back ->
-            UserProfileScreen(navController, back.arguments?.getString("uid") ?: "")
+        composable(
+            Screen.UserProfile.route,
+            arguments = listOf(navArgument("fromChat") { defaultValue = "false" })
+        ) { back ->
+            val fromChat = back.arguments?.getString("fromChat")?.toBoolean() ?: false
+            UserProfileScreen(
+                fromChat = fromChat,navController, back.arguments?.getString("uid") ?: "")
         }
         composable(Screen.Chat.route) { back ->
             ChatScreen(

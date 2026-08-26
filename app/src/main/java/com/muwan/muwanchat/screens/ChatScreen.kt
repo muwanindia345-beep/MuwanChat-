@@ -703,7 +703,7 @@ fun ChatScreen(
                 },
                 onAvatarClick = {
                     navController.navigate(
-                        com.muwan.muwanchat.navigation.Screen.UserProfile.createRoute(receiverUid)
+                        com.muwan.muwanchat.navigation.Screen.UserProfile.createRoute(receiverUid, fromChat = true)
                     )
                 }
             )

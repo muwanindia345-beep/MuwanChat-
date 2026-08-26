@@ -30,12 +30,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun UserProfileScreen(navController: NavController, uid: String) {
+fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boolean = false) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var user by remember { mutableStateOf<UserItem?>(null) }
     var status by remember { mutableStateOf("none") }
+    var showMediaComingSoon by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var isSendingRequest by remember { mutableStateOf(false) }
     var myUid by remember { mutableStateOf("") }
@@ -174,15 +175,28 @@ fun UserProfileScreen(navController: NavController, uid: String) {
 
                 when (status) {
                     "friends" -> {
-                        Button(
-                            onClick = { openChat() },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Filled.Chat, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Message", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        if (fromChat) {
+                            Button(
+                                onClick = { showMediaComingSoon = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Filled.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Media", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            Button(
+                                onClick = { openChat() },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Filled.Chat, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Message", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                     "sent" -> {
@@ -231,5 +245,9 @@ fun UserProfileScreen(navController: NavController, uid: String) {
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+
+    if (showMediaComingSoon) {
+        ComingSoonDialog(feature = "🖼️ Shared Media", onDismiss = { showMediaComingSoon = false })
     }
 }
