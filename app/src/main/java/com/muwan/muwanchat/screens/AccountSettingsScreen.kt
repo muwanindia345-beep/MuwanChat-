@@ -29,6 +29,7 @@ import com.muwan.muwanchat.network.ChangeEmailRequest
 import com.muwan.muwanchat.network.ChangePasswordRequest
 import com.muwan.muwanchat.network.ChangeUsernameRequest
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.DarkSheet
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -238,7 +239,7 @@ private fun UsernameChangeDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
-        containerColor = DarkHeader,
+        containerColor = DarkSheet,
         title = { Text("Change Username", color = Color.White) },
         text = {
             Column {
@@ -314,7 +315,7 @@ private fun EmailChangeDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
-        containerColor = DarkHeader,
+        containerColor = DarkSheet,
         title = { Text("Change Email", color = Color.White) },
         text = {
             Column {
@@ -414,7 +415,7 @@ private fun PasswordChangeDialog(onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
-        containerColor = DarkHeader,
+        containerColor = DarkSheet,
         title = { Text("Change Password", color = Color.White) },
         text = {
             if (successMsg.isNotEmpty()) {
@@ -536,7 +537,7 @@ private fun DeleteAccountDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
-        containerColor = DarkHeader,
+        containerColor = DarkSheet,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Warning, contentDescription = null, tint = Color(0xFFFF3B30))

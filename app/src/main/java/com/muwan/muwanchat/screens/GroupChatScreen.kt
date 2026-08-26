@@ -84,6 +84,7 @@ import com.muwan.muwanchat.network.ReactRequest
 import com.google.gson.Gson
 import com.muwan.muwanchat.network.UploadMediaRequest
 import com.muwan.muwanchat.util.isNetworkAvailable
+import com.muwan.muwanchat.DarkSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -1218,6 +1219,9 @@ Column(
         val count = selectedMessageIds.size
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showBulkDeleteConfirm = false },
+            containerColor = DarkSheet,
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCCCCCC),
             title = { Text("Delete $count message${if (count > 1) "s" else ""}?") },
             text = {
                 Text(

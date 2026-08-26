@@ -35,6 +35,7 @@ import com.muwan.muwanchat.network.GroupData
 import com.muwan.muwanchat.network.GroupSettingsRequest
 import com.muwan.muwanchat.network.MuteRequest
 import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.DarkSheet
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -334,6 +335,9 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { if (!isBusy) showDeleteConfirm = false },
+            containerColor = DarkSheet,
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCCCCCC),
             title = { Text("Delete Group?") },
             text = { Text("This permanently deletes \"${group?.name}\" and all its messages for every member. This cannot be undone.") },
             confirmButton = {

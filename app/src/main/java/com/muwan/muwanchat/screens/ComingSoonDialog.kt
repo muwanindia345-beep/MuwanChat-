@@ -11,12 +11,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muwan.muwanchat.DarkAccent
+import com.muwan.muwanchat.DarkSheet
 
 @Composable
 fun ComingSoonDialog(feature: String, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF16213e),
+        containerColor = DarkSheet,
         title = {
             Text("🔜 Coming Soon", color = Color.White, fontWeight = FontWeight.Bold)
         },

@@ -277,7 +277,7 @@ fun ConversationListScreen(navController: NavController) {
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            containerColor = DarkHeader,
+            containerColor = DarkSheet,
             title = { Text("Delete ${selectedRoomIds.size} chat${if (selectedRoomIds.size > 1) "s" else ""}?", color = Color.White) },
             text = {
                 Text(

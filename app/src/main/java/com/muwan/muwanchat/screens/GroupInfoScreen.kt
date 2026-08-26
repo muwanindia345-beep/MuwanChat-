@@ -39,6 +39,7 @@ import com.muwan.muwanchat.network.GroupData
 import com.muwan.muwanchat.network.GroupMemberProfile
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SetAdminRequest
+import com.muwan.muwanchat.DarkSheet
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -245,7 +246,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
     if (showLeaveConfirm) {
         AlertDialog(
             onDismissRequest = { showLeaveConfirm = false },
-            containerColor = DarkHeader,
+            containerColor = DarkSheet,
             title = { Text("Leave Group?", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
@@ -270,7 +271,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
     memberPendingOwnershipTransfer?.let { target ->
         AlertDialog(
             onDismissRequest = { memberPendingOwnershipTransfer = null },
-            containerColor = DarkHeader,
+            containerColor = DarkSheet,
             title = { Text("Transfer Ownership?", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
