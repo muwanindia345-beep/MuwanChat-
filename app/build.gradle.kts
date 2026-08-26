@@ -47,7 +47,10 @@ android {
         jvmTarget = "17"
         // Autofill wale code (LocalAutofill/AutofillNode/LocalAutofillTree) Compose ke
         // experimental API use karta hai — inke bina compile hi nahi hoga.
-        freeCompilerArgs += listOf("-opt-in=androidx.compose.ui.ExperimentalComposeUiApi")
+        freeCompilerArgs += listOf(
+            "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi",
+            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi"
+        )
     }
 
     buildFeatures {
