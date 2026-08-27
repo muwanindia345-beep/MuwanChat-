@@ -524,6 +524,11 @@ fun GroupChatScreen(
         scope.launch {
             db.messageDao().deleteByIds(ids)
             db.deletedMessageDao().markDeleted(ids.map { DeletedMessageEntity(it, now) })
+            ids.forEach { id ->
+                try {
+                    RetrofitClient.chatApi.hideMessageForMe("Bearer $myToken", groupId, id)
+                } catch (_: Exception) {}
+            }
             ChatRepository.refreshLastMessagePreview(db, groupId)
         }
         exitSelectionMode()

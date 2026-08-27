@@ -296,6 +296,15 @@ fun ChatScreen(
             db.messageDao().deleteByIds(ids)
             // Record karo taaki agla sync backend se inhe wapas na le aaye
             db.deletedMessageDao().markDeleted(ids.map { DeletedMessageEntity(it, now) })
+            // Server pe bhi persist karo -- taaki app reinstall/DB reset ke
+            // baad bhi yeh message wapas na aaye (best-effort: local delete
+            // turant ho chuka hai, backend call fail ho bhi jaaye to UI par
+            // koi farak nahi padta, bas reinstall-persistence miss hogi)
+            ids.forEach { id ->
+                try {
+                    RetrofitClient.chatApi.hideMessageForMe("Bearer $myToken", roomId, id)
+                } catch (_: Exception) {}
+            }
             ChatRepository.refreshLastMessagePreview(db, roomId)
         }
         exitSelectionMode()

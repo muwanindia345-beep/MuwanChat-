@@ -366,6 +366,16 @@ interface ChatApi {
         @Path("id") id: String
     ): Response<Map<String, Boolean>>
 
+    // "Delete for me" (single message) ko server pe bhi persist karta hai,
+    // taaki app reinstall / local DB reset ke baad bhi message wapas na aaye.
+    // Dusre user ko is se koi farak nahi padta, sirf khud ke liye hide hota hai.
+    @POST("chat/message/{roomId}/{id}/hide")
+    suspend fun hideMessageForMe(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String,
+        @Path("id") id: String
+    ): Response<Map<String, Boolean>>
+
     @POST("chat/message/{roomId}/{id}/react")
     suspend fun reactToMessage(
         @Header("Authorization") token: String,
