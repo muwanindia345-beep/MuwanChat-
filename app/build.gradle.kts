@@ -6,6 +6,13 @@ plugins {
     id("com.google.firebase.crashlytics")
 }
 
+ksp {
+    // Room ab har version ka schema JSON save karega app/schemas/ mein —
+    // isse aage se real migrations likhna safe ho jaata hai (bina isके
+    // migration SQL likhna guesswork jaisa hota hai aur crash ka risk rehta hai)
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.muwan.muwanchat"
     compileSdk = 34

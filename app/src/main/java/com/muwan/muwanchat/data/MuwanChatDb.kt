@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 @Database(
     entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class, MyProfileEntity::class, ChatWallpaperEntity::class, DeletedMessageEntity::class, ChatBubbleThemeEntity::class, ChatRequestEntity::class, CachedUserProfileEntity::class, GroupInfoCacheEntity::class],
     version = 22,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class MuwanChatDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
@@ -33,6 +33,7 @@ abstract class MuwanChatDb : RoomDatabase() {
                     MuwanChatDb::class.java,
                     "muwanchat_db_$uid"
                 )
+                    .addMigrations(*DbMigrations.ALL)
                     .fallbackToDestructiveMigration()
                     .build()
             }
