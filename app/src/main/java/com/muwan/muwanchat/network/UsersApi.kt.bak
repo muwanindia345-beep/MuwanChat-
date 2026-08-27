@@ -35,14 +35,6 @@ data class StatusesResponse(
     val statuses: Map<String, String> = emptyMap()
 )
 
-data class QuickReactionsResponse(
-    val reactions: List<String>
-)
-
-data class QuickReactionsBody(
-    val reactions: List<String>
-)
-
 interface UsersApi {
     @GET("users/search")
     suspend fun searchUsers(
@@ -78,16 +70,5 @@ interface UsersApi {
         @Header("Authorization") token: String,
         @Body body: Map<String, String>
     ): Response<Unit>
-
-    @GET("users/quick-reactions")
-    suspend fun getQuickReactions(
-        @Header("Authorization") token: String
-    ): Response<QuickReactionsResponse>
-
-    @PUT("users/quick-reactions")
-    suspend fun updateQuickReactions(
-        @Header("Authorization") token: String,
-        @Body body: QuickReactionsBody
-    ): Response<QuickReactionsResponse>
 }
 

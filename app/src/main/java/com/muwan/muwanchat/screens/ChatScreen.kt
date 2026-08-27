@@ -39,6 +39,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import com.muwan.muwanchat.data.QuickReactionsStore
+import com.muwan.muwanchat.network.QuickReactionsBody
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
@@ -181,7 +184,37 @@ fun ChatScreen(
     var showReactionPicker by remember { mutableStateOf(false) }
     var customEmojiInput by remember { mutableStateOf("") }
     var showCustomEmojiField by remember { mutableStateOf(false) }
-    val quickReactions = listOf("👍", "❤️", "😂", "😮", "😢", "🙏")
+    var quickReactions by remember { mutableStateOf(QuickReactionsStore.get(context, AuthDataStore.getUidBlocking(context))) }
+    var showFullEmojiSheet by remember { mutableStateOf(false) }
+    var customizingSlotIndex by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(myUid) {
+        if (myUid.isBlank() || myToken.isBlank()) return@LaunchedEffect
+        try {
+            val res = RetrofitClient.usersApi.getQuickReactions("Bearer $myToken")
+            if (res.isSuccessful) {
+                res.body()?.reactions?.let { fetched ->
+                    if (fetched.size == 6) {
+                        quickReactions = fetched
+                        QuickReactionsStore.save(context, myUid, fetched)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    fun updateQuickReactionSlot(index: Int, emoji: String) {
+        val updated = quickReactions.toMutableList().also { it[index] = emoji }
+        quickReactions = updated
+        QuickReactionsStore.save(context, myUid, updated)
+        scope.launch {
+            try {
+                RetrofitClient.usersApi.updateQuickReactions("Bearer $myToken", QuickReactionsBody(updated))
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     // Reusable — selection-mode picker aur bubble ke reaction-chip long-press dono isi ko call karte hain
     val reactionInFlight = remember { mutableStateOf(setOf<String>()) }
@@ -828,8 +861,12 @@ fun ChatScreen(
             },
             showEmojiPicker = showEmojiPicker,
             onToggleEmojiPicker = {
-                showEmojiPicker = !showEmojiPicker
-                if (showEmojiPicker) keyboardController?.hide() else keyboardController?.show()
+                if (isSelectionMode && selectedMessageIds.size == 1) {
+                    showReactionPicker = true
+                } else {
+                    showEmojiPicker = !showEmojiPicker
+                    if (showEmojiPicker) keyboardController?.hide() else keyboardController?.show()
+                }
             },
             onPickImage = { showMediaSheet = true },
             onSend = { sendMessage() },
@@ -903,6 +940,25 @@ fun ChatScreen(
         )
     }
 
+    if (showFullEmojiSheet) {
+        EmojiBottomSheet(
+            onEmojiSelected = { emoji ->
+                val slot = customizingSlotIndex
+                showFullEmojiSheet = false
+                customizingSlotIndex = null
+                if (slot != null) {
+                    updateQuickReactionSlot(slot, emoji)
+                } else {
+                    reactToSelected(emoji)
+                }
+            },
+            onDismiss = {
+                showFullEmojiSheet = false
+                customizingSlotIndex = null
+            }
+        )
+    }
+
     if (showReactionPicker) {
         androidx.compose.ui.window.Dialog(onDismissRequest = {
             showReactionPicker = false
@@ -917,28 +973,38 @@ fun ChatScreen(
             ) {
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    quickReactions.forEach { emoji ->
+                    quickReactions.forEachIndexed { index, emoji ->
                         Text(
                             emoji,
                             fontSize = 26.sp,
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .clickable { reactToSelected(emoji) }
+                                .combinedClickable(
+                                    onClick = { reactToSelected(emoji) },
+                                    onLongClick = {
+                                        customizingSlotIndex = index
+                                        showFullEmojiSheet = true
+                                    }
+                                )
                                 .padding(6.dp)
                         )
                     }
-                    Box(
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = "More emojis",
+                        tint = Color.White,
                         modifier = Modifier
-                            .size(34.dp)
+                            .size(26.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF3A3A55))
-                            .clickable { showCustomEmojiField = !showCustomEmojiField },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Custom emoji", tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
+                            .clickable {
+                                customizingSlotIndex = null
+                                showFullEmojiSheet = true
+                            }
+                            .padding(4.dp)
+                    )
                 }
 
                 if (showCustomEmojiField) {

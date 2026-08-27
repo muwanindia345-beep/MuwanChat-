@@ -11,10 +11,13 @@ import android.util.Base64
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,10 +36,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Text
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Send
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
@@ -46,12 +60,20 @@ import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AudioRecorder
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatRepository
+import com.muwan.muwanchat.data.ChatWallpaperEntity
+import com.muwan.muwanchat.data.DocumentOpener
+import com.muwan.muwanchat.data.DeletedMessageEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
+import com.muwan.muwanchat.data.UploadProgressTracker
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import com.muwan.muwanchat.network.EditMessageRequest
+import com.muwan.muwanchat.network.ReactRequest
+import com.google.gson.Gson
 import com.muwan.muwanchat.network.UploadMediaRequest
+import com.muwan.muwanchat.util.isNetworkAvailable
+import com.muwan.muwanchat.DarkSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -63,9 +85,22 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.*
 
 // ─── Helpers: file info + image compression (upload se pehle) ─────────────
+private fun createCameraCaptureUri(context: android.content.Context): Uri {
+    val imagesDir = File(context.cacheDir, "camera").apply { mkdirs() }
+    val imageFile = File(imagesDir, "IMG_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
+}
+
+private fun createCameraVideoCaptureUri(context: android.content.Context): Uri {
+    val videosDir = File(context.cacheDir, "camera").apply { mkdirs() }
+    val videoFile = File(videosDir, "VID_${System.currentTimeMillis()}.mp4")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", videoFile)
+}
+
 private fun getFileName(context: android.content.Context, uri: Uri): String {
     var name = "file"
     context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -100,7 +135,8 @@ fun ChatScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
-    val db = remember { MuwanChatDb.get(context) }
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
+    val currentWallpaper by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
 
     val messageEntities by db.messageDao().observeMessages(roomId).collectAsState(initial = emptyList())
     val conversationEntity by db.conversationDao().observeByRoomId(roomId).collectAsState(initial = null)
@@ -126,11 +162,10 @@ fun ChatScreen(
     val listState = rememberLazyListState()
 
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
-    var fullscreenImage by remember { mutableStateOf<String?>(null) }
-    var fullscreenVideo by remember { mutableStateOf<String?>(null) }
+    var fullscreenImage by remember { mutableStateOf<ChatMessage?>(null) }
+    var fullscreenVideo by remember { mutableStateOf<ChatMessage?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaSheet by remember { mutableStateOf(false) }
-    var uploadingMedia by remember { mutableStateOf(false) }
     // ── Voice message recording state ──
     var showVoiceRecorder by remember { mutableStateOf(false) }
     val audioRecorder = remember { AudioRecorder(context) }
@@ -142,12 +177,76 @@ fun ChatScreen(
     }
     // ── Multi-select "delete message" state (ConversationListScreen jaisa hi system) ──
     var isSelectionMode by remember { mutableStateOf(false) }
+    var showMenuSheet by remember { mutableStateOf(false) }
+    var showReactionPicker by remember { mutableStateOf(false) }
+    var customEmojiInput by remember { mutableStateOf("") }
+    var showCustomEmojiField by remember { mutableStateOf(false) }
+    val quickReactions = listOf("👍", "❤️", "😂", "😮", "😢", "🙏")
+
+    // Reusable — selection-mode picker aur bubble ke reaction-chip long-press dono isi ko call karte hain
+    val reactionInFlight = remember { mutableStateOf(setOf<String>()) }
+
+    fun sendReaction(messageId: String, emoji: String) {
+        if (reactionInFlight.value.contains(messageId)) return
+        reactionInFlight.value = reactionInFlight.value + messageId
+
+        val current = messages.firstOrNull { it.id == messageId }?.reactions ?: emptyList()
+        val hadSameEmoji = current.any { it.emoji == emoji && it.userIds.contains(myUid) }
+        val optimistic = current
+            .map { com.muwan.muwanchat.network.MessageReaction(it.emoji, it.userIds.filter { u -> u != myUid }) }
+            .filter { it.userIds.isNotEmpty() }
+            .toMutableList()
+        if (!hadSameEmoji) {
+            val groupIdx = optimistic.indexOfFirst { it.emoji == emoji }
+            if (groupIdx >= 0) {
+                optimistic[groupIdx] = com.muwan.muwanchat.network.MessageReaction(emoji, optimistic[groupIdx].userIds + myUid)
+            } else {
+                optimistic.add(com.muwan.muwanchat.network.MessageReaction(emoji, listOf(myUid)))
+            }
+        }
+        scope.launch { db.messageDao().updateReactions(messageId, Gson().toJson(optimistic)) }
+        if (!hadSameEmoji) {
+            scope.launch {
+                db.conversationDao().updateLastMessage(
+                    roomId = roomId,
+                    lastMessage = "You reacted $emoji",
+                    lastTime = nowIso(),
+                    lastSenderUid = myUid,
+                    myUid = myUid
+                )
+            }
+        }
+
+        scope.launch {
+            try {
+                val res = RetrofitClient.chatApi.reactToMessage(
+                    "Bearer $myToken", roomId, messageId, ReactRequest(emoji)
+                )
+                res.body()?.reactions?.let { reactions ->
+                    db.messageDao().updateReactions(messageId, Gson().toJson(reactions))
+                }
+            } catch (_: Exception) {
+            } finally {
+                reactionInFlight.value = reactionInFlight.value - messageId
+            }
+        }
+    }
+
     var selectedMessageIds by remember { mutableStateOf(setOf<String>()) }
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
 
     fun exitSelectionMode() {
         isSelectionMode = false
         selectedMessageIds = emptySet()
+    }
+
+    fun reactToSelected(emoji: String) {
+        val id = selectedMessageIds.firstOrNull() ?: return
+        showReactionPicker = false
+        showCustomEmojiField = false
+        customEmojiInput = ""
+        sendReaction(id, emoji)
+        exitSelectionMode()
     }
 
     fun toggleMessageSelection(id: String) {
@@ -157,7 +256,12 @@ fun ChatScreen(
 
     fun deleteSelectedForMe() {
         val ids = selectedMessageIds.toList()
-        scope.launch { db.messageDao().deleteByIds(ids) }
+        val now = nowIso()
+        scope.launch {
+            db.messageDao().deleteByIds(ids)
+            // Record karo taaki agla sync backend se inhe wapas na le aaye
+            db.deletedMessageDao().markDeleted(ids.map { DeletedMessageEntity(it, now) })
+        }
         exitSelectionMode()
     }
 
@@ -207,16 +311,72 @@ fun ChatScreen(
         }
     }
 
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadMediaMessage(context, it, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                uris.forEach { uri ->
+                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) {}
+                }
+            }
+        }
     }
 
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadVideoMessage(context, it, myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
+        uri?.let { scope.launch { uploadVideoMessage(context, it, myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
     }
 
     val docPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadMediaMessage(context, it, "document", myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it } } }
+        uri?.let { scope.launch { uploadMediaMessage(context, it, "document", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+    }
+
+    val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { scope.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db, displayType = "music") {} } }
+    }
+
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            cameraImageUri?.let { uri -> scope.launch { uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val uri = createCameraCaptureUri(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        }
+    }
+    fun launchCamera() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            val uri = createCameraCaptureUri(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    var cameraVideoUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
+        if (success) {
+            cameraVideoUri?.let { uri -> scope.launch { uploadVideoMessage(context, uri, myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+        }
+    }
+    val cameraVideoPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val uri = createCameraVideoCaptureUri(context)
+            cameraVideoUri = uri
+            cameraVideoLauncher.launch(uri)
+        }
+    }
+    fun launchVideoCamera() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            val uri = createCameraVideoCaptureUri(context)
+            cameraVideoUri = uri
+            cameraVideoLauncher.launch(uri)
+        } else {
+            cameraVideoPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     fun sendMessageWithId(
@@ -317,6 +477,16 @@ fun ChatScreen(
         AppSocketManager.joinRoom(roomId)
         AppSocketManager.checkPresence(receiverUid)
 
+        // Wallpaper local na mile (reinstall ke baad) toh backend se apna preset restore karo
+        try {
+            if (db.chatWallpaperDao().getByRoomId(roomId) == null) {
+                val res = RetrofitClient.chatApi.getWallpaper("Bearer $token", roomId)
+                res.body()?.wallpaper?.let { wp ->
+                    db.chatWallpaperDao().upsert(ChatWallpaperEntity(roomId, wp.type, wp.value))
+                }
+            }
+        } catch (_: Exception) {}
+
         try {
             val res = RetrofitClient.chatApi.getMessages("Bearer $token", roomId)
             if (res.isSuccessful) {
@@ -356,7 +526,8 @@ fun ChatScreen(
                             otherUsername = receiverUsername,
                             fileName = event.fileName,
                             mimeType = event.mimeType,
-                            replyToId = event.replyToId
+                            replyToId = event.replyToId,
+                            isForwarded = event.isForwarded
                         )
                         if (event.senderUid != myUid) {
                             isReceiverTyping = false
@@ -400,6 +571,31 @@ fun ChatScreen(
                         scope.launch { db.messageDao().editMessage(event.id, event.content) }
                     }
                 }
+                is SocketEvent.ReactionUpdate -> {
+                    if (event.roomId == roomId) {
+                        scope.launch { db.messageDao().updateReactions(event.id, event.reactionsJson) }
+                        if (event.added && event.emoji.isNotBlank()) {
+                            scope.launch {
+                                db.conversationDao().updateLastMessage(
+                                    roomId = roomId,
+                                    lastMessage = "$receiverUsername reacted ${event.emoji}",
+                                    lastTime = nowIso(),
+                                    lastSenderUid = receiverUid,
+                                    myUid = myUid
+                                )
+                            }
+                        }
+                    }
+                }
+                is SocketEvent.MessagePreview -> {
+                    if (event.roomId == roomId) {
+                        scope.launch {
+                            db.messageDao().updateLinkPreview(
+                                event.id, event.title, event.description, event.image, event.url
+                            )
+                        }
+                    }
+                }
                 else -> {}
             }
         }
@@ -411,13 +607,18 @@ fun ChatScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
             .systemBarsPadding()
-            .imePadding()
     ) {
+        WallpaperPreviewBackground(currentWallpaper)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+        ) {
         if (isSelectionMode) {
             Row(
                 modifier = Modifier
@@ -446,6 +647,29 @@ fun ChatScreen(
                     }
                 }
 
+                val canReact = selectedMessageIds.size == 1 &&
+                    messages.firstOrNull { it.id == selectedMessageIds.first() }?.isDeleted == false
+
+                if (canReact) {
+                    IconButton(onClick = { showReactionPicker = true }) {
+                        Icon(Icons.Filled.EmojiEmotions, contentDescription = "React", tint = Color.White)
+                    }
+                }
+
+                val canForward = selectedMessageIds.isNotEmpty() &&
+                    selectedMessageIds.all { id -> messages.firstOrNull { it.id == id }?.isDeleted == false }
+
+                if (canForward) {
+                    IconButton(onClick = {
+                        val toForward = messages.filter { selectedMessageIds.contains(it.id) }
+                        ForwardMessageSelection.set(toForward)
+                        exitSelectionMode()
+                        navController.navigate(com.muwan.muwanchat.navigation.Screen.Forward.route)
+                    }) {
+                        Icon(Icons.Filled.Send, contentDescription = "Forward", tint = Color.White)
+                    }
+                }
+
                 IconButton(
                     onClick = { if (selectedMessageIds.isNotEmpty()) showBulkDeleteConfirm = true },
                     enabled = selectedMessageIds.isNotEmpty()
@@ -465,47 +689,50 @@ fun ChatScreen(
                 avatarBase64 = conversationEntity?.avatar,
                 onBack = { navController.popBackStack() },
                 onVideoCall = { comingSoonFeature = "📹 Video Call" },
-                onVoiceCall = { comingSoonFeature = "📞 Voice Call" }
+                onVoiceCall = { comingSoonFeature = "📞 Voice Call" },
+                onMenuClick = { showMenuSheet = true },
+                showMenu = showMenuSheet,
+                onMenuDismiss = { showMenuSheet = false },
+                onSetWallpaper = {
+                    showMenuSheet = false
+                    navController.navigate(com.muwan.muwanchat.navigation.Screen.Wallpaper.createRoute(roomId))
+                },
+                onMessageTheme = {
+                    showMenuSheet = false
+                    comingSoonFeature = "🎨 Message Theme"
+                },
+                onAvatarClick = {
+                    navController.navigate(
+                        com.muwan.muwanchat.navigation.Screen.UserProfile.createRoute(receiverUid, fromChat = true)
+                    )
+                }
             )
         }
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(messages, key = { it.id }) { msg ->
-                MessageBubble(
+        Box(modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(messages, key = { it.id }) { msg ->
+                    MessageBubble(
                         message = msg,
+                        myUid = myUid,
+                        onReactionLongPress = { id, emoji -> sendReaction(id, emoji) },
                         isSelectionMode = isSelectionMode,
                         isSelected = selectedMessageIds.contains(msg.id),
                         onTap = { toggleMessageSelection(msg.id) },
                         onSwipeReply = { replyTo = it },
-                        onImageTap = { url -> fullscreenImage = url },
-                        onVideoTap = { url -> fullscreenVideo = url },
-                        onDocumentTap = { url, _, mimeType ->
-                            val resolvedMime = mimeType?.takeIf { it.isNotBlank() } ?: run {
-                                val ext = MimeTypeMap.getFileExtensionFromUrl(url)
-                                MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
-                            }
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    if (resolvedMime != null) setDataAndType(Uri.parse(url), resolvedMime)
-                                    else data = Uri.parse(url)
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                try {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                    )
-                                } catch (_: Exception) {}
+                        onImageTap = { _ -> fullscreenImage = msg },
+                        onVideoTap = { _ -> fullscreenVideo = msg },
+                        onDocumentTap = { url, fileName, mimeType ->
+                            scope.launch {
+                                DocumentOpener.openDocument(
+                                    context, url, myToken, fileName ?: "document", mimeType
+                                )
                             }
                         },
                         onLinkTap = { url ->
@@ -528,14 +755,12 @@ fun ChatScreen(
                             if (!isSelectionMode) {
                                 isSelectionMode = true
                                 selectedMessageIds = setOf(it.id)
+                                if (!it.isDeleted) showReactionPicker = true
                             }
                         }
                     )
+                }
             }
-        }
-
-        AnimatedVisibility(visible = uploadingMedia) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DarkAccent)
         }
 
         AnimatedVisibility(visible = replyTo != null) {
@@ -608,6 +833,15 @@ fun ChatScreen(
             },
             onPickImage = { showMediaSheet = true },
             onSend = { sendMessage() },
+            onGifReceived = { uri, _, release ->
+                scope.launch {
+                    // Backend sirf "image" | "document" category accept karta hai — "gif" bhejne se
+                    // type silently "text" pe fallback ho jata tha aur chat me raw URL dikhta tha.
+                    // "image" bhejo, MessageBubble already isko AsyncImage se render karta hai.
+                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, setUploading = {})
+                    release()
+                }
+            },
             onVoiceMessage = {
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     showVoiceRecorder = true
@@ -623,7 +857,10 @@ fun ChatScreen(
             onDismiss = { showMediaSheet = false },
             onSelectPhoto = { photoPicker.launch("image/*") },
             onSelectVideo = { videoPicker.launch("video/*") },
-            onSelectDocument = { docPicker.launch(arrayOf("*/*")) }
+            onSelectDocument = { docPicker.launch(arrayOf("*/*")) },
+            onSelectMusic = { musicPicker.launch("audio/*") },
+            onSelectCamera = { launchCamera() },
+            onSelectRecordVideo = { launchVideoCamera() }
         )
     }
 
@@ -634,7 +871,7 @@ fun ChatScreen(
             onSend = { file ->
                 showVoiceRecorder = false
                 scope.launch {
-                    uploadAudioMessage(context, file, myToken, roomId, myUid, receiverUid, receiverUsername, db) { uploadingMedia = it }
+                    uploadAudioMessage(context, file, myToken, roomId, myUid, receiverUid, receiverUsername, db) {}
                 }
             }
         )
@@ -644,12 +881,96 @@ fun ChatScreen(
         ComingSoonDialog(feature = feature, onDismiss = { comingSoonFeature = null })
     }
 
-    fullscreenImage?.let { url ->
-        FullscreenImageViewer(model = url, onDismiss = { fullscreenImage = null })
+    fullscreenImage?.let { mediaMsg ->
+        FullscreenImageViewer(
+            model = mediaMsg.mediaUrl ?: "",
+            onDismiss = { fullscreenImage = null },
+            onSendReply = { replyText ->
+                sendMessageWithId(UUID.randomUUID().toString(), replyText, nowIso(), isRetry = false, replyToId = mediaMsg.id)
+                fullscreenImage = null
+            }
+        )
     }
 
-    fullscreenVideo?.let { url ->
-        FullscreenVideoPlayer(url = url, onDismiss = { fullscreenVideo = null })
+    fullscreenVideo?.let { mediaMsg ->
+        FullscreenVideoPlayer(
+            url = mediaMsg.mediaUrl ?: "",
+            onDismiss = { fullscreenVideo = null },
+            onSendReply = { replyText ->
+                sendMessageWithId(UUID.randomUUID().toString(), replyText, nowIso(), isRetry = false, replyToId = mediaMsg.id)
+                fullscreenVideo = null
+            }
+        )
+    }
+
+    if (showReactionPicker) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = {
+            showReactionPicker = false
+            showCustomEmojiField = false
+            customEmojiInput = ""
+        }) {
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(DarkHeader)
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    quickReactions.forEach { emoji ->
+                        Text(
+                            emoji,
+                            fontSize = 26.sp,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { reactToSelected(emoji) }
+                                .padding(6.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF3A3A55))
+                            .clickable { showCustomEmojiField = !showCustomEmojiField },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Custom emoji", tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                }
+
+                if (showCustomEmojiField) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = customEmojiInput,
+                            onValueChange = { customEmojiInput = it },
+                            placeholder = { Text("Type an emoji…", fontSize = 13.sp, color = Color(0xFF888888)) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 20.sp, color = Color.White),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = DarkAccent,
+                                unfocusedBorderColor = Color(0xFF444466)
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { if (customEmojiInput.isNotBlank()) reactToSelected(customEmojiInput.trim()) },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(DarkAccent)
+                        ) {
+                            Icon(Icons.Filled.Check, contentDescription = "React", tint = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+    }
     }
 
     if (showBulkDeleteConfirm) {
@@ -658,6 +979,9 @@ fun ChatScreen(
         val count = selectedMessageIds.size
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showBulkDeleteConfirm = false },
+            containerColor = DarkSheet,
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCCCCCC),
             title = { Text("Delete $count message${if (count > 1) "s" else ""}?") },
             text = {
                 Text(
@@ -708,33 +1032,51 @@ private suspend fun uploadMediaMessage(
     receiverUid: String,
     receiverUsername: String,
     db: MuwanChatDb,
+    skipCompression: Boolean = false,
+    displayType: String = category,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
+    val guessedMime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+
+    // Network hi nahi hai — seedha FAILED, koi "uploading" progress layer nahi dikhega
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+            content = uri.toString(), type = displayType, createdAt = nowIso(), myUid = myUid,
+            otherUsername = receiverUsername, status = "FAILED",
+            fileName = filename, mimeType = guessedMime
+        )
+        return
+    }
+
+    // Bubble turant local file se dikhega, upload background me chalega
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+        content = uri.toString(), type = displayType, createdAt = nowIso(), myUid = myUid,
+        otherUsername = receiverUsername, status = "UPLOADING",
+        fileName = filename, mimeType = guessedMime
+    )
+    UploadProgressTracker.start(id)
     try {
         val (base64Data, mime) = withContext(Dispatchers.IO) {
-            if (category == "image") compressImageToBase64(context, uri)
+            if (category == "image" && !skipCompression) compressImageToBase64(context, uri)
             else {
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
-                Base64.encodeToString(bytes, Base64.NO_WRAP) to (context.contentResolver.getType(uri) ?: "application/octet-stream")
+                Base64.encodeToString(bytes, Base64.NO_WRAP) to guessedMime
             }
         }
-        val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
         val res = RetrofitClient.chatApi.uploadMedia(
             "Bearer $token",
-            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = category)
+            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = category),
+            uploadId = id
         )
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
-                    content = body.url, type = category, createdAt = nowIso(), myUid = myUid,
-                    otherUsername = receiverUsername, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
-                    AppSocketManager.sendMessage(id, receiverUid, body.url, category, body.file_name ?: filename, body.mime_type ?: mime) { success ->
+                    AppSocketManager.sendMessage(id, receiverUid, body.url, displayType, body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
                             db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
                         }
@@ -743,17 +1085,21 @@ private suspend fun uploadMediaMessage(
                     try {
                         val sendRes = RetrofitClient.chatApi.sendMessage(
                             "Bearer $token",
-                            SendMessageRequest(receiverUid, body.url, category, body.file_name ?: filename, body.mime_type ?: mime)
+                            SendMessageRequest(receiverUid, body.url, displayType, body.file_name ?: filename, body.mime_type ?: mime)
                         )
                         db.messageDao().updateStatus(id, if (sendRes.isSuccessful) "SENT" else "FAILED")
                     } catch (_: Exception) {
                         db.messageDao().updateStatus(id, "FAILED")
                     }
                 }
-            }
-      }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
+        }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
     }
 }
@@ -769,25 +1115,37 @@ private suspend fun uploadVideoMessage(
     db: MuwanChatDb,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
+    val mime = context.contentResolver.getType(uri) ?: "video/mp4"
+
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+            content = uri.toString(), type = "video", createdAt = nowIso(), myUid = myUid,
+            otherUsername = receiverUsername, status = "FAILED",
+            fileName = filename, mimeType = mime
+        )
+        return
+    }
+
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+        content = uri.toString(), type = "video", createdAt = nowIso(), myUid = myUid,
+        otherUsername = receiverUsername, status = "UPLOADING",
+        fileName = filename, mimeType = mime
+    )
+    UploadProgressTracker.start(id)
     try {
-        val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
-        val mime = context.contentResolver.getType(uri) ?: "video/mp4"
         val bytes = withContext(Dispatchers.IO) {
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
         }
         val requestBody = bytes.toRequestBody(mime.toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("video", filename, requestBody)
-        val res = RetrofitClient.chatApi.uploadVideo("Bearer $token", part)
+        val res = RetrofitClient.chatApi.uploadVideo("Bearer $token", part, uploadId = id)
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
-                    content = body.url, type = "video", createdAt = nowIso(), myUid = myUid,
-                    otherUsername = receiverUsername, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendMessage(id, receiverUid, body.url, "video", body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
@@ -805,10 +1163,14 @@ private suspend fun uploadVideoMessage(
                         db.messageDao().updateStatus(id, "FAILED")
                     }
                 }
-            }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
         }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
     }
 }
@@ -825,26 +1187,40 @@ private suspend fun uploadAudioMessage(
     db: MuwanChatDb,
     setUploading: (Boolean) -> Unit
 ) {
-    setUploading(true)
+    val id = UUID.randomUUID().toString()
+    val filename = file.name
+    val mime = "audio/mp4"
+    val localUri = Uri.fromFile(file).toString()
+
+    if (!isNetworkAvailable(context)) {
+        ChatRepository.recordMessage(
+            db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+            content = localUri, type = "audio", createdAt = nowIso(), myUid = myUid,
+            otherUsername = receiverUsername, status = "FAILED",
+            fileName = filename, mimeType = mime
+        )
+        return
+    }
+
+    ChatRepository.recordMessage(
+        db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
+        content = localUri, type = "audio", createdAt = nowIso(), myUid = myUid,
+        otherUsername = receiverUsername, status = "UPLOADING",
+        fileName = filename, mimeType = mime
+    )
+    UploadProgressTracker.start(id)
     try {
         val base64Data = withContext(Dispatchers.IO) {
             Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
         }
-        val filename = file.name
-        val mime = "audio/mp4"
         val res = RetrofitClient.chatApi.uploadMedia(
             "Bearer $token",
-            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = "audio")
+            UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = "audio"),
+            uploadId = id
         )
         if (res.isSuccessful) {
             res.body()?.let { body ->
-                val id = UUID.randomUUID().toString()
-                ChatRepository.recordMessage(
-                    db = db, id = id, roomId = roomId, senderUid = myUid, receiverUid = receiverUid,
-                    content = body.url, type = "audio", createdAt = nowIso(), myUid = myUid,
-                    otherUsername = receiverUsername, status = "PENDING",
-                    fileName = body.file_name ?: filename, mimeType = body.mime_type ?: mime
-                )
+                db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendMessage(id, receiverUid, body.url, "audio", body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
@@ -862,10 +1238,14 @@ private suspend fun uploadAudioMessage(
                         db.messageDao().updateStatus(id, "FAILED")
                     }
                 }
-            }
+            } ?: db.messageDao().updateStatus(id, "FAILED")
+        } else {
+            db.messageDao().updateStatus(id, "FAILED")
         }
     } catch (_: Exception) {
+        db.messageDao().updateStatus(id, "FAILED")
     } finally {
+        UploadProgressTracker.clear(id)
         setUploading(false)
         file.delete()
     }
