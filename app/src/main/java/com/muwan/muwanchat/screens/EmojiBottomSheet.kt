@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muwan.muwanchat.DarkHeader
@@ -55,19 +56,24 @@ fun EmojiBottomSheet(
                 .fillMaxWidth()
                 .fillMaxHeight(0.5f)
                 .navigationBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            contentPadding = PaddingValues(bottom = 12.dp)
+                .padding(horizontal = 8.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
         ) {
             items(FULL_EMOJI_SET) { emoji ->
-                Text(
-                    emoji,
-                    fontSize = 24.sp,
+                Box(
                     modifier = Modifier
+                        .aspectRatio(1f)
                         .padding(4.dp)
                         .clip(CircleShape)
-                        .clickable { onEmojiSelected(emoji) }
-                        .padding(6.dp)
-                )
+                        .clickable { onEmojiSelected(emoji) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        emoji,
+                        fontSize = 24.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
