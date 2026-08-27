@@ -53,8 +53,10 @@ fun EmojiBottomSheet(
             columns = GridCells.Fixed(8),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 360.dp)
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .fillMaxHeight(0.5f)
+                .navigationBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            contentPadding = PaddingValues(bottom = 12.dp)
         ) {
             items(FULL_EMOJI_SET) { emoji ->
                 Text(
@@ -68,6 +70,5 @@ fun EmojiBottomSheet(
                 )
             }
         }
-        Spacer(Modifier.height(12.dp))
     }
 }
