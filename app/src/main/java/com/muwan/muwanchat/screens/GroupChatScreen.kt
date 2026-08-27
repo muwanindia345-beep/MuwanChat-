@@ -380,7 +380,8 @@ fun GroupChatScreen(
     var memberCount by remember { mutableStateOf(0) }
     var group by remember { mutableStateOf<GroupData?>(null) }
     var showAdminsSheet by remember { mutableStateOf(false) }
-    val isAdmin = group?.admins?.contains(myUid) == true
+    val onlyAdminsCanSend = group?.onlyAdminsCanSend ?: conversationEntity?.onlyAdminsCanSend ?: false
+    val isAdmin = group?.admins?.contains(myUid) ?: conversationEntity?.amIAdmin ?: false
     val onlineUidsForAdmins by AppSocketManager.onlineUids.collectAsState()
 
     // Group mein multiple log type kar sakte hain — shared typingUsers map
@@ -736,6 +737,7 @@ fun GroupChatScreen(
                 memberNames = g.memberProfiles.associate { it.uid to it.username }
                 memberAvatars = g.memberProfiles.associate { it.uid to it.avatar }
                 memberCount = g.members.size
+                db.conversationDao().updateAdminSettings(groupId, g.onlyAdminsCanSend, g.admins.contains(myUid))
             }
         } catch (_: Exception) {}
 
@@ -1080,7 +1082,7 @@ Box(
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
-        } else if (group?.onlyAdminsCanSend == true && !isAdmin) {
+        } else if (onlyAdminsCanSend && !isAdmin) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

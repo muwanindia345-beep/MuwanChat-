@@ -20,5 +20,9 @@ data class ConversationEntity(
     // sirf input bar area ek banner se replace hota hai (khud-leave case me
     // ye kabhi set nahi hota, wo already deleteChatsLocally se turant hat jaata hai)
     val isRemoved: Boolean = false,
-    val removedByUsername: String? = null
+    val removedByUsername: String? = null,
+    // Group ki admin-only-send setting ka local cache — taaki screen open hote
+    // hi (network wait kiye bina) sahi input bar / banner turant dikh jaaye.
+    val onlyAdminsCanSend: Boolean = false,
+    val amIAdmin: Boolean = false
 )
