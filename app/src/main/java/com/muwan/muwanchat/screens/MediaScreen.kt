@@ -38,7 +38,7 @@ import com.muwan.muwanchat.data.MessageEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import kotlinx.coroutines.launch
 
-private val mediaTabs = listOf("Photos", "Videos", "Documents")
+private val mediaTabs = listOf("Photos", "Videos", "Docs")
 private val mediaTypes = listOf("image", "video", "document")
 
 @Composable
@@ -111,7 +111,9 @@ fun MediaScreen(navController: NavController, uid: String) {
                             title,
                             color = if (pagerState.currentPage == index) DarkAccent else Color(0xFF888888),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 )
