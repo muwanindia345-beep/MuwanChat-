@@ -21,6 +21,8 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.CachedUserProfileEntity
+import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.util.friendlyErrorMessage
@@ -29,10 +31,21 @@ import com.muwan.muwanchat.network.UserItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+private fun CachedUserProfileEntity.toModel() = UserItem(
+    uid = uid, username = username, name = name, bio = bio,
+    city = city, country = country, gender = gender, avatar = avatar
+)
+
+private fun UserItem.toEntity() = CachedUserProfileEntity(
+    uid = uid, username = username, name = name, bio = bio,
+    city = city, country = country, gender = gender, avatar = avatar
+)
+
 @Composable
 fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boolean = false) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
     var user by remember { mutableStateOf<UserItem?>(null) }
     var status by remember { mutableStateOf("none") }
@@ -42,6 +55,16 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
     var myUid by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf("") }
 
+    // Local cache se turant dikhao (offline-first) — status abhi bhi live check hota hai
+    LaunchedEffect(uid) {
+        val cached = db.cachedUserProfileDao().get(uid)
+        if (cached != null) {
+            user = cached.toModel()
+            isLoading = false
+        }
+    }
+
+    // Background me backend se refresh — profile local cache update, status live
     LaunchedEffect(uid) {
         try {
             val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
@@ -50,13 +73,20 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
             if (meRes.isSuccessful) myUid = meRes.body()?.user?.uid ?: ""
 
             val userRes = RetrofitClient.usersApi.getUserByUid("Bearer $token", uid)
-            if (userRes.isSuccessful) user = userRes.body()?.user
-            else errorMsg = "User not found"
+            if (userRes.isSuccessful) {
+                val fresh = userRes.body()?.user
+                if (fresh != null) {
+                    user = fresh
+                    db.cachedUserProfileDao().upsert(fresh.toEntity())
+                }
+            } else if (user == null) {
+                errorMsg = "User not found"
+            }
 
             val statusRes = RetrofitClient.usersApi.getStatuses("Bearer $token", uid)
             if (statusRes.isSuccessful) status = statusRes.body()?.statuses?.get(uid) ?: "none"
         } catch (e: Exception) {
-            errorMsg = friendlyErrorMessage(e)
+            if (user == null) errorMsg = friendlyErrorMessage(e)
         }
         isLoading = false
     }

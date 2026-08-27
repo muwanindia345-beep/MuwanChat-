@@ -7,8 +7,8 @@ import androidx.room.RoomDatabase
 import java.util.concurrent.ConcurrentHashMap
 
 @Database(
-    entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class, MyProfileEntity::class, ChatWallpaperEntity::class, DeletedMessageEntity::class, ChatBubbleThemeEntity::class, ChatRequestEntity::class],
-    version = 19,
+    entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class, MyProfileEntity::class, ChatWallpaperEntity::class, DeletedMessageEntity::class, ChatBubbleThemeEntity::class, ChatRequestEntity::class, CachedUserProfileEntity::class],
+    version = 20,
     exportSchema = false
 )
 abstract class MuwanChatDb : RoomDatabase() {
@@ -20,6 +20,7 @@ abstract class MuwanChatDb : RoomDatabase() {
     abstract fun deletedMessageDao(): DeletedMessageDao
     abstract fun chatBubbleThemeDao(): ChatBubbleThemeDao
     abstract fun chatRequestDao(): ChatRequestDao
+    abstract fun cachedUserProfileDao(): CachedUserProfileDao
 
     companion object {
         // Har logged-in user ka apna alag local DB file — taaki device pe
