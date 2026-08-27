@@ -122,7 +122,7 @@ fun MediaScreen(navController: NavController, uid: String) {
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val type = mediaTypes[page]
-                val messages by db.messageDao().observeMediaMessages(roomIdmkdir -p app/src/main/java/com/muwan/muwanchat/screens, type)
+                val messages by db.messageDao().observeMediaMessages(roomId!!, type)
                     .collectAsState(initial = emptyList())
 
                 if (messages.isEmpty()) {
