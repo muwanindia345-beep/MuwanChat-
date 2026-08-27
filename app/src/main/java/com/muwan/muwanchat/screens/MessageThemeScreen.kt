@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,13 +62,14 @@ fun MessageThemeScreen(navController: NavController, roomId: String) {
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
+            .systemBarsPadding()
     ) {
         // Header — same fixed style/color reused from Wallpaper screen, nothing new
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(DarkHeader)
-                .padding(horizontal = 4.dp, vertical = 10.dp),
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { navController.popBackStack() }) {
@@ -75,7 +77,7 @@ fun MessageThemeScreen(navController: NavController, roomId: String) {
             }
             Text(
                 "Message Theme",
-                color = Color.White,
+                color = DarkAccent,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
