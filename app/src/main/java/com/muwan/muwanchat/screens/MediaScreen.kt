@@ -193,7 +193,7 @@ private fun PhotosGrid(messages: List<MessageEntity>, onTap: (MessageEntity) -> 
 private fun VideosList(messages: List<MessageEntity>, onTap: (MessageEntity) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp),
+        contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(messages, key = { it.id }) { msg ->
@@ -227,7 +227,7 @@ private fun VideosList(messages: List<MessageEntity>, onTap: (MessageEntity) -> 
 private fun DocumentsList(messages: List<MessageEntity>, onTap: (MessageEntity) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp),
+        contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(messages, key = { it.id }) { msg ->
