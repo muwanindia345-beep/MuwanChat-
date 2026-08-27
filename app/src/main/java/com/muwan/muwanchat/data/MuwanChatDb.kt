@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Database(
     entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class, MyProfileEntity::class, ChatWallpaperEntity::class, DeletedMessageEntity::class, ChatBubbleThemeEntity::class, ChatRequestEntity::class, CachedUserProfileEntity::class, GroupInfoCacheEntity::class],
-    version = 21,
+    version = 22,
     exportSchema = false
 )
 abstract class MuwanChatDb : RoomDatabase() {
@@ -24,9 +24,6 @@ abstract class MuwanChatDb : RoomDatabase() {
     abstract fun groupInfoCacheDao(): GroupInfoCacheDao
 
     companion object {
-        // Har logged-in user ka apna alag local DB file — taaki device pe
-        // account switch/logout-login karne pe purane user ka data naye
-        // user ki screen pe kabhi na dikhe (per-uid isolation)
         private val instances = ConcurrentHashMap<String, MuwanChatDb>()
 
         fun get(context: Context, uid: String): MuwanChatDb {

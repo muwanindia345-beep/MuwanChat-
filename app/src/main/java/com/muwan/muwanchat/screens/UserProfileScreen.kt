@@ -36,9 +36,9 @@ private fun CachedUserProfileEntity.toModel() = UserItem(
     city = city, country = country, gender = gender, avatar = avatar
 )
 
-private fun UserItem.toEntity() = CachedUserProfileEntity(
+private fun UserItem.toEntity(status: String) = CachedUserProfileEntity(
     uid = uid, username = username, name = name, bio = bio,
-    city = city, country = country, gender = gender, avatar = avatar
+    city = city, country = country, gender = gender, avatar = avatar, status = status
 )
 
 @Composable
@@ -60,6 +60,7 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
         val cached = db.cachedUserProfileDao().get(uid)
         if (cached != null) {
             user = cached.toModel()
+            status = cached.status
             isLoading = false
         }
     }
@@ -73,18 +74,21 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
             if (meRes.isSuccessful) myUid = meRes.body()?.user?.uid ?: ""
 
             val userRes = RetrofitClient.usersApi.getUserByUid("Bearer $token", uid)
+            var freshUser: UserItem? = null
             if (userRes.isSuccessful) {
-                val fresh = userRes.body()?.user
-                if (fresh != null) {
-                    user = fresh
-                    db.cachedUserProfileDao().upsert(fresh.toEntity())
-                }
+                freshUser = userRes.body()?.user
+                if (freshUser != null) user = freshUser
             } else if (user == null) {
                 errorMsg = "User not found"
             }
 
             val statusRes = RetrofitClient.usersApi.getStatuses("Bearer $token", uid)
-            if (statusRes.isSuccessful) status = statusRes.body()?.statuses?.get(uid) ?: "none"
+            if (statusRes.isSuccessful) {
+                status = statusRes.body()?.statuses?.get(uid) ?: "none"
+            }
+
+            val u = freshUser ?: user
+            if (u != null) db.cachedUserProfileDao().upsert(u.toEntity(status))
         } catch (e: Exception) {
             if (user == null) errorMsg = friendlyErrorMessage(e)
         }
