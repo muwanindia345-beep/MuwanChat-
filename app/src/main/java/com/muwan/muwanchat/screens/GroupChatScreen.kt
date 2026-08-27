@@ -1027,9 +1027,18 @@ Box(
                         },
                         onLongPress = {
                             if (!isSelectionMode) {
-                                isSelectionMode = true
-                                selectedMessageIds = setOf(it.id)
-                                if (!it.isDeleted) showReactionPicker = true
+                                if (it.isDeleted) {
+                                    // Deleted message pe react nahi ho sakta -- yahan asli
+                                    // selection mode chahiye (bulk actions ke liye)
+                                    isSelectionMode = true
+                                    selectedMessageIds = setOf(it.id)
+                                } else {
+                                    // Sirf quick-react ke liye poora selection-mode (jo header
+                                    // badal deta hai aur list reflow/jump karti hai) enable nahi
+                                    // karte -- sirf reaction dialog kholte hain.
+                                    selectedMessageIds = setOf(it.id)
+                                    showReactionPicker = true
+                                }
                             }
                         },
                         bubbleTheme = bubbleTheme
@@ -1244,6 +1253,7 @@ Box(
             showReactionPicker = false
             showCustomEmojiField = false
             customEmojiInput = ""
+            if (!isSelectionMode) selectedMessageIds = emptySet()
         }) {
             Column(
                 modifier = Modifier
