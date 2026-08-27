@@ -13,6 +13,11 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt ASC")
     suspend fun getMessages(roomId: String): List<MessageEntity>
 
+    // Media screen ke 3 tabs (Photos/Videos/Documents) ke liye — koi limit
+    // nahi, chat mein jitne bhi hain sab yahan aayenge, sabse naya sabse upar
+    @Query("SELECT * FROM messages WHERE roomId = :roomId AND type = :type AND deleted = 0 ORDER BY createdAt DESC")
+    fun observeMediaMessages(roomId: String, type: String): Flow<List<MessageEntity>>
+
     @Query("SELECT * FROM messages WHERE roomId = :roomId AND type = :type AND deleted = 0 ORDER BY createdAt DESC")
     fun observeMediaMessages(roomId: String, type: String): Flow<List<MessageEntity>>
 

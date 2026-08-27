@@ -90,15 +90,10 @@ fun MediaScreen(navController: NavController, uid: String) {
             containerColor = DarkHeader,
             contentColor = DarkAccent,
             indicator = { positions ->
-                if (pagerState.currentPage < positions.size) {
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.fillMaxWidth()
-                            .wrapContentSize(align = Alignment.BottomStart)
-                            .offset(x = positions[pagerState.currentPage].left)
-                            .width(positions[pagerState.currentPage].width),
-                        color = DarkAccent
-                    )
-                }
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(positions[pagerState.currentPage]),
+                    color = DarkAccent
+                )
             }
         ) {
             mediaTabs.forEachIndexed { index, title ->
@@ -127,7 +122,7 @@ fun MediaScreen(navController: NavController, uid: String) {
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val type = mediaTypes[page]
-                val messages by db.messageDao().observeMediaMessages(roomId!!, type)
+                val messages by db.messageDao().observeMediaMessages(roomIdmkdir -p app/src/main/java/com/muwan/muwanchat/screens, type)
                     .collectAsState(initial = emptyList())
 
                 if (messages.isEmpty()) {

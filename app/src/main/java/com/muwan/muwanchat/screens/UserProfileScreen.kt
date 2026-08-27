@@ -177,7 +177,9 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
                     "friends" -> {
                         if (fromChat) {
                             Button(
-                                onClick = { showMediaComingSoon = true },
+                                onClick = {
+                                    navController.navigate(Screen.Media.createRoute(uid))
+                                },
                                 modifier = Modifier.fillMaxWidth().height(48.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
                                 shape = RoundedCornerShape(12.dp)
