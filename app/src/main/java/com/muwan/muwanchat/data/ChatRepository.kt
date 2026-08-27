@@ -81,19 +81,22 @@ object ChatRepository {
     // to blank kar deta hai (list me phir default "Say hi! 👋" dikhega).
     // unreadCount ko yeh function kabhi touch nahi karta.
     suspend fun refreshLastMessagePreview(db: MuwanChatDb, roomId: String) {
-        val latest = db.messageDao().getLatestMessage(roomId)
+        // Deleted (tombstone) messages ko ignore karke sabse recent zinda
+        // message dhoondo — delete karne par preview apne aap peeche wale
+        // par cascade hoga. Koi bhi zinda message na bache to blank karo,
+        // jisse conversation list me default "Say hi! 👋" dikhega.
+        val latest = db.messageDao().getLatestNonDeletedMessage(roomId)
         if (latest == null) {
             db.conversationDao().syncLastMessagePreview(roomId, "", nowIso(), "")
             return
         }
-        val previewText = when {
-            latest.deleted -> "This message was deleted"
-            latest.type == "text" -> latest.content
-            latest.type == "image" -> "📷 Photo"
-            latest.type == "video" -> "🎥 Video"
-            latest.type == "audio" -> "🎤 Voice message"
-            latest.type == "music" -> "🎵 ${latest.fileName ?: "Music"}"
-            latest.type == "document" -> "📄 ${latest.fileName ?: "Document"}"
+        val previewText = when (latest.type) {
+            "text" -> latest.content
+            "image" -> "📷 Photo"
+            "video" -> "🎥 Video"
+            "audio" -> "🎤 Voice message"
+            "music" -> "🎵 ${latest.fileName ?: "Music"}"
+            "document" -> "📄 ${latest.fileName ?: "Document"}"
             else -> latest.content
         }
         db.conversationDao().syncLastMessagePreview(roomId, previewText, latest.createdAt, latest.senderUid)

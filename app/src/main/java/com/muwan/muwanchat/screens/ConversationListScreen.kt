@@ -221,10 +221,23 @@ fun ConversationListScreen(navController: NavController) {
                             senderUid = event.senderUid,
                             receiverUid = myUid,
                             content = event.content,
-                            type = "text",
+                            type = event.type,
                             createdAt = event.createdAt.ifBlank { nowIso() },
-                            myUid = myUid
+                            myUid = myUid,
+                            fileName = event.fileName,
+                            mimeType = event.mimeType,
+                            replyToId = event.replyToId,
+                            isForwarded = event.isForwarded
                         )
+                    }
+                }
+                is SocketEvent.MessageDeleted -> {
+                    // Home screen par baithe ho tab bhi delete turant preview
+                    // par reflect ho (chat ke andar jaane ki zarurat nahi) —
+                    // pichla zinda message dikhega, kuch na bacha to "Say hi! 👋"
+                    scope.launch {
+                        db.messageDao().markDeleted(event.id)
+                        ChatRepository.refreshLastMessagePreview(db, event.roomId)
                     }
                 }
                 is SocketEvent.NewRequest -> {

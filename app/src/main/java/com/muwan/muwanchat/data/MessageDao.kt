@@ -69,6 +69,12 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestMessage(roomId: String): MessageEntity?
 
+    // Preview ke liye: deleted (tombstone) messages ko skip karke sabse
+    // recent zinda message dhoondta hai — taaki delete karne par preview
+    // apne aap peeche wale message par cascade ho jaaye.
+    @Query("SELECT * FROM messages WHERE roomId = :roomId AND deleted = 0 ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestNonDeletedMessage(roomId: String): MessageEntity?
+
     @Query("DELETE FROM messages")
     suspend fun clearAll()
 }
