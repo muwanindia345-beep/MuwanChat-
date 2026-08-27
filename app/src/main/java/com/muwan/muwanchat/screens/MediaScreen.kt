@@ -90,10 +90,15 @@ fun MediaScreen(navController: NavController, uid: String) {
             containerColor = DarkHeader,
             contentColor = DarkAccent,
             indicator = { positions ->
-                TabRowDefaults.SecondaryIndicator(
-                    TabRowDefaults.tabIndicatorOffset(positions[pagerState.currentPage]),
-                    color = DarkAccent
-                )
+                if (pagerState.currentPage < positions.size) {
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.fillMaxWidth()
+                            .wrapContentSize(align = Alignment.BottomStart)
+                            .offset(x = positions[pagerState.currentPage].left)
+                            .width(positions[pagerState.currentPage].width),
+                        color = DarkAccent
+                    )
+                }
             }
         ) {
             mediaTabs.forEachIndexed { index, title ->
