@@ -244,9 +244,11 @@ private fun DocumentsList(messages: List<MessageEntity>, onTap: (MessageEntity) 
                 Spacer(Modifier.width(12.dp))
                 Text(
                     msg.fileName ?: "Document",
+                    modifier = Modifier.weight(1f),
                     color = Color.White,
                     fontSize = 14.sp,
                     maxLines = 1,
+                    softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
             }
