@@ -62,6 +62,7 @@ fun MediaScreen(navController: NavController, uid: String) {
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
+            .systemBarsPadding()
     ) {
         // ── Header — ChatHeader/GroupInfoScreen jaisa hi look ──
         Row(
