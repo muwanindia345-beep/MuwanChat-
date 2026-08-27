@@ -5,6 +5,7 @@ import android.os.Build
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.GifDecoder
+import coil.memory.MemoryCache
 import coil.decode.ImageDecoderDecoder
 import coil.decode.VideoFrameDecoder
 import com.muwan.muwanchat.data.AuthDataStore
@@ -31,6 +32,12 @@ class MuwanChatApp : Application(), ImageLoaderFactory {
 
         return ImageLoader.Builder(this)
             .okHttpClient(okHttpClient)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .crossfade(120)
             .components {
                 add(VideoFrameDecoder.Factory())
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

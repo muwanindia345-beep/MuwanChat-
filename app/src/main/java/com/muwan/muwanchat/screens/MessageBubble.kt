@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.painter.ColorPainter
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBubbleReceived
 import com.muwan.muwanchat.DarkBubbleSent
@@ -350,6 +351,8 @@ fun MessageBubble(
                         AsyncImage(
                             model = url,
                             contentDescription = "Image",
+                            placeholder = ColorPainter(Color(0xFF2A2A2A)),
+                            error = ColorPainter(Color(0xFF2A2A2A)),
                             modifier = Modifier
                                 .widthIn(min = 120.dp, max = 200.dp)
                                 .heightIn(min = 120.dp, max = 200.dp)
@@ -365,6 +368,8 @@ fun MessageBubble(
                             AsyncImage(
                                 model = url,
                                 contentDescription = "Sticker",
+                                placeholder = ColorPainter(Color(0xFF2A2A2A)),
+                                error = ColorPainter(Color(0xFF2A2A2A)),
                                 modifier = Modifier
                                     .sizeIn(minWidth = 140.dp, minHeight = 140.dp, maxWidth = 180.dp, maxHeight = 180.dp)
                                     .clickable { if (isSelectionMode) onTap() },
@@ -407,6 +412,8 @@ fun MessageBubble(
                             AsyncImage(
                                 model = url,
                                 contentDescription = "Video thumbnail",
+                                placeholder = ColorPainter(Color(0xFF1A1A1A)),
+                                error = ColorPainter(Color(0xFF1A1A1A)),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -478,6 +485,8 @@ fun MessageBubble(
                             AsyncImage(
                                 model = message.previewImage,
                                 contentDescription = "Link preview",
+                                placeholder = ColorPainter(Color(0xFF2A2A2A)),
+                                error = ColorPainter(Color(0xFF2A2A2A)),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(120.dp),
