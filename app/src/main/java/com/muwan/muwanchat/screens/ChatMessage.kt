@@ -48,7 +48,8 @@ fun formatMessageTime(raw: String): String {
         val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
         parser.timeZone = TimeZone.getTimeZone("UTC")
         val date = parser.parse(raw.take(19)) ?: return raw.take(16).replace("T", " ")
-        val display = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        // Sirf time dikhate hai (date nahi) — bubble compact rehta hai, WhatsApp jaisa "1:18 PM"
+        val display = SimpleDateFormat("h:mm a", Locale.getDefault())
         display.timeZone = TimeZone.getDefault()
         display.format(date)
     } catch (_: Exception) {
