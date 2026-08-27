@@ -18,9 +18,6 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE roomId = :roomId AND type = :type AND deleted = 0 ORDER BY createdAt DESC")
     fun observeMediaMessages(roomId: String, type: String): Flow<List<MessageEntity>>
 
-    @Query("SELECT * FROM messages WHERE roomId = :roomId AND type = :type AND deleted = 0 ORDER BY createdAt DESC")
-    fun observeMediaMessages(roomId: String, type: String): Flow<List<MessageEntity>>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(messages: List<MessageEntity>)
 

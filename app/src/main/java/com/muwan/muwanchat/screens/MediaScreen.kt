@@ -91,7 +91,7 @@ fun MediaScreen(navController: NavController, uid: String) {
             contentColor = DarkAccent,
             indicator = { positions ->
                 TabRowDefaults.SecondaryIndicator(
-                    Modifier.tabIndicatorOffset(positions[pagerState.currentPage]),
+                    TabRowDefaults.tabIndicatorOffset(positions[pagerState.currentPage]),
                     color = DarkAccent
                 )
             }
