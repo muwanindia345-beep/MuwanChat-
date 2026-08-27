@@ -364,6 +364,8 @@ fun GroupChatScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
     val currentWallpaper by db.chatWallpaperDao().observeByRoomId(groupId).collectAsState(initial = null)
+    val currentBubbleThemeEntity by db.chatBubbleThemeDao().observeByRoomId(groupId).collectAsState(initial = null)
+    val bubbleTheme = com.muwan.muwanchat.data.BubbleThemePresets.fromId(currentBubbleThemeEntity?.themeId)
 
     val messageEntities by db.messageDao().observeMessages(groupId).collectAsState(initial = emptyList())
     val conversationEntity by db.conversationDao().observeByRoomId(groupId).collectAsState(initial = null)
@@ -944,7 +946,7 @@ Column(
                 },
                 onMessageTheme = {
                     showMenuSheet = false
-                    comingSoonFeature = "🎨 Message Theme"
+                    navController.navigate(com.muwan.muwanchat.navigation.Screen.MessageTheme.createRoute(groupId))
                 }
             )
         }
@@ -1000,7 +1002,8 @@ Column(
                                 selectedMessageIds = setOf(it.id)
                                 if (!it.isDeleted) showReactionPicker = true
                             }
-                        }
+                        },
+                        bubbleTheme = bubbleTheme
                     )
                 }
             }

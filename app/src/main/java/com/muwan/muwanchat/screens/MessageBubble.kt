@@ -56,6 +56,8 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBubbleReceived
 import com.muwan.muwanchat.DarkBubbleSent
 import com.muwan.muwanchat.DarkInputBg
+import com.muwan.muwanchat.data.BubbleTheme
+import com.muwan.muwanchat.data.BubbleThemePresets
 
 // Message text mein URLs dhoondh ke unhe clickable-blue dikhane ke liye
 private const val LINK_TAG = "URL"
@@ -122,7 +124,8 @@ fun MessageBubble(
     onReplyTap: (String) -> Unit = {},
     onLongPress: (ChatMessage) -> Unit = {},
     senderAvatar: String? = null,
-    senderName: String? = null
+    senderName: String? = null,
+    bubbleTheme: BubbleTheme = BubbleThemePresets.ORIGINAL
 ) {
     if (message.type == "system") {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
@@ -159,6 +162,14 @@ fun MessageBubble(
     // Sticker/GIF ka apna pattern hai: koi chat-bubble background/padding nahi (WhatsApp jaisa),
     // bada size, aur timestamp seedha image ke corner pe overlay hota hai — niche alag row nahi.
     val isSticker = message.type == "gif"
+
+    // Message Theme ke hisaab se sirf bubble ka color/size/shape decide hota hai —
+    // baaki kuch bhi (gestures, media layout, reactions, timestamp) unaffected rehta hai.
+    val bubbleCornerBig = if (bubbleTheme.compact) 14.dp else 18.dp
+    val bubbleCornerTail = 4.dp
+    val bubbleHPad = if (bubbleTheme.compact) 10.dp else 14.dp
+    val bubbleVPad = if (bubbleTheme.compact) 7.dp else 10.dp
+    val bubbleFontSize = if (bubbleTheme.compact) 14.sp else 15.sp
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -254,15 +265,15 @@ fun MessageBubble(
                 .widthIn(max = 280.dp)
                 .clip(
                     RoundedCornerShape(
-                        topStart = 18.dp, topEnd = 18.dp,
-                        bottomEnd = if (message.sent) 4.dp else 18.dp,
-                        bottomStart = if (message.sent) 18.dp else 4.dp
+                        topStart = bubbleCornerBig, topEnd = bubbleCornerBig,
+                        bottomEnd = if (message.sent) bubbleCornerTail else bubbleCornerBig,
+                        bottomStart = if (message.sent) bubbleCornerBig else bubbleCornerTail
                     )
                 )
-                .background(if (isSticker) Color.Transparent else if (message.sent) DarkBubbleSent else DarkBubbleReceived)
+                .background(if (isSticker) Color.Transparent else if (message.sent) bubbleTheme.sentColor else DarkBubbleReceived)
                 .padding(
-                    horizontal = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else 14.dp,
-                    vertical = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else 10.dp
+                    horizontal = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else bubbleHPad,
+                    vertical = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else bubbleVPad
                 )
                 .let {
                     if (message.sent && message.status == "FAILED" && !message.isDeleted)
@@ -442,11 +453,11 @@ fun MessageBubble(
                 if (message.text.isNotBlank()) {
                     if (isSelectionMode) {
                         // Selection mode me poore bubble ka tap select/deselect ke liye reserved hai
-                        Text(message.text, color = Color.White, fontSize = 15.sp)
+                        Text(message.text, color = Color.White, fontSize = bubbleFontSize)
                     } else {
                         Text(
                             text = annotatedText,
-                            style = TextStyle(color = Color.White, fontSize = 15.sp),
+                            style = TextStyle(color = Color.White, fontSize = bubbleFontSize),
                             onTextLayout = { textLayoutResult = it }
                         )
                     }
