@@ -30,7 +30,9 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.google.gson.Gson
 import com.muwan.muwanchat.data.ChatRepository
+import com.muwan.muwanchat.data.GroupInfoCacheEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.AddMembersRequest
@@ -48,6 +50,8 @@ import kotlinx.coroutines.launch
 fun GroupInfoScreen(navController: NavController, groupId: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
+    val gson = remember { Gson() }
 
     var myUid by remember { mutableStateOf("") }
     var group by remember { mutableStateOf<GroupData?>(null) }
@@ -80,19 +84,34 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
         val token = AuthDataStore.getToken(context).first() ?: return
         val res = RetrofitClient.chatApi.getGroup("Bearer $token", groupId)
         if (res.isSuccessful) {
-            group = res.body()?.group
-        } else {
+            val fresh = res.body()?.group
+            if (fresh != null) {
+                group = fresh
+                db.groupInfoCacheDao().upsert(GroupInfoCacheEntity(groupId = groupId, json = gson.toJson(fresh)))
+            }
+        } else if (group == null) {
             errorMsg = "Group load nahi ho paya"
+        }
+    }
+
+    // Local cache se turant dikhao (offline-first) -- background me refreshGroup() fresh data laata hai
+    LaunchedEffect(groupId) {
+        val cached = db.groupInfoCacheDao().get(groupId)
+        if (cached != null) {
+            try {
+                group = gson.fromJson(cached.json, GroupData::class.java)
+                isLoading = false
+            } catch (_: Exception) {}
         }
     }
 
     LaunchedEffect(groupId) {
         myUid = AuthDataStore.getUid(context).first() ?: ""
-        isLoading = true
+        if (group == null) isLoading = true
         try {
             refreshGroup()
         } catch (e: Exception) {
-            errorMsg = e.message ?: "Network error"
+            if (group == null) errorMsg = e.message ?: "Network error"
         }
         isLoading = false
     }
