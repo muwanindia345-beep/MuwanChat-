@@ -80,6 +80,7 @@ import com.muwan.muwanchat.data.ChatRepository
 import com.muwan.muwanchat.data.ChatWallpaperEntity
 import com.muwan.muwanchat.data.DocumentOpener
 import com.muwan.muwanchat.data.DeletedMessageEntity
+import com.muwan.muwanchat.data.GroupInfoCacheEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.data.UploadProgressTracker
@@ -721,6 +722,22 @@ fun GroupChatScreen(
         }
     }
 
+    // Local cache se turant member avatars/names dikhao (agar kabhi GroupInfo/Settings
+    // khula ho) -- taaki chat screen khulte hi avatar turant dikhe, 0.1s ka flash na ho.
+    LaunchedEffect(Unit) {
+        if (group != null) return@LaunchedEffect
+        val cached = db.groupInfoCacheDao().get(groupId)
+        if (cached != null && group == null) {
+            try {
+                val g = Gson().fromJson(cached.json, GroupData::class.java)
+                group = g
+                memberNames = g.memberProfiles.associate { it.uid to it.username }
+                memberAvatars = g.memberProfiles.associate { it.uid to it.avatar }
+                memberCount = g.members.size
+            } catch (_: Exception) {}
+        }
+    }
+
     LaunchedEffect(Unit) {
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         myToken = token
@@ -738,6 +755,7 @@ fun GroupChatScreen(
                 memberAvatars = g.memberProfiles.associate { it.uid to it.avatar }
                 memberCount = g.members.size
                 db.conversationDao().updateAdminSettings(groupId, g.onlyAdminsCanSend, g.admins.contains(myUid))
+                db.groupInfoCacheDao().upsert(GroupInfoCacheEntity(groupId = groupId, json = Gson().toJson(g)))
             }
         } catch (_: Exception) {}
 
