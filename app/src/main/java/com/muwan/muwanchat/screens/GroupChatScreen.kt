@@ -522,6 +522,7 @@ fun GroupChatScreen(
         scope.launch {
             db.messageDao().deleteByIds(ids)
             db.deletedMessageDao().markDeleted(ids.map { DeletedMessageEntity(it, now) })
+            ChatRepository.refreshLastMessagePreview(db, groupId)
         }
         exitSelectionMode()
     }
@@ -535,6 +536,7 @@ fun GroupChatScreen(
                 } catch (_: Exception) {}
                 db.messageDao().markDeleted(id)
             }
+            ChatRepository.refreshLastMessagePreview(db, groupId)
         }
         exitSelectionMode()
     }
@@ -821,7 +823,10 @@ fun GroupChatScreen(
                 }
                 is SocketEvent.MessageDeleted -> {
                     if (event.roomId == groupId) {
-                        scope.launch { db.messageDao().markDeleted(event.id) }
+                        scope.launch {
+                            db.messageDao().markDeleted(event.id)
+                            ChatRepository.refreshLastMessagePreview(db, groupId)
+                        }
                     }
                 }
                 is SocketEvent.MessageEdited -> {

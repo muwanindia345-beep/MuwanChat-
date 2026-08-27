@@ -296,6 +296,7 @@ fun ChatScreen(
             db.messageDao().deleteByIds(ids)
             // Record karo taaki agla sync backend se inhe wapas na le aaye
             db.deletedMessageDao().markDeleted(ids.map { DeletedMessageEntity(it, now) })
+            ChatRepository.refreshLastMessagePreview(db, roomId)
         }
         exitSelectionMode()
     }
@@ -312,6 +313,7 @@ fun ChatScreen(
                 }
                 db.messageDao().markDeleted(id)
             }
+            ChatRepository.refreshLastMessagePreview(db, roomId)
         }
         exitSelectionMode()
     }
@@ -598,7 +600,10 @@ fun ChatScreen(
                 }
                 is SocketEvent.MessageDeleted -> {
                     if (event.roomId == roomId) {
-                        scope.launch { db.messageDao().markDeleted(event.id) }
+                        scope.launch {
+                            db.messageDao().markDeleted(event.id)
+                            ChatRepository.refreshLastMessagePreview(db, roomId)
+                        }
                     }
                 }
                 is SocketEvent.MessageEdited -> {

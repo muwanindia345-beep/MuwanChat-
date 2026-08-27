@@ -35,6 +35,16 @@ interface ConversationDao {
     """)
     suspend fun updateLastMessage(roomId: String, lastMessage: String, lastTime: String, lastSenderUid: String, myUid: String)
 
+    // Message delete/edit hone ke baad preview text re-sync karne ke liye —
+    // unreadCount ko bilkul touch nahi karta (naya message nahi hai, sirf existing
+    // wale ka preview update ho raha hai)
+    @Query("""
+        UPDATE conversations
+        SET lastMessage = :lastMessage, lastTime = :lastTime, lastSenderUid = :lastSenderUid
+        WHERE roomId = :roomId
+    """)
+    suspend fun syncLastMessagePreview(roomId: String, lastMessage: String, lastTime: String, lastSenderUid: String)
+
     @Query("UPDATE conversations SET unreadCount = 0 WHERE roomId = :roomId")
     suspend fun clearUnread(roomId: String)
 

@@ -66,6 +66,9 @@ interface MessageDao {
     @Query("UPDATE messages SET status = 'SEEN' WHERE roomId = :roomId AND senderUid = :myUid AND status != 'SEEN'")
     suspend fun markMySentAsSeen(roomId: String, myUid: String)
 
+    @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestMessage(roomId: String): MessageEntity?
+
     @Query("DELETE FROM messages")
     suspend fun clearAll()
 }

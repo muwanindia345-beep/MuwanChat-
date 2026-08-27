@@ -73,6 +73,32 @@ object ChatRepository {
         }
     }
 
+    // Delete (for me / for everyone / socket se aaya delete event) ke baad
+    // conversation list ka preview text recalculate karta hai — jo bhi
+    // room ka SABSE NAYA message ho (deleted rows bhi count hoti hai,
+    // kyunki "delete for everyone" wale rows tombstone ban ke DB me rehte hai),
+    // usi ke hisaab se "lastMessage" set hota hai. Koi message hi na bacha ho
+    // to blank kar deta hai (list me phir default "Say hi! 👋" dikhega).
+    // unreadCount ko yeh function kabhi touch nahi karta.
+    suspend fun refreshLastMessagePreview(db: MuwanChatDb, roomId: String) {
+        val latest = db.messageDao().getLatestMessage(roomId)
+        if (latest == null) {
+            db.conversationDao().syncLastMessagePreview(roomId, "", nowIso(), "")
+            return
+        }
+        val previewText = when {
+            latest.deleted -> "This message was deleted"
+            latest.type == "text" -> latest.content
+            latest.type == "image" -> "📷 Photo"
+            latest.type == "video" -> "🎥 Video"
+            latest.type == "audio" -> "🎤 Voice message"
+            latest.type == "music" -> "🎵 ${latest.fileName ?: "Music"}"
+            latest.type == "document" -> "📄 ${latest.fileName ?: "Document"}"
+            else -> latest.content
+        }
+        db.conversationDao().syncLastMessagePreview(roomId, previewText, latest.createdAt, latest.senderUid)
+    }
+
     suspend fun addConversationPlaceholder(
         db: MuwanChatDb,
         roomId: String,
