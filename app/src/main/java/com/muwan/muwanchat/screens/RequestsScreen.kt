@@ -22,26 +22,54 @@ import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.ChatRequestEntity
+import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.ChatRequest
 import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+private fun ChatRequestEntity.toModel() = ChatRequest(
+    id = id, sender_uid = senderUid, receiver_uid = receiverUid,
+    status = status, created_at = createdAt, username = username, avatar = avatar
+)
+
+private fun ChatRequest.toEntity() = ChatRequestEntity(
+    id = id, senderUid = sender_uid, receiverUid = receiver_uid,
+    status = status, createdAt = created_at, username = username, avatar = avatar
+)
+
 @Composable
 fun RequestsScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
     var requests by remember { mutableStateOf<List<ChatRequest>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val handled = remember { mutableStateListOf<String>() }
 
+    // Local DB se turant dikhao (offline-first) — cache khali ho to hi spinner
+    LaunchedEffect(Unit) {
+        val cached = db.chatRequestDao().getAll()
+        if (cached.isNotEmpty()) {
+            requests = cached.map { it.toModel() }
+            isLoading = false
+        }
+    }
+
+    // Background me backend se refresh, local cache update
     LaunchedEffect(Unit) {
         try {
             val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
             val res = RetrofitClient.requestsApi.getIncoming("Bearer $token")
-            if (res.isSuccessful) requests = res.body()?.requests ?: emptyList()
+            if (res.isSuccessful) {
+                val fresh = res.body()?.requests ?: emptyList()
+                requests = fresh
+                db.chatRequestDao().clearAll()
+                db.chatRequestDao().upsertAll(fresh.map { it.toEntity() })
+            }
         } catch (_: Exception) {}
         isLoading = false
     }
@@ -52,17 +80,17 @@ fun RequestsScreen(navController: NavController) {
             if (event is SocketEvent.NewRequest) {
                 val alreadyThere = requests.any { it.id == event.id }
                 if (!alreadyThere) {
-                    requests = listOf(
-                        ChatRequest(
-                            id = event.id,
-                            sender_uid = event.senderUid,
-                            receiver_uid = "",
-                            status = "pending",
-                            created_at = event.createdAt,
-                            username = event.username,
-                            avatar = event.avatar
-                        )
-                    ) + requests
+                    val newReq = ChatRequest(
+                        id = event.id,
+                        sender_uid = event.senderUid,
+                        receiver_uid = "",
+                        status = "pending",
+                        created_at = event.createdAt,
+                        username = event.username,
+                        avatar = event.avatar
+                    )
+                    requests = listOf(newReq) + requests
+                    scope.launch { db.chatRequestDao().upsert(newReq.toEntity()) }
                 }
             }
         }
@@ -75,6 +103,7 @@ fun RequestsScreen(navController: NavController) {
                 val res = RetrofitClient.requestsApi.acceptRequest("Bearer $token", req.id)
                 if (res.isSuccessful) {
                     handled.add(req.id)
+                    db.chatRequestDao().deleteById(req.id)
                     navController.popBackStack()
                 }
             } catch (_: Exception) {}
@@ -86,7 +115,10 @@ fun RequestsScreen(navController: NavController) {
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@launch
                 val res = RetrofitClient.requestsApi.rejectRequest("Bearer $token", req.id)
-                if (res.isSuccessful) handled.add(req.id)
+                if (res.isSuccessful) {
+                    handled.add(req.id)
+                    db.chatRequestDao().deleteById(req.id)
+                }
             } catch (_: Exception) {}
         }
     }
