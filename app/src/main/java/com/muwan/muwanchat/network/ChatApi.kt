@@ -65,7 +65,8 @@ data class MessageItem(
     val edited: Boolean = false,
     val reactions: List<MessageReaction>? = null,
     val link_preview: LinkPreview? = null,
-    val is_forwarded: Boolean = false
+    val is_forwarded: Boolean = false,
+    val mentions: List<String>? = null
 )
 
 data class SendMessageRequest(
@@ -111,6 +112,15 @@ data class LinkPreviewResponse(
 
 data class DeletedMessagesResponse(
     val ids: List<String>
+)
+
+data class PinnedMessageInfo(
+    val id: String,
+    val pinned_at: String
+)
+
+data class PinnedMessagesResponse(
+    val pinned: List<PinnedMessageInfo>
 )
 
 data class ReactRequest(
@@ -375,6 +385,27 @@ interface ChatApi {
         @Path("roomId") roomId: String,
         @Path("id") id: String
     ): Response<Map<String, Boolean>>
+
+    // Pinned messages — SHARED, dono/sabhi participants ko dikhta hai
+    @POST("chat/message/{roomId}/{id}/pin")
+    suspend fun pinMessage(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String,
+        @Path("id") id: String
+    ): Response<Map<String, Boolean>>
+
+    @POST("chat/message/{roomId}/{id}/unpin")
+    suspend fun unpinMessage(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String,
+        @Path("id") id: String
+    ): Response<Map<String, Boolean>>
+
+    @GET("chat/pinned/{roomId}")
+    suspend fun getPinnedMessages(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: String
+    ): Response<PinnedMessagesResponse>
 
     @POST("chat/message/{roomId}/{id}/react")
     suspend fun reactToMessage(

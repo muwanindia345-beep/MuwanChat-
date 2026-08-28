@@ -23,6 +23,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -51,6 +53,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Send
@@ -268,6 +271,25 @@ fun ChatScreen(
     }
 
     var selectedMessageIds by remember { mutableStateOf(setOf<String>()) }
+    var pinnedMessages by remember { mutableStateOf(listOf<com.muwan.muwanchat.network.PinnedMessageInfo>()) }
+    var showPinnedDropdown by remember { mutableStateOf(false) }
+
+    fun jumpToMessage(targetId: String) {
+        val index = messages.indexOfFirst { it.id == targetId }
+        if (index >= 0) {
+            scope.launch { listState.animateScrollToItem(index) }
+        }
+    }
+
+    LaunchedEffect(roomId, myToken) {
+        if (myToken.isBlank()) return@LaunchedEffect
+        try {
+            val res = RetrofitClient.chatApi.getPinnedMessages("Bearer $myToken", roomId)
+            if (res.isSuccessful) {
+                pinnedMessages = res.body()?.pinned ?: emptyList()
+            }
+        } catch (_: Exception) {}
+    }
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
 
     fun exitSelectionMode() {
@@ -620,6 +642,16 @@ fun ChatScreen(
                         scope.launch { db.messageDao().editMessage(event.id, event.content) }
                     }
                 }
+                is SocketEvent.MessagePinned -> {
+                    if (event.roomId == roomId && pinnedMessages.none { it.id == event.id }) {
+                        pinnedMessages = pinnedMessages + com.muwan.muwanchat.network.PinnedMessageInfo(event.id, event.pinnedAt)
+                    }
+                }
+                is SocketEvent.MessageUnpinned -> {
+                    if (event.roomId == roomId) {
+                        pinnedMessages = pinnedMessages.filter { it.id != event.id }
+                    }
+                }
                 is SocketEvent.ReactionUpdate -> {
                     if (event.roomId == roomId) {
                         scope.launch { db.messageDao().updateReactions(event.id, event.reactionsJson) }
@@ -696,12 +728,22 @@ fun ChatScreen(
                     }
                 }
 
-                val canReact = selectedMessageIds.size == 1 &&
-                    messages.firstOrNull { it.id == selectedMessageIds.first() }?.isDeleted == false
+                val canPin = selectedMessageIds.isNotEmpty() &&
+                    selectedMessageIds.all { id -> messages.firstOrNull { it.id == id }?.isDeleted == false }
 
-                if (canReact) {
-                    IconButton(onClick = { showReactionPicker = true }) {
-                        Icon(Icons.Filled.EmojiEmotions, contentDescription = "React", tint = Color.White)
+                if (canPin) {
+                    IconButton(onClick = {
+                        val idsToPin = selectedMessageIds.toList()
+                        scope.launch {
+                            idsToPin.forEach { id ->
+                                try {
+                                    RetrofitClient.chatApi.pinMessage("Bearer $myToken", roomId, id)
+                                } catch (_: Exception) {}
+                            }
+                        }
+                        exitSelectionMode()
+                    }) {
+                        Icon(Icons.Filled.PushPin, contentDescription = "Pin", tint = Color.White)
                     }
                 }
 
@@ -758,6 +800,113 @@ fun ChatScreen(
             )
         }
 
+        if (pinnedMessages.isNotEmpty()) {
+            val latestPinned = pinnedMessages.last()
+            fun pinnedPreviewText(id: String): String {
+                val m = messages.firstOrNull { it.id == id } ?: return "Message"
+                return when {
+                    m.isDeleted -> "This message was deleted"
+                    m.type == "image" -> "📷 Photo"
+                    m.type == "video" -> "🎥 Video"
+                    m.type == "audio" -> "🎤 Voice message"
+                    m.type == "music" -> "🎵 ${m.fileName ?: "Music"}"
+                    m.type == "document" -> "📄 ${m.fileName ?: "Document"}"
+                    m.type == "gif" -> "GIF"
+                    else -> m.text
+                }
+            }
+            Box {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DarkSheet)
+                        .clickable {
+                            if (pinnedMessages.size > 1) {
+                                showPinnedDropdown = true
+                            } else {
+                                jumpToMessage(latestPinned.id)
+                            }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.PushPin,
+                        contentDescription = "Pinned",
+                        tint = DarkAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        pinnedPreviewText(latestPinned.id),
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                    )
+                    if (pinnedMessages.size > 1) {
+                        Text(
+                            "${pinnedMessages.size}",
+                            color = Color(0xFFAAAAAA),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                try {
+                                    RetrofitClient.chatApi.unpinMessage("Bearer $myToken", roomId, latestPinned.id)
+                                } catch (_: Exception) {}
+                            }
+                        },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Unpin", tint = Color(0xFFAAAAAA), modifier = Modifier.size(16.dp))
+                    }
+                }
+                DropdownMenu(
+                    expanded = showPinnedDropdown,
+                    onDismissRequest = { showPinnedDropdown = false },
+                    modifier = Modifier.background(DarkSheet)
+                ) {
+                    pinnedMessages.reversed().forEach { pinned ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    pinnedPreviewText(pinned.id),
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Filled.PushPin, contentDescription = null, tint = DarkAccent, modifier = Modifier.size(16.dp))
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        try {
+                                            RetrofitClient.chatApi.unpinMessage("Bearer $myToken", roomId, pinned.id)
+                                        } catch (_: Exception) {}
+                                    }
+                                }) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Unpin", tint = Color(0xFFAAAAAA), modifier = Modifier.size(16.dp))
+                                }
+                            },
+                            onClick = {
+                                jumpToMessage(pinned.id)
+                                showPinnedDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         Box(modifier = Modifier.weight(1f)) {
             LazyColumn(
                 state = listState,
@@ -794,12 +943,7 @@ fun ChatScreen(
                             } catch (_: Exception) {}
                         },
                         onRetry = { retryMessage(it) },
-                        onReplyTap = { targetId ->
-                            val index = messages.indexOfFirst { it.id == targetId }
-                            if (index >= 0) {
-                                scope.launch { listState.animateScrollToItem(index) }
-                            }
-                        },
+                        onReplyTap = { targetId -> jumpToMessage(targetId) },
                         onLongPress = {
                             if (!isSelectionMode) {
                                 isSelectionMode = true

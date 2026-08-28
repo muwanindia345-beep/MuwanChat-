@@ -42,6 +42,10 @@ sealed class SocketEvent {
     // Edit Message ka result — sender ke alawa dusre device/user ki screen bhi isi se update hoti hai
     data class MessageEdited(val id: String, val roomId: String, val content: String) : SocketEvent()
 
+    // Pin/Unpin shared hote hai — dono/sabhi participants ki screen isi se live update hoti hai
+    data class MessagePinned(val id: String, val roomId: String, val pinnedAt: String) : SocketEvent()
+    data class MessageUnpinned(val id: String, val roomId: String) : SocketEvent()
+
     // Reaction add/remove ka result — reactionsJson poori updated list hai (server se aata hai)
     data class ReactionUpdate(
         val id: String,
@@ -207,6 +211,24 @@ object AppSocketManager {
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
                 _events.tryEmit(
                     SocketEvent.MessageDeleted(json.optString("id"), json.optString("room_id"))
+                )
+            }
+
+            s.on("message_pinned") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.MessagePinned(
+                        json.optString("id"),
+                        json.optString("room_id"),
+                        json.optString("pinned_at")
+                    )
+                )
+            }
+
+            s.on("message_unpinned") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.MessageUnpinned(json.optString("id"), json.optString("room_id"))
                 )
             }
 

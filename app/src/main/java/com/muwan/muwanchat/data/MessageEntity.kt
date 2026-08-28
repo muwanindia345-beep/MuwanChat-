@@ -24,5 +24,6 @@ data class MessageEntity(
     val previewTitle: String? = null,
     val previewDescription: String? = null,
     val previewImage: String? = null,
-    val previewUrl: String? = null
+    val previewUrl: String? = null,
+    val mentions: String? = null   // comma-separated uids jinhe is message mein mention kiya gaya
 )
