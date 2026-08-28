@@ -40,8 +40,7 @@ data class ChatMessage(
     val previewDescription: String? = null,
     val previewImage: String? = null,
     val previewUrl: String? = null,
-    val isForwarded: Boolean = false,
-    val mentions: List<String> = emptyList()
+    val isForwarded: Boolean = false
 )
 
 fun formatMessageTime(raw: String): String {
@@ -77,8 +76,7 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     previewDescription = link_preview?.description,
     previewImage = link_preview?.image,
     previewUrl = link_preview?.url,
-    isForwarded = is_forwarded,
-    mentions = mentions ?: emptyList()
+    isForwarded = is_forwarded
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
@@ -100,8 +98,7 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     previewDescription = previewDescription,
     previewImage = previewImage,
     previewUrl = previewUrl,
-    isForwarded = isForwarded,
-    mentions = mentions?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+    isForwarded = isForwarded
 )
 
 fun nowTime(): String {
