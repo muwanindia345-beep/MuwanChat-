@@ -77,7 +77,7 @@ fun MessageThemeScreen(navController: NavController, roomId: String) {
             }
             Text(
                 "Message Theme",
-                color = DarkAccent,
+                color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )

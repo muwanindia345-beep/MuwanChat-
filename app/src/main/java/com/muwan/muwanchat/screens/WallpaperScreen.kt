@@ -134,7 +134,7 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
             IconButton(onClick = { navController.popBackStack() }) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
-            Text("Chat Wallpaper", color = DarkAccent, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text("Chat Wallpaper", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
 
         // ── Everything below scrolls ──
