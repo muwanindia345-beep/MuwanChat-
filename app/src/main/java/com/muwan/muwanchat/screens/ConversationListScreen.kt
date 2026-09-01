@@ -395,7 +395,7 @@ fun ConversationListScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("MuwanChat", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    Text("TalkWave", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                     Row {
                         BadgedBox(badge = {
                             if (incomingCount > 0) Badge { Text("$incomingCount") }
