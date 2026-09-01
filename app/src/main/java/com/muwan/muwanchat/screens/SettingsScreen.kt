@@ -62,7 +62,7 @@ fun SettingsScreen(navController: NavController) {
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.ManageAccounts, contentDescription = "Account Settings", tint = DarkAccent)
+            Icon(Icons.Filled.ManageAccounts, contentDescription = "Account Settings", tint = Color.White)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("Account Settings", color = Color.White, fontSize = 16.sp)
@@ -83,7 +83,7 @@ fun SettingsScreen(navController: NavController) {
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = DarkAccent)
+            Icon(Icons.Filled.Notifications, contentDescription = "Notifications", tint = Color.White)
             Spacer(modifier = Modifier.width(16.dp))
             Text("Notifications", color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
             Switch(
@@ -112,7 +112,7 @@ fun SettingsScreen(navController: NavController) {
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.PeopleAlt, contentDescription = "Accepted Users", tint = DarkAccent)
+            Icon(Icons.Filled.PeopleAlt, contentDescription = "Accepted Users", tint = Color.White)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("Accepted Users", color = Color.White, fontSize = 16.sp)
@@ -143,7 +143,7 @@ fun SettingsScreen(navController: NavController) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box {
-                Icon(Icons.Filled.SystemUpdate, contentDescription = "Check Updates", tint = DarkAccent)
+                Icon(Icons.Filled.SystemUpdate, contentDescription = "Check Updates", tint = Color.White)
                 if (hasUpdate) {
                     Box(
                         modifier = Modifier
