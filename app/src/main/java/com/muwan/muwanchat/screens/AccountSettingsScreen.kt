@@ -111,7 +111,7 @@ fun AccountSettingsScreen(navController: NavController) {
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.Person, contentDescription = "Username", tint = DarkAccent)
+            Icon(Icons.Filled.Person, contentDescription = "Username", tint = Color.White)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("Username", color = Color.White, fontSize = 16.sp)
@@ -129,7 +129,7 @@ fun AccountSettingsScreen(navController: NavController) {
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.Email, contentDescription = "Email", tint = DarkAccent)
+            Icon(Icons.Filled.Email, contentDescription = "Email", tint = Color.White)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("Email", color = Color.White, fontSize = 16.sp)
@@ -147,7 +147,7 @@ fun AccountSettingsScreen(navController: NavController) {
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.Lock, contentDescription = "Password", tint = DarkAccent)
+            Icon(Icons.Filled.Lock, contentDescription = "Password", tint = Color.White)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("Password", color = Color.White, fontSize = 16.sp)

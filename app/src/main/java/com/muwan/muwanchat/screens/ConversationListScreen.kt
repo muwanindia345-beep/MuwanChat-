@@ -635,7 +635,7 @@ private fun FabSheetOption(icon: androidx.compose.ui.graphics.vector.ImageVector
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = label, tint = DarkAccent, modifier = Modifier.size(24.dp))
+        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(16.dp))
         Text(label, color = Color.White, fontSize = 16.sp)
     }
