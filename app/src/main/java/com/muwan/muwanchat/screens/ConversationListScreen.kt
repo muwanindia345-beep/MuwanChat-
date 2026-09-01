@@ -397,11 +397,6 @@ fun ConversationListScreen(navController: NavController) {
                 ) {
                     Text("MuwanChat", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                     Row {
-                        IconButton(onClick = {
-                            navController.navigate(Screen.Profile.createRoute("edit"))
-                        }) {
-                            Icon(Icons.Filled.Person, contentDescription = "Profile", tint = Color.White)
-                        }
                         BadgedBox(badge = {
                             if (incomingCount > 0) Badge { Text("$incomingCount") }
                         }) {

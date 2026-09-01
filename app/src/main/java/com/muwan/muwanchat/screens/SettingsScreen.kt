@@ -128,6 +128,23 @@ fun SettingsScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // 3.4 Profile
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { navController.navigate(Screen.Profile.createRoute("edit")) }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.Person, contentDescription = "Profile", tint = Color.White)
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("Profile", color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color(0xFF888888))
+        }
+        Divider(color = Color(0xFF1E2040), thickness = 0.5.dp)
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         // 3.5 Check Updates
         var hasUpdate by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) {
