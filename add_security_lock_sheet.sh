@@ -1,3 +1,15 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
+
+FILE="app/src/main/java/com/muwan/muwanchat/screens/ConversationListScreen.kt"
+
+if [ ! -f "$FILE" ]; then
+  echo "ERROR: run this from project root (where app/ folder is)"
+  exit 1
+fi
+
+echo "Writing updated ConversationListScreen.kt with security lock icon + bottom sheet..."
+cat > "$FILE" << 'CONVLIST_PATCH_EOF'
 package com.muwan.muwanchat.screens
 
 import androidx.compose.material3.DropdownMenuItem
@@ -677,3 +689,6 @@ private fun FabSheetOption(icon: androidx.compose.ui.graphics.vector.ImageVector
         Text(label, color = Color.White, fontSize = 16.sp)
     }
 }
+CONVLIST_PATCH_EOF
+
+echo "Done: security lock icon added next to notification bell, opens end-to-end encryption info sheet."
