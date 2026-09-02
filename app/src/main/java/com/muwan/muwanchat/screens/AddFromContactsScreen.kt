@@ -94,6 +94,7 @@ fun AddFromContactsScreen(navController: NavController) {
         } else {
             LazyColumn {
                 items(users, key = { it.uid }) { user ->
+                    val isExistingMember = GroupMemberSelection.isExistingMember(user.uid)
                     val isAdded = GroupMemberSelection.isSelected(user.uid)
 
                     Row(
@@ -113,7 +114,20 @@ fun AddFromContactsScreen(navController: NavController) {
                             Text(user.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         }
 
-                        if (isAdded) {
+                        if (isExistingMember) {
+                            Button(
+                                onClick = {},
+                                enabled = false,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF222222),
+                                    disabledContainerColor = Color(0xFF222222)
+                                ),
+                                shape = RoundedCornerShape(20.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text("In Group", color = Color(0xFF888888), fontSize = 13.sp)
+                            }
+                        } else if (isAdded) {
                             Button(
                                 onClick = { GroupMemberSelection.toggle(user) },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333355)),
