@@ -615,7 +615,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
                         icon = Icons.Filled.Person,
                         label = "Add from Contacts",
                         onClick = {
-                            GroupMemberSelection.setExistingUids(g.members.map { it.uid })
+                            GroupMemberSelection.setExistingUids(g.members)
                             navController.navigate(Screen.AddFromContacts.route)
                         }
                     )
@@ -624,7 +624,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
                         icon = Icons.Filled.Search,
                         label = "Search Members",
                         onClick = {
-                            GroupMemberSelection.setExistingUids(g.members.map { it.uid })
+                            GroupMemberSelection.setExistingUids(g.members)
                             navController.navigate(Screen.SearchMembersForGroup.route)
                         }
                     )
