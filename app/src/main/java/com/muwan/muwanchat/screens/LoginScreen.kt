@@ -103,8 +103,8 @@ fun LoginScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(60.dp))
 
-            Text("M", fontSize = 64.sp, fontWeight = FontWeight.Bold, color = DarkAccent)
-            Text("MuwanChat", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("T", fontSize = 64.sp, fontWeight = FontWeight.Bold, color = DarkAccent)
+            Text("TalkWave", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Text("Welcome back", fontSize = 14.sp, color = Color.Gray)
 
             Spacer(modifier = Modifier.height(32.dp))

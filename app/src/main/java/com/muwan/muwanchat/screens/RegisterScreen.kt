@@ -164,8 +164,8 @@ fun RegisterScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("M", color = DarkAccent, fontSize = 60.sp, fontWeight = FontWeight.Bold)
-            Text("MuwanChat", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("T", color = DarkAccent, fontSize = 60.sp, fontWeight = FontWeight.Bold)
+            Text("TalkWave", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text("Create a new account", color = Color(0xFF888888), fontSize = 14.sp)
 
             Spacer(modifier = Modifier.height(40.dp))
