@@ -6,7 +6,7 @@
     </style>
 
     <style name="Theme.MuwanChat.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#1a1a2e</item>
+        <item name="windowSplashScreenBackground">#010113</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="postSplashScreenTheme">@style/Theme.MuwanChat</item>
     </style>
