@@ -359,8 +359,6 @@ fun ConversationListScreen(navController: NavController) {
                     fontSize = 14.sp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("• Your local chat database is encrypted on your device", color = Color(0xFFCCCCCC), fontSize = 13.sp)
-                Spacer(modifier = Modifier.height(6.dp))
                 Text("• Login and authentication tokens are encrypted", color = Color(0xFFCCCCCC), fontSize = 13.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text("• Data is encrypted in transit between your device and our servers", color = Color(0xFFCCCCCC), fontSize = 13.sp)
