@@ -231,12 +231,11 @@ fun UserSearchScreen(navController: NavController) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .background(AcceptedGreen, RoundedCornerShape(20.dp))
-                                        .padding(horizontal = 14.dp, vertical = 6.dp)
-                                ) {
-                                    Text("Accepted ✅", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(AcceptedGreen)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
                                 IconButton(
                                     onClick = { openChat(user) },
                                     modifier = Modifier
