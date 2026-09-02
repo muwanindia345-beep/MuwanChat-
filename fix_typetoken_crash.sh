@@ -1,3 +1,15 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
+
+PROGUARD="app/proguard-rules.pro"
+
+if [ ! -f "$PROGUARD" ]; then
+  echo "ERROR: run this from project root (where app/ folder is)"
+  exit 1
+fi
+
+echo "Writing fixed proguard-rules.pro (adds Gson TypeToken keep rules + earlier network/ DTO keep rules)..."
+cat > "$PROGUARD" << 'PROGUARD_EOF'
 # TalkWave release ProGuard/R8 rules
 # Goal: obfuscate + shrink the release APK without breaking reflection-based
 # libraries (Retrofit/Gson, Room, Socket.IO, Firebase, Credentials, etc).
@@ -109,3 +121,7 @@
 -keepclassmembers class * implements android.os.Parcelable {
     static ** CREATOR;
 }
+PROGUARD_EOF
+
+echo "Done. IMPORTANT: run a clean rebuild (old obfuscated dex is cached):"
+echo "  ./gradlew clean assembleRelease"
