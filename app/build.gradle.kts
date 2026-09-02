@@ -21,8 +21,8 @@ android {
         applicationId = "com.muwan.muwanchat"
         minSdk = 24
         targetSdk = 34
-        versionCode = 104
-        versionName = "2.103.0"
+        versionCode = 105
+        versionName = "2.104.0"
     }
 
     signingConfigs {
