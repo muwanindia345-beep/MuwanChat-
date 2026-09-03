@@ -1213,7 +1213,7 @@ fun ChatScreen(
             text = {
                 Text(
                     if (allMine)
-                        "'Delete for Everyone' sabki screen se hatayega, 'Delete for Me' sirf aapki screen se."
+                        "'Delete for Everyone' will remove it from everyone's screen, 'Delete for Me' will only remove it from yours."
                     else
                         "Yeh sirf aapki screen se delete honge."
                 )

@@ -152,7 +152,7 @@ fun RequestsScreen(navController: NavController) {
                     Icon(Icons.Filled.PersonAdd, contentDescription = null,
                         tint = Color(0xFF444466), modifier = Modifier.size(64.dp))
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Koi pending request nahi", color = Color(0xFF666688), fontSize = 16.sp)
+                    Text("No pending requests", color = Color(0xFF666688), fontSize = 16.sp)
                 }
             }
         } else {
