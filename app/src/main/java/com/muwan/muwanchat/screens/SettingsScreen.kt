@@ -178,6 +178,38 @@ fun SettingsScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // 3.6 Terms & Privacy Policy
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { navController.navigate(Screen.TermsPrivacy.route) }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.Policy, contentDescription = "Terms & Privacy Policy", tint = Color.White)
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("Terms & Privacy Policy", color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color(0xFF888888))
+        }
+        Divider(color = Color(0xFF1E2040), thickness = 0.5.dp)
+
+        // 3.7 Application Laws & Rules
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { navController.navigate(Screen.ApplicationRules.route) }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.Gavel, contentDescription = "Application Laws & Rules", tint = Color.White)
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("Application Laws & Rules", color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color(0xFF888888))
+        }
+        Divider(color = Color(0xFF1E2040), thickness = 0.5.dp)
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         // 4. Logout
         Row(
             modifier = Modifier
