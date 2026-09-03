@@ -126,6 +126,7 @@ fun MessageBubble(
     onLongPress: (ChatMessage) -> Unit = {},
     senderAvatar: String? = null,
     senderName: String? = null,
+    onSenderTap: (String) -> Unit = {},
     bubbleTheme: BubbleTheme = BubbleThemePresets.ORIGINAL
 ) {
     if (message.type == "system") {
@@ -205,7 +206,8 @@ fun MessageBubble(
                 avatarBase64 = senderAvatar,
                 fallbackText = senderName,
                 size = 26.dp,
-                fontSize = 11.sp
+                fontSize = 11.sp,
+                onClick = { onSenderTap(message.senderUid) }
             )
             Spacer(modifier = Modifier.width(6.dp))
         }
@@ -216,7 +218,9 @@ fun MessageBubble(
                 color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                modifier = Modifier.padding(start = 12.dp, bottom = 2.dp)
+                modifier = Modifier
+                    .padding(start = 12.dp, bottom = 2.dp)
+                    .clickable { onSenderTap(message.senderUid) }
             )
         }
         Box(
