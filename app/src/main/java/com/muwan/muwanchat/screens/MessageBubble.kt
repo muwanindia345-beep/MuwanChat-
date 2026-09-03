@@ -213,7 +213,7 @@ fun MessageBubble(
         if (!message.sent && senderName != null) {
             Text(
                 senderName,
-                color = DarkAccent,
+                color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 modifier = Modifier.padding(start = 12.dp, bottom = 2.dp)
