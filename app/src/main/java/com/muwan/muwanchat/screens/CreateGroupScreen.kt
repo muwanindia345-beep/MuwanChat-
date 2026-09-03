@@ -151,7 +151,7 @@ fun CreateGroupScreen(navController: NavController) {
                     label = { Text("Description (optional)", color = Color(0xFF888888)) },
                     placeholder = {
                         Text(
-                            "Purpose, rules, kuch bhi likh sakte ho",
+                            "Purpose, rules, anything you want to write",
                             color = Color(0xFF555555)
                         )
                     },
@@ -177,7 +177,7 @@ fun CreateGroupScreen(navController: NavController) {
                 AddMemberRow(
                     icon = Icons.Filled.Person,
                     title = "Add from contacts",
-                    subtitle = "Apne accepted connections se select karo",
+                    subtitle = "Select from your accepted connections",
                     onClick = { navController.navigate(Screen.AddFromContacts.route) }
                 )
 
@@ -186,7 +186,7 @@ fun CreateGroupScreen(navController: NavController) {
                 AddMemberRow(
                     icon = Icons.Filled.Search,
                     title = "Search members",
-                    subtitle = "Kisi ko bhi search karke add karo",
+                    subtitle = "Search for anyone and add them",
                     onClick = { navController.navigate(Screen.SearchMembersForGroup.route) }
                 )
 
@@ -240,7 +240,7 @@ fun CreateGroupScreen(navController: NavController) {
                 Button(
                     onClick = {
                         if (selectedMembers.isEmpty()) {
-                            Toast.makeText(context, "Kam se kam 1 member add karo", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Add at least 1 member", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         if (isCreating) return@Button
