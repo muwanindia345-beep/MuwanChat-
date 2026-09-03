@@ -383,7 +383,7 @@ fun ConversationListScreen(navController: NavController) {
                     containerColor = DarkAccent,
                     shape = CircleShape
                 ) {
-                    Icon(Icons.Filled.Edit, contentDescription = "New Chat", tint = Color.White)
+                    Icon(Icons.Filled.Add, contentDescription = "New Chat", tint = Color.White)
                 }
             }
         }
