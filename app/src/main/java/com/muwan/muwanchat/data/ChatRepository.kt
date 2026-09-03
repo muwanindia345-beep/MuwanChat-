@@ -197,11 +197,18 @@ object ChatRepository {
         db.conversationDao().upsertAll(toUpsert)
     }
 
-    suspend fun syncMessages(db: MuwanChatDb, items: List<MessageItem>) {
+    // groupMemberCount: sirf group rooms ke liye pass karo (1-1 chat ke liye
+    // null/default rehne do). Isse fresh open / app reinstall ke baad bhi
+    // pehle se "sabne dekh liya" wale messages turant green dikhte hain,
+    // real-time "messages_seen" event ka wait nahi karna padta.
+    suspend fun syncMessages(db: MuwanChatDb, items: List<MessageItem>, groupMemberCount: Int? = null) {
         // "Delete for me" (single message) ka local record — jab tak hai,
         // backend se dobara aane pe bhi is message ko wapas insert mat karo
         val deletedIds = db.deletedMessageDao().getAllIds().toSet()
         val entities = items.filter { it.id !in deletedIds }.map {
+            val computedStatus = if (groupMemberCount != null && groupMemberCount > 0) {
+                if ((it.seen_by?.size ?: 1) >= groupMemberCount) "SEEN" else "SENT"
+            } else "SENT"
             MessageEntity(
                 id = it.id,
                 roomId = it.room_id,
@@ -211,7 +218,7 @@ object ChatRepository {
                 type = it.type,
                 seen = it.seen,
                 createdAt = it.created_at,
-                status = "SENT",
+                status = computedStatus,
                 fileName = it.file_name,
                 mimeType = it.mime_type,
                 replyToId = it.reply_to_id,

@@ -65,8 +65,17 @@ interface MessageDao {
     suspend fun updateMediaContent(id: String, content: String, status: String)
 
     // Doosre banda ne dekh liya to hamare bheje saare messages SEEN ho jaate hai
+    // (1-1 chat ke liye hi use hota hai — wahan "kisi ne dekha" == "sole other
+    // member ne dekha" == sabne dekha, isliye blanket update sahi hai)
     @Query("UPDATE messages SET status = 'SEEN' WHERE roomId = :roomId AND senderUid = :myUid AND status != 'SEEN'")
     suspend fun markMySentAsSeen(roomId: String, myUid: String)
+
+    // Group chat ke liye: sirf woh specific messages SEEN karo jinhe backend
+    // ne "fully_seen_ids" mein bola (matlab group ke SABHI members ne dekh
+    // liya). `status != 'SEEN'` guard se yeh one-way hai — ek baar green hua
+    // toh yeh query dobara touch hi nahi karegi, wapas grey kabhi nahi hoga.
+    @Query("UPDATE messages SET status = 'SEEN' WHERE id IN (:ids) AND status != 'SEEN'")
+    suspend fun markSeenByIds(ids: List<String>)
 
     @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestMessage(roomId: String): MessageEntity?

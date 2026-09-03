@@ -796,7 +796,7 @@ fun GroupChatScreen(
         try {
             val res = RetrofitClient.chatApi.getMessages("Bearer $token", groupId)
             if (res.isSuccessful) {
-                ChatRepository.syncMessages(db, res.body()?.messages ?: emptyList())
+                ChatRepository.syncMessages(db, res.body()?.messages ?: emptyList(), group?.members?.size)
             }
         } catch (_: Exception) {}
 
@@ -862,8 +862,12 @@ fun GroupChatScreen(
                     }
                 }
                 is SocketEvent.MessagesSeen -> {
-                    if (event.roomId == groupId) {
-                        db.messageDao().markMySentAsSeen(groupId, myUid)
+                    // Group mein blanket "ek ne dekha = sab green" nahi chalega.
+                    // Backend sirf un ids ko fully_seen_ids mein bhejta hai jinhe
+                    // group ke SABHI members ne dekh liya ho — sirf unhi ko yahan
+                    // SEEN karo, baaki grey hi rahenge jab tak baaki log na dekhein.
+                    if (event.roomId == groupId && event.fullySeenIds.isNotEmpty()) {
+                        db.messageDao().markSeenByIds(event.fullySeenIds)
                     }
                 }
                 is SocketEvent.MessageDeleted -> {

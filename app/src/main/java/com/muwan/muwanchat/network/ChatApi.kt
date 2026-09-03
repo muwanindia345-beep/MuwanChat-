@@ -65,7 +65,10 @@ data class MessageItem(
     val edited: Boolean = false,
     val reactions: List<MessageReaction>? = null,
     val link_preview: LinkPreview? = null,
-    val is_forwarded: Boolean = false
+    val is_forwarded: Boolean = false,
+    // Group messages ke liye: kaun-kaun se members ne yeh dekh liya hai.
+    // Tick green tabhi jab isme SABHI group members ka uid ho.
+    val seen_by: List<String>? = null
 )
 
 data class SendMessageRequest(

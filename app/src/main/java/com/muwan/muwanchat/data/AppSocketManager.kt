@@ -34,7 +34,11 @@ sealed class SocketEvent {
     data class Typing(val uid: String, val roomId: String) : SocketEvent()
     data class StopTyping(val uid: String) : SocketEvent()
 
-    data class MessagesSeen(val roomId: String, val seenBy: String) : SocketEvent()
+    data class MessagesSeen(
+        val roomId: String,
+        val seenBy: String,
+        val fullySeenIds: List<String> = emptyList()
+    ) : SocketEvent()
 
     // "Delete for Everyone" ka result — dusre user ki screen bhi isi se live update hoti hai
     data class MessageDeleted(val id: String, val roomId: String) : SocketEvent()
@@ -202,8 +206,20 @@ object AppSocketManager {
 
             s.on("messages_seen") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
+                // Group chats mein backend "fully_seen_ids" bhejta hai — sirf
+                // woh messages jinhe SABHI group members ne dekh liya hai.
+                // 1-1 chat mein yeh array nahi aata (khali rahega, koi farak
+                // nahi padta kyunki ChatScreen isko use hi nahi karta).
+                val fullySeenArr = json.optJSONArray("fully_seen_ids")
+                val fullySeenIds = if (fullySeenArr != null) {
+                    (0 until fullySeenArr.length()).map { fullySeenArr.getString(it) }
+                } else emptyList()
                 _events.tryEmit(
-                    SocketEvent.MessagesSeen(json.optString("room_id"), json.optString("seen_by"))
+                    SocketEvent.MessagesSeen(
+                        json.optString("room_id"),
+                        json.optString("seen_by"),
+                        fullySeenIds
+                    )
                 )
             }
 
