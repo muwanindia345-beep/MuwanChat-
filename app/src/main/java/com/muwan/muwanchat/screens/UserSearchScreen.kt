@@ -164,7 +164,7 @@ fun UserSearchScreen(navController: NavController) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Username ya email search karo...", color = Color(0xFF888888)) },
+                placeholder = { Text("Search username...", color = Color(0xFF888888)) },
                 modifier = Modifier.weight(1f),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = DarkAccent,
