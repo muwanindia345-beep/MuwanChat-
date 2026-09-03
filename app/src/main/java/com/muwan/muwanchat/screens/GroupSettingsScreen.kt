@@ -262,7 +262,7 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Filled.Link, contentDescription = null, tint = DarkAccent)
+                    Icon(Icons.Filled.Link, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -279,7 +279,7 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
                     InviteCircleButton(
                         icon = Icons.Filled.Share,
                         label = "Share",
-                        tint = DarkAccent,
+                        tint = Color.White,
                         enabled = g?.inviteCode != null,
                         onClick = {
                             val code = g?.inviteCode ?: return@InviteCircleButton
@@ -294,7 +294,7 @@ fun GroupSettingsScreen(navController: NavController, groupId: String) {
                     InviteCircleButton(
                         icon = Icons.Filled.ContentCopy,
                         label = "Copy",
-                        tint = DarkAccent,
+                        tint = Color.White,
                         enabled = g?.inviteCode != null,
                         onClick = {
                             val code = g?.inviteCode ?: return@InviteCircleButton
@@ -430,7 +430,7 @@ private fun SettingsToggleRow(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = DarkAccent)
+        Icon(icon, contentDescription = null, tint = Color.White)
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(label, color = Color.White, fontSize = 15.sp)
