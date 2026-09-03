@@ -48,6 +48,9 @@ sealed class Screen(val route: String) {
     object GroupInfo       : Screen("group_info/{groupId}") {
         fun createRoute(groupId: String) = "group_info/$groupId"
     }
+    object EditGroup       : Screen("edit_group/{groupId}") {
+        fun createRoute(groupId: String) = "edit_group/$groupId"
+    }
     object GroupSettings   : Screen("group_settings/{groupId}") {
         fun createRoute(groupId: String) = "group_settings/$groupId"
     }
@@ -146,6 +149,12 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         }
         composable(Screen.GroupInfo.route) { back ->
             GroupInfoScreen(
+                navController = navController,
+                groupId = back.arguments?.getString("groupId") ?: ""
+            )
+        }
+        composable(Screen.EditGroup.route) { back ->
+            EditGroupScreen(
                 navController = navController,
                 groupId = back.arguments?.getString("groupId") ?: ""
             )
