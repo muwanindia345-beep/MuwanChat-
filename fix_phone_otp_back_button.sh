@@ -1,3 +1,15 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
+
+TARGET="app/src/main/java/com/muwan/muwanchat/screens/PhoneOTPScreen.kt"
+
+if [ ! -f "$TARGET" ]; then
+  echo "ERROR: run this from project root (where app/ folder is)"
+  exit 1
+fi
+
+echo "Updating PhoneOTPScreen.kt (back arrow -> top header, white color)..."
+cat > "$TARGET" << 'PHONEOTP_FILE_EOF'
 package com.muwan.muwanchat.screens
 
 import androidx.compose.animation.AnimatedVisibility
@@ -209,3 +221,6 @@ fun PhoneOTPScreen(navController: NavController, phone: String) {
         }
     }
 }
+PHONEOTP_FILE_EOF
+
+echo "Done: back arrow moved to top, color changed to white."
