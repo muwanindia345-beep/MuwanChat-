@@ -22,6 +22,7 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkInputBg
+import com.muwan.muwanchat.DarkSheet
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.PhoneSendRequest
@@ -42,6 +43,7 @@ fun PhoneOTPScreen(navController: NavController, phone: String) {
     var successMsg by remember { mutableStateOf("") }
     var resendTimer by remember { mutableStateOf(60) }
     var canResend by remember { mutableStateOf(false) }
+    var showUnavailableDialog by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         while (resendTimer > 0) {
@@ -206,6 +208,30 @@ fun PhoneOTPScreen(navController: NavController, phone: String) {
                 Text("Resend OTP in ${resendTimer}s", color = Color(0xFF888888), fontSize = 13.sp)
             }
             }
+        }
+
+        if (showUnavailableDialog) {
+            AlertDialog(
+                onDismissRequest = { showUnavailableDialog = false },
+                containerColor = DarkSheet,
+                title = {
+                    Text("⚠️ Not Available", color = Color.White, fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Text(
+                        "This service is not applicable. Please use Gmail for registration.",
+                        color = Color(0xFF888888),
+                        fontSize = 14.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { showUnavailableDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("OK", color = Color.White) }
+                }
+            )
         }
     }
 }
