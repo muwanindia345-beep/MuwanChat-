@@ -498,9 +498,9 @@ fun ConversationListScreen(navController: NavController) {
                         Icon(Icons.Filled.ChatBubbleOutline, contentDescription = null,
                             tint = Color(0xFF444466), modifier = Modifier.size(64.dp))
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Koi chat nahi abhi", color = Color(0xFF666688), fontSize = 16.sp)
+                        Text("No chats yet", color = Color(0xFF666688), fontSize = 16.sp)
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("Neeche + se naya chat shuru karo", color = Color(0xFF444466), fontSize = 13.sp)
+                        Text("Start a new chat using + below", color = Color(0xFF444466), fontSize = 13.sp)
                     }
                 }
             } else {
