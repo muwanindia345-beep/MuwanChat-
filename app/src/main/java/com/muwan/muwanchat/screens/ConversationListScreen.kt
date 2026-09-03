@@ -322,7 +322,7 @@ fun ConversationListScreen(navController: NavController) {
     if (showFabSheet) {
         ModalBottomSheet(onDismissRequest = { showFabSheet = false }, containerColor = DarkSheet) {
             Column(modifier = Modifier.padding(bottom = 24.dp)) {
-                FabSheetOption(Icons.Filled.Search, "Search") {
+                FabSheetOption(Icons.Filled.Add, "New Chat") {
                     showFabSheet = false
                     navController.navigate(Screen.UserSearch.route)
                 }
