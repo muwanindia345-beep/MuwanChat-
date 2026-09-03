@@ -239,7 +239,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
             title = { Text("Leave Group?", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "Tum is group ke messages ab nahi dekh paoge jab tak dobara add na ho.",
+                    "You won't be able to see this group's messages anymore until you're added back.",
                     color = Color(0xFFAAAAAA)
                 )
             },
