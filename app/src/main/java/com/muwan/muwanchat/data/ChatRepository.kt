@@ -206,9 +206,14 @@ object ChatRepository {
         // backend se dobara aane pe bhi is message ko wapas insert mat karo
         val deletedIds = db.deletedMessageDao().getAllIds().toSet()
         val entities = items.filter { it.id !in deletedIds }.map {
+            // 1-1 chat: backend ka `seen` flag (0/1) already sach bata raha
+            // hai ki doosre banda ne dekh liya ya nahi — pehle yahan hardcoded
+            // "SENT" tha jo har resync (chat reopen / app resume) pe already
+            // SEEN ho chuka tick bhi wapas grey kar deta tha. Ab uska sahi
+            // status use hoga.
             val computedStatus = if (groupMemberCount != null && groupMemberCount > 0) {
                 if ((it.seen_by?.size ?: 1) >= groupMemberCount) "SEEN" else "SENT"
-            } else "SENT"
+            } else if (it.seen == 1) "SEEN" else "SENT"
             MessageEntity(
                 id = it.id,
                 roomId = it.room_id,
