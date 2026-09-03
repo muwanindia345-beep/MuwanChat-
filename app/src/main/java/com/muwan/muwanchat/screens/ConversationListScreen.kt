@@ -295,7 +295,7 @@ fun ConversationListScreen(navController: NavController) {
             title = { Text("Delete ${selectedRoomIds.size} chat${if (selectedRoomIds.size > 1) "s" else ""}?", color = Color.White) },
             text = {
                 Text(
-                    "Yeh sirf tumhare liye delete honge — doosre user ki chat waisi hi rahegi.",
+                    "This will only be deleted for you — the other user's chat will stay as is.",
                     color = Color(0xFFAAAAAA)
                 )
             },
