@@ -31,7 +31,7 @@ fun ComingSoonDialog(feature: String, onDismiss: () -> Unit) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Yeh feature abhi development mein hai.\nJald aayega! 🚀",
+                    "This feature is currently under development.\nComing soon! 🚀",
                     color = Color(0xFF888888),
                     fontSize = 14.sp
                 )
