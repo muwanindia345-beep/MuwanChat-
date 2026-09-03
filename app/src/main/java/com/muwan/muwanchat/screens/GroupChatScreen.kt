@@ -1152,7 +1152,7 @@ Box(
                         senderAvatar = memberAvatars[msg.senderUid],
                         senderName = if (msg.senderUid != myUid) memberNames[msg.senderUid] else null,
                         onSenderTap = { uid ->
-                            navController.navigate(Screen.UserProfile.createRoute(uid, fromChat = true))
+                            navController.navigate(Screen.UserProfile.createRoute(uid))
                         },
                         onReactionLongPress = { id, emoji -> sendReaction(id, emoji) },
                         isSelectionMode = isSelectionMode,
