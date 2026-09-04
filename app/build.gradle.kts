@@ -35,6 +35,16 @@ android {
                 keyPassword = System.getenv("KEY_PASSWORD")
             }
         }
+        // Fixed keystore just for the beta channel, committed directly in the repo
+        // (app/beta.keystore) — so every beta build has the same signature and
+        // installs as an UPDATE over the previous beta, no uninstall needed.
+        // Not the official key, so no secrets/env vars needed for it.
+        create("betaRelease") {
+            storeFile = file("$projectDir/beta.keystore")
+            storePassword = "QwvGbECV77rXsJpXVId1"
+            keyAlias = "talkwave-beta"
+            keyPassword = "QwvGbECV77rXsJpXVId1"
+        }
     }
 
     buildTypes {
@@ -61,6 +71,7 @@ android {
             versionNameSuffix = "-beta"
             resValue("string", "app_name", "TalkWave Beta")
             buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
+            signingConfig = signingConfigs.getByName("betaRelease")
         }
     }
 
