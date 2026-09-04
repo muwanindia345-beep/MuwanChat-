@@ -24,7 +24,10 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.AcceptedUsersCacheEntity
 import com.muwan.muwanchat.data.MuwanChatDb
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.util.friendlyErrorMessage
 import com.muwan.muwanchat.network.UserItem
@@ -36,6 +39,9 @@ import kotlinx.coroutines.launch
 fun AcceptedUsersScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
+    val gson = remember { Gson() }
+    val listType = remember { object : TypeToken<List<UserItem>>() {}.type }
 
     var users by remember { mutableStateOf<List<UserItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -50,38 +56,62 @@ fun AcceptedUsersScreen(navController: NavController) {
         val token = AuthDataStore.getToken(context).first() ?: return
         val res = RetrofitClient.requestsApi.getAccepted("Bearer $token")
         if (res.isSuccessful) {
-            users = res.body()?.users ?: emptyList()
-        } else {
+            val fresh = res.body()?.users ?: emptyList()
+            users = fresh
+            db.acceptedUsersCacheDao().upsert(AcceptedUsersCacheEntity(json = gson.toJson(fresh)))
+        } else if (users.isEmpty()) {
             errorMsg = "List load nahi ho paayi"
         }
     }
 
+    // Local cache se turant dikhao (offline-first) -- background me refresh()
+    // fresh data laata hai aur cache ko bhi update kar deta hai.
     LaunchedEffect(Unit) {
-        isLoading = true
+        val cached = db.acceptedUsersCacheDao().get()
+        if (cached != null) {
+            try {
+                users = gson.fromJson(cached.json, listType)
+                isLoading = false
+            } catch (_: Exception) {}
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (users.isEmpty()) isLoading = true
         try {
             refresh()
         } catch (e: Exception) {
-            errorMsg = friendlyErrorMessage(e)
+            if (users.isEmpty()) errorMsg = friendlyErrorMessage(e)
         }
         isLoading = false
     }
 
     fun removeUser(uid: String) {
+        // Optimistic: turant UI aur cache se hata do, backend call background
+        // me chalta hai. Fail hone pe wapas list me daal dete hain.
+        val previousUsers = users
+        users = users.filter { it.uid != uid }
+        scope.launch { db.acceptedUsersCacheDao().upsert(AcceptedUsersCacheEntity(json = gson.toJson(users))) }
+
         scope.launch {
             busyUid = uid
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@launch
                 val res = RetrofitClient.requestsApi.removeConnection("Bearer $token", uid)
                 if (res.isSuccessful) {
-                    users = users.filter { it.uid != uid }
                     val myUid = AuthDataStore.getUidBlocking(context)
                     val roomId = listOf(myUid, uid).sorted().joinToString("_")
                     MuwanChatDb.get(context, myUid).conversationDao().deleteByRoom(roomId)
                     Toast.makeText(context, "User removed", Toast.LENGTH_SHORT).show()
                 } else {
+                    // Revert
+                    users = previousUsers
+                    db.acceptedUsersCacheDao().upsert(AcceptedUsersCacheEntity(json = gson.toJson(previousUsers)))
                     Toast.makeText(context, "Remove nahi ho paya", Toast.LENGTH_SHORT).show()
                 }
             } catch (_: Exception) {
+                users = previousUsers
+                db.acceptedUsersCacheDao().upsert(AcceptedUsersCacheEntity(json = gson.toJson(previousUsers)))
                 Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
             }
             busyUid = null
