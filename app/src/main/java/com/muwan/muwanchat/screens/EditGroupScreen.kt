@@ -261,7 +261,7 @@ fun EditGroupScreen(navController: NavController, groupId: String) {
                     colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Done ✅", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -600,7 +600,7 @@ private fun RoleBadge(text: String, emoji: String, color: Color) {
             .background(color.copy(alpha = 0.18f))
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
-        Text("$emoji $text", color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
