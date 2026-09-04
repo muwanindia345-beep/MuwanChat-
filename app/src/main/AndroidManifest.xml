@@ -14,7 +14,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="TalkWave"
+        android:label="@string/app_name"
         android:theme="@style/Theme.MuwanChat"
         android:supportsRtl="true">
 

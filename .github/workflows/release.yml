@@ -1,12 +1,16 @@
 name: MuwanChat Release Build
 
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "release" to confirm this will publish the OFFICIAL signed APK'
+        required: true
+        default: ''
 
 jobs:
   build-release:
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    if: "${{ github.event.inputs.confirm == 'release' }}"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -52,7 +56,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add app/build.gradle.kts
-          git commit -m "chore: bump version to ${{ steps.ver.outputs.new_name }} [skip ci]"
+          git commit -m "chore: bump official version to ${{ steps.ver.outputs.new_name }} [skip ci]"
           git push
 
       - name: Create google-services.json
@@ -62,13 +66,13 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
 
-      - name: Build Release APK
+      - name: Build Official Release APK
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleProductionRelease
 
       - name: Clean up keystore
         if: always()
@@ -79,5 +83,6 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.new_name }}
           name: MuwanChat v${{ steps.ver.outputs.new_name }}
-          body: "VERSION_CODE:${{ steps.ver.outputs.new_code }}\n${{ github.event.head_commit.message }}"
-          files: app/build/outputs/apk/release/app-release.apk
+          prerelease: false
+          body: "Official signed release. VERSION_CODE:${{ steps.ver.outputs.new_code }}\n${{ github.event.head_commit.message }}"
+          files: app/build/outputs/apk/production/release/app-production-release.apk

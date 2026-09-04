@@ -46,6 +46,24 @@ android {
         }
     }
 
+    flavorDimensions += "channel"
+    productFlavors {
+        // Official build — same applicationId as always, ships only confirmed features.
+        create("production") {
+            dimension = "channel"
+            buildConfigField("boolean", "ENABLE_NEW_NAV", "false")
+        }
+        // Pre-release/beta build — separate applicationId so it installs alongside
+        // the official app on the same phone instead of conflicting with it.
+        create("beta") {
+            dimension = "channel"
+            applicationIdSuffix = ".beta"
+            versionNameSuffix = "-beta"
+            resValue("string", "app_name", "TalkWave Beta")
+            buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
