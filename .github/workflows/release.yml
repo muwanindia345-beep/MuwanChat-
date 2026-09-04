@@ -84,5 +84,5 @@ jobs:
           tag_name: v${{ steps.ver.outputs.new_name }}
           name: MuwanChat v${{ steps.ver.outputs.new_name }}
           prerelease: false
-          body: "Official signed release. VERSION_CODE:${{ steps.ver.outputs.new_code }}\n${{ github.event.head_commit.message }}"
+          body: "VERSION_CODE:${{ steps.ver.outputs.new_code }}\nOfficial signed release.\n${{ github.event.head_commit.message }}"
           files: app/build/outputs/apk/production/release/app-production-release.apk
