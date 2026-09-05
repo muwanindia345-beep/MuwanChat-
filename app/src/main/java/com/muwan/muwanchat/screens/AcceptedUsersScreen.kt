@@ -125,8 +125,8 @@ fun AcceptedUsersScreen(navController: NavController) {
             title = { Text("Remove ${user.username}?", color = Color.White) },
             text = {
                 Text(
-                    "Yeh permanent hai — connection hat jaayega aur chat history dono taraf se saaf ho jaayegi. " +
-                        "${user.username} search screen me wapas as a new request dikhega.",
+                    "This is permanent — the connection will be removed and chat history will be cleared on both sides. " +
+                        "${user.username} will show up again in search as a new request.",
                     color = Color(0xFFAAAAAA)
                 )
             },
