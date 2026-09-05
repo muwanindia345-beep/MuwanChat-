@@ -35,6 +35,10 @@ sealed class Screen(val route: String) {
         fun createRoute(uid: String, username: String, roomId: String) =
             "chat/$uid/$username/$roomId"
     }
+    object Call             : Screen("call/{uid}/{username}/{callType}/{mode}") {
+        fun createRoute(uid: String, username: String, callType: String, isIncoming: Boolean) =
+            "call/$uid/${android.net.Uri.encode(username)}/$callType/${if (isIncoming) "incoming" else "outgoing"}"
+    }
     object Wallpaper       : Screen("wallpaper/{roomId}") {
         fun createRoute(roomId: String) = "wallpaper/$roomId"
     }
@@ -77,6 +81,34 @@ sealed class Screen(val route: String) {
 @Composable
 fun NavGraph(openUpdateScreen: Boolean = false) {
     val navController = rememberNavController()
+
+    // Global incoming-call listener -- app kahin bhi ho (koi bhi screen khuli
+    // ho), call_offer aate hi CallScreen "incoming" mode mein khul jaayega.
+    // SDP yahan PendingIncomingCall mein rakh dete hain (URL args mein itna
+    // bada string safely nahi jaata), CallScreen wahan se turant utha lega.
+    LaunchedEffect(Unit) {
+        com.muwan.muwanchat.data.AppSocketManager.events.collect { event ->
+            if (event is com.muwan.muwanchat.data.SocketEvent.CallOfferReceived) {
+                com.muwan.muwanchat.calling.PendingIncomingCall.data =
+                    com.muwan.muwanchat.calling.PendingIncomingCall.Data(
+                        callId = event.callId,
+                        fromUid = event.fromUid,
+                        fromUsername = event.fromUsername,
+                        callType = event.callType,
+                        sdp = event.sdp
+                    )
+                navController.navigate(
+                    Screen.Call.createRoute(
+                        uid = event.fromUid,
+                        username = event.fromUsername,
+                        callType = event.callType,
+                        isIncoming = true
+                    )
+                )
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
@@ -125,6 +157,15 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
                 receiverUid = back.arguments?.getString("uid") ?: "",
                 receiverUsername = back.arguments?.getString("username") ?: "",
                 roomId = back.arguments?.getString("roomId") ?: ""
+            )
+        }
+        composable(Screen.Call.route) { back ->
+            CallScreen(
+                navController = navController,
+                otherUid = back.arguments?.getString("uid") ?: "",
+                otherUsername = back.arguments?.getString("username") ?: "",
+                callType = back.arguments?.getString("callType") ?: "voice",
+                isIncoming = back.arguments?.getString("mode") == "incoming"
             )
         }
         composable(Screen.Wallpaper.route) { back ->

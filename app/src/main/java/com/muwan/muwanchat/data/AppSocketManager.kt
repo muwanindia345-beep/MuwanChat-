@@ -112,6 +112,28 @@ sealed class SocketEvent {
     // kiye -- poora group object backend bhejta hai lekin yahan sirf roomId
     // nikalte hain, consumer REST se hi fresh GroupData fetch karta hai.
     data class GroupUpdated(val roomId: String) : SocketEvent()
+
+    // ───────────── Call signaling events ────────────────────
+    data class CallOfferReceived(
+        val callId: String,
+        val fromUid: String,
+        val fromUsername: String,
+        val callType: String, // "voice" | "video"
+        val sdp: String
+    ) : SocketEvent()
+
+    data class CallAnswerReceived(val callId: String, val sdp: String) : SocketEvent()
+
+    data class CallEndReceived(val callId: String, val reason: String) : SocketEvent()
+
+    data class CallBusyReceived(val callId: String) : SocketEvent()
+
+    data class IceCandidateReceived(
+        val callId: String,
+        val sdpMid: String?,
+        val sdpMLineIndex: Int,
+        val candidate: String
+    ) : SocketEvent()
 }
 
 object AppSocketManager {
@@ -354,6 +376,58 @@ object AppSocketManager {
                 }
             }
 
+            // ───────────── Call signaling ────────────────────
+            s.on("call_offer") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.CallOfferReceived(
+                        callId = json.optString("callId"),
+                        fromUid = json.optString("from"),
+                        fromUsername = json.optString("fromUsername"),
+                        callType = json.optString("type"),
+                        sdp = json.optString("sdp")
+                    )
+                )
+            }
+
+            s.on("call_answer") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.CallAnswerReceived(
+                        callId = json.optString("callId"),
+                        sdp = json.optString("sdp")
+                    )
+                )
+            }
+
+            s.on("call_end") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.CallEndReceived(
+                        callId = json.optString("callId"),
+                        reason = json.optString("reason")
+                    )
+                )
+            }
+
+            s.on("call_busy") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(SocketEvent.CallBusyReceived(callId = json.optString("callId")))
+            }
+
+            s.on("ice_candidate") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                val candidateObj = json.optJSONObject("candidate") ?: return@on
+                _events.tryEmit(
+                    SocketEvent.IceCandidateReceived(
+                        callId = json.optString("callId"),
+                        sdpMid = candidateObj.optString("sdpMid").takeIf { it.isNotBlank() },
+                        sdpMLineIndex = candidateObj.optInt("sdpMLineIndex"),
+                        candidate = candidateObj.optString("candidate")
+                    )
+                )
+            }
+
             s.connect()
             socket = s
         } catch (_: Exception) {}
@@ -458,6 +532,62 @@ object AppSocketManager {
     fun sendGroupStopTyping(roomId: String) {
         val json = JSONObject().apply { put("room_id", roomId) }
         socket?.emit("stop_typing", json)
+    }
+
+    // ─────────────────────── Call signaling ───────────────────────
+    fun sendCallOffer(
+        callId: String,
+        toUid: String,
+        callType: String, // "voice" | "video"
+        sdp: String,
+        onAck: (success: Boolean, error: String?) -> Unit = { _, _ -> }
+    ) {
+        val s = socket
+        if (s == null || !s.connected()) {
+            onAck(false, "Not connected")
+            return
+        }
+        val json = JSONObject().apply {
+            put("callId", callId)
+            put("to", toUid)
+            put("type", callType)
+            put("sdp", sdp)
+        }
+        s.emit("call_offer", arrayOf(json), Ack { args ->
+            val res = args.getOrNull(0) as? JSONObject
+            onAck(res?.optBoolean("success", false) ?: false, res?.optString("error"))
+        })
+    }
+
+    fun sendCallAnswer(callId: String, sdp: String, onAck: (Boolean) -> Unit = {}) {
+        val json = JSONObject().apply {
+            put("callId", callId)
+            put("sdp", sdp)
+        }
+        socket?.emit("call_answer", arrayOf(json), Ack { args ->
+            val res = args.getOrNull(0) as? JSONObject
+            onAck(res?.optBoolean("success", false) ?: false)
+        })
+    }
+
+    fun sendCallReject(callId: String) {
+        socket?.emit("call_reject", JSONObject().apply { put("callId", callId) })
+    }
+
+    fun sendCallEnd(callId: String) {
+        socket?.emit("call_end", JSONObject().apply { put("callId", callId) })
+    }
+
+    fun sendIceCandidate(callId: String, sdpMid: String?, sdpMLineIndex: Int, candidate: String) {
+        val json = JSONObject().apply {
+            put("callId", callId)
+            put("candidate", JSONObject().apply {
+                put("sdpMid", sdpMid)
+                put("sdpMLineIndex", sdpMLineIndex)
+                put("candidate", candidate)
+            })
+        }
+        socket?.emit("ice_candidate", json)
     }
 
     fun disconnect() {

@@ -145,4 +145,8 @@ dependencies {
     implementation("androidx.media3:media3-database:1.3.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    // Calling feature (voice/video) -- Maven Central pe hosted, koi extra
+    // repository config nahi chahiye. Package naam org.webrtc.* hi hai
+    // (Google ka original WebRTC API), yeh sirf uska maintained prebuilt hai.
+    implementation("io.github.webrtc-sdk:android:144.7559.09")
 }
