@@ -1,4 +1,28 @@
-name: MuwanChat Beta Build
+import os
+
+def create(path, content, label):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"[OK] {label}")
+
+# ============================================================================
+# .github/workflows/build.yml -- poori file clean se dobara likhi, purani
+# poori tarah replace. Isme:
+#   - Auto version bump (versionCode/versionName) jaisa pehle tha, same
+#     rehna chahiye tha isliye waisa hi rakha hai
+#   - assembleBetaRelease (beta.keystore se signed, betaRelease
+#     signingConfig -- ye app/build.gradle.kts mein already fix ho chuka
+#     hai, isliye "SigningConfig release missing storeFile" wali error ab
+#     nahi aani chahiye)
+#   - Sirf artifact upload -- koi GitHub Pre-release nahi banta (pehle
+#     hataya gaya tha)
+#   - release.yml (official build) ko bilkul touch nahi kiya -- wo pass ho
+#     raha hai, usse koi lena dena nahi is patch ka
+# ============================================================================
+create(
+    ".github/workflows/build.yml",
+'''name: MuwanChat Beta Build
 
 on:
   push:
@@ -44,7 +68,7 @@ jobs:
       - name: Update build.gradle.kts
         run: |
           sed -i "s/versionCode = [0-9]*/versionCode = ${{ steps.ver.outputs.new_code }}/" app/build.gradle.kts
-          sed -i "s/versionName = \".*\"/versionName = \"${{ steps.ver.outputs.new_name }}\"/" app/build.gradle.kts
+          sed -i "s/versionName = \\".*\\"/versionName = \\"${{ steps.ver.outputs.new_name }}\\"/" app/build.gradle.kts
           grep -E "versionCode|versionName" app/build.gradle.kts
 
       - name: Commit version bump
@@ -72,3 +96,6 @@ jobs:
         with:
           name: MuwanChat-beta
           path: app/build/outputs/apk/beta/release/app-beta-release.apk
+''',
+    ".github/workflows/build.yml (poori file clean se dobara likhi)"
+)
