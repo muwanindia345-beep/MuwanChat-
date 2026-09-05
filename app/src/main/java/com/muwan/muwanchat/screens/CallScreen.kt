@@ -107,6 +107,17 @@ fun CallScreen(
             }
         )
     }
+    val ringtoneManager = remember { com.muwan.muwanchat.calling.CallRingtoneManager(context) }
+
+    // Incoming call pe ringtone+vibration, outgoing pe ringback tone -- jaise
+    // hi state ringing se aage badhe (connecting/ongoing/ended), band ho jaata hai
+    LaunchedEffect(callState) {
+        when (callState) {
+            CallState.RINGING_INCOMING -> ringtoneManager.startIncomingRing()
+            CallState.RINGING_OUTGOING -> ringtoneManager.startOutgoingRingback()
+            else -> ringtoneManager.stop()
+        }
+    }
 
     // Outgoing call: offer khud banao aur bhejo
     LaunchedEffect(hasMicPermission) {
@@ -181,6 +192,7 @@ fun CallScreen(
                 AppSocketManager.sendCallEnd(callId)
             }
             callManager.release()
+            ringtoneManager.stop()
         }
     }
 
