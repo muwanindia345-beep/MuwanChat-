@@ -142,7 +142,14 @@ class CallManager(
     fun createAnswer(remoteSdp: String, onSdpReady: (String) -> Unit) {
         createPeerConnection()
         peerConnection?.setRemoteDescription(
-            SimpleSdpObserver(),
+            object : SimpleSdpObserver() {
+                override fun onSetSuccess() {
+                    // Ab remote description set ho chuka hai, jo bhi ICE
+                    // candidates ringing ke dauraan queue hue the woh ab
+                    // safely apply ho sakte hain.
+                    flushPendingCandidates()
+                }
+            },
             SessionDescription(SessionDescription.Type.OFFER, remoteSdp)
         )
         val constraints = MediaConstraints()
@@ -160,13 +167,35 @@ class CallManager(
     /** Caller side: callee ka answer aaya, use apply karo */
     fun setRemoteAnswer(remoteSdp: String) {
         peerConnection?.setRemoteDescription(
-            SimpleSdpObserver(),
+            object : SimpleSdpObserver() {
+                override fun onSetSuccess() {
+                    flushPendingCandidates()
+                }
+            },
             SessionDescription(SessionDescription.Type.ANSWER, remoteSdp)
         )
     }
 
+    // Jab tak remote description set nahi hua (caller ke liye: jab tak answer
+    // nahi aaya; callee ke liye: jab tak offer set nahi hua), aane waale ICE
+    // candidates yahan queue ho jaate hain -- warna woh silently drop ho jaate
+    // the aur call connect hone mein dikkat aati thi.
+    private val pendingRemoteCandidates = mutableListOf<IceCandidate>()
+    private var remoteDescriptionSet = false
+
+    private fun flushPendingCandidates() {
+        remoteDescriptionSet = true
+        pendingRemoteCandidates.forEach { peerConnection?.addIceCandidate(it) }
+        pendingRemoteCandidates.clear()
+    }
+
     fun addRemoteIceCandidate(sdpMid: String?, sdpMLineIndex: Int, candidate: String) {
-        peerConnection?.addIceCandidate(IceCandidate(sdpMid, sdpMLineIndex, candidate))
+        val ice = IceCandidate(sdpMid, sdpMLineIndex, candidate)
+        if (!remoteDescriptionSet) {
+            pendingRemoteCandidates.add(ice)
+        } else {
+            peerConnection?.addIceCandidate(ice)
+        }
     }
 
     fun setMuted(muted: Boolean) {
@@ -186,6 +215,8 @@ class CallManager(
         peerConnection = null
         localAudioTrack = null
         audioSource = null
+        remoteDescriptionSet = false
+        pendingRemoteCandidates.clear()
     }
 
     fun release() {

@@ -36,7 +36,9 @@ import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.SocketEvent
+import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -65,6 +67,7 @@ fun CallScreen(
     val callId = remember { incomingData?.callId ?: UUID.randomUUID().toString() }
 
     var avatarBase64 by remember { mutableStateOf<String?>(null) }
+    var isAvatarLoading by remember { mutableStateOf(true) }
     var isMuted by remember { mutableStateOf(false) }
     var isSpeakerOn by remember { mutableStateOf(false) }
     var callState by remember {
@@ -196,10 +199,39 @@ fun CallScreen(
         }
     }
 
+    // Cache se turant dikhao (agar hai), phir background me API se fresh photo
+    // laao -- pehle sirf cache padhte the isliye pehli-baar-call-karne pe
+    // (jab profile pehle kabhi khola na ho) avatar kabhi load hi nahi hota tha.
     LaunchedEffect(otherUid) {
-        scope.launch {
-            val cached = db.cachedUserProfileDao().get(otherUid)
-            avatarBase64 = cached?.avatar
+        val cached = db.cachedUserProfileDao().get(otherUid)
+        if (cached?.avatar != null) {
+            avatarBase64 = cached.avatar
+            isAvatarLoading = false
+        }
+        try {
+            val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
+            val res = RetrofitClient.usersApi.getUserByUid("Bearer $token", otherUid)
+            val fresh = res.body()?.user
+            if (fresh != null) {
+                avatarBase64 = fresh.avatar
+                db.cachedUserProfileDao().upsert(
+                    com.muwan.muwanchat.data.CachedUserProfileEntity(
+                        uid = fresh.uid,
+                        username = fresh.username,
+                        name = fresh.name,
+                        bio = fresh.bio,
+                        city = fresh.city,
+                        country = fresh.country,
+                        gender = fresh.gender,
+                        avatar = fresh.avatar,
+                        status = cached?.status ?: "none"
+                    )
+                )
+            }
+        } catch (_: Exception) {
+            // Network fail ho toh bhi loader hata do -- fallback letter-avatar dikh jaayega
+        } finally {
+            isAvatarLoading = false
         }
     }
 
@@ -245,12 +277,24 @@ fun CallScreen(
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            AvatarView(
-                avatarBase64 = avatarBase64,
-                fallbackText = otherUsername,
-                size = 120.dp,
-                fontSize = 42.sp
-            )
+            Box(contentAlignment = Alignment.Center) {
+                AvatarView(
+                    avatarBase64 = avatarBase64,
+                    fallbackText = otherUsername,
+                    size = 120.dp,
+                    fontSize = 42.sp
+                )
+                // Photo load hone tak fallback-letter ke upar chhota spinner --
+                // shared AvatarView component ko touch nahi kiya, sirf yahan
+                // ek transparent overlay lagaya hai.
+                if (isAvatarLoading && avatarBase64 == null) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        color = Color.White,
+                        strokeWidth = 3.dp
+                    )
+                }
+            }
             Spacer(Modifier.height(20.dp))
             Text(otherUsername, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
