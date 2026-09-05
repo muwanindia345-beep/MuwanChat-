@@ -59,13 +59,21 @@ jobs:
         run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
 
       - name: Build Beta APK
-        run: ./gradlew assembleBetaDebug
+        # Pehle assembleBetaDebug tha -- debug build me R8/ProGuard minification
+        # hoti hi nahi, isliye beta pe sab theek chalta tha lekin official
+        # (production release, minified) me WebRTC jaisi native/reflection-heavy
+        # libraries crash kar jaati thi. Ab beta bhi assembleBetaRelease banata
+        # hai -- same "release" buildType, same proguard-rules.pro, same
+        # minifyEnabled/shrinkResources jo production use karta hai. Sirf
+        # applicationId (.beta) aur signing key (beta.keystore) alag hain.
+        # Isse ProGuard-wale bugs beta testing me hi pakde jaayenge.
+        run: ./gradlew assembleBetaRelease
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: MuwanChat-beta
-          path: app/build/outputs/apk/beta/debug/app-beta-debug.apk
+          path: app/build/outputs/apk/beta/release/app-beta-release.apk
 
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
@@ -73,5 +81,5 @@ jobs:
           tag_name: v${{ steps.ver.outputs.new_name }}-beta
           name: MuwanChat Beta v${{ steps.ver.outputs.new_name }}
           prerelease: true
-          body: "VERSION_CODE:${{ steps.ver.outputs.new_code }}\nPre-release build, signed with the fixed beta keystore.\n${{ github.event.head_commit.message }}"
-          files: app/build/outputs/apk/beta/debug/app-beta-debug.apk
+          body: "VERSION_CODE:${{ steps.ver.outputs.new_code }}\nPre-release build, signed with the fixed beta keystore. Same ProGuard/R8 rules as the official release build.\n${{ github.event.head_commit.message }}"
+          files: app/build/outputs/apk/beta/release/app-beta-release.apk
