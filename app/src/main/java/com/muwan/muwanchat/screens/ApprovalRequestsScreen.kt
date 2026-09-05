@@ -65,6 +65,7 @@ fun ApprovalRequestsScreen(navController: NavController, groupId: String) {
     }
 
     fun approve(uid: String) {
+        if (busyUid == uid) return
         val target = requests.find { it.uid == uid }
         scope.launch {
             busyUid = uid

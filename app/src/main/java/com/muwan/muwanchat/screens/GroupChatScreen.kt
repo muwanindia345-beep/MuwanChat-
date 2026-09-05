@@ -834,14 +834,6 @@ fun GroupChatScreen(
             when (event) {
                 is SocketEvent.NewMessage -> {
                     if (event.roomId == groupId) {
-                        if (event.type == "system") {
-                            // Optimistic system messages (kick/add/approve) already
-                            // shown locally -- jab asli server-confirmed wali aaye,
-                            // purani placeholder wali hata do taaki duplicate na dikhe.
-                            db.messageDao().findRecentSystemMessage(groupId, event.content)?.let {
-                                if (it.id != event.id) db.messageDao().deleteById(it.id)
-                            }
-                        }
                         ChatRepository.recordMessage(
                             db = db,
                             id = event.id,

@@ -11,9 +11,15 @@ object ChatRepository {
 
     // Group ke andar kick/add/approve jaisi actions turant local system message
     // dikhane ke liye -- id client-generated hai, jab asli server wali socket se
-    // aayegi (GroupChatScreen ke NewMessage handler me) toh yeh placeholder hata
+    // aayegi (recordMessage() khud dedup kar dega) toh yeh placeholder hata
     // di jaayegi taaki duplicate na dikhe.
+    // Agar same content wala message abhi-abhi (last 10 sec) already insert ho
+    // chuka hai (double-tap / double-invoke se bachne ke liye), naya insert
+    // nahi karte -- purana hi id wapas kar dete hain.
     suspend fun insertOptimisticSystemMessage(db: MuwanChatDb, roomId: String, content: String): String {
+        db.messageDao().findRecentSystemMessage(roomId, content)?.let { existing ->
+            if (isWithinLastSeconds(existing.createdAt, 10)) return existing.id
+        }
         val id = java.util.UUID.randomUUID().toString()
         db.messageDao().insert(
             MessageEntity(
@@ -29,6 +35,17 @@ object ChatRepository {
             )
         )
         return id
+    }
+
+    private fun isWithinLastSeconds(iso: String, seconds: Int): Boolean {
+        return try {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault())
+            sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            val then = sdf.parse(iso)?.time ?: return false
+            System.currentTimeMillis() - then < seconds * 1000L
+        } catch (_: Exception) {
+            false
+        }
     }
 
     suspend fun recordMessage(
@@ -50,6 +67,14 @@ object ChatRepository {
         isForwarded: Boolean = false,
         mentions: List<String> = emptyList()
     ) {
+        if (type == "system") {
+            // Doosri jagah se (socket ya kahin bhi) aane wala real system message
+            // agar humari optimistic placeholder se match kare (roomId+content),
+            // toh purani wali hata do -- taaki dono na dikhein.
+            db.messageDao().findRecentSystemMessage(roomId, content)?.let {
+                if (it.id != id) db.messageDao().deleteById(it.id)
+            }
+        }
         db.messageDao().insert(
             MessageEntity(
                 id = id,

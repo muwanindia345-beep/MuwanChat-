@@ -127,6 +127,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
 
     // "Add Members" se wapas aane par selection yahin dikhega -- confirm karne par API call
     fun confirmAddSelectedMembers() {
+        if (isBusy) return
         val toAddUsers = GroupMemberSelection.selected.toList()
         val toAdd = toAddUsers.map { it.uid }
         if (toAdd.isEmpty()) return
@@ -224,6 +225,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
     }
 
     fun kickMember(uid: String, targetUsername: String) {
+        if (isBusy) return
         val myUsername = group?.memberProfiles?.find { it.uid == myUid }?.username ?: ""
         scope.launch {
             val optimisticId = if (myUsername.isNotBlank()) {
