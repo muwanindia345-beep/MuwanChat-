@@ -1,4 +1,32 @@
-package com.muwan.muwanchat.calling
+import os
+
+def create(path, content, label):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"[OK] {label}")
+
+# ============================================================================
+# CallManager.kt -- SIGTRAP crash fix (libjingle_peerconnection_so.so)
+#
+# Root cause: peerConnection/localAudioTrack/audioSource plain `var` the,
+# koi synchronization nahi tha. UI thread (mute/speaker button tap ->
+# setMuted()) aur WebRTC ke apne internal signaling/observer thread (call
+# drop/ICE fail -> endCall() call karta hai) same object ko ek saath touch
+# kar sakte the. Race: setMuted() ne localAudioTrack read kiya (non-null),
+# usi waqt doosre thread ne endCall() se usko dispose() kar diya -- fir
+# pehla thread ek already-disposed native WebRTC object pe setEnabled()
+# call karta hai, jisse native RTC_CHECK fail hota hai -> SIGTRAP crash,
+# exactly tap karte hi.
+#
+# Fix: saare state-mutating aur state-reading calls ek hi lock
+# (`stateLock`) ke peeche daale -- ab dispose aur use kabhi ek saath nahi
+# ho sakte, jo bhi thread pehle lock le lega woh apna kaam poora karke hi
+# lock chhodega.
+# ============================================================================
+create(
+    "app/src/main/java/com/muwan/muwanchat/calling/CallManager.kt",
+'''package com.muwan.muwanchat.calling
 
 import android.content.Context
 import android.media.AudioManager
@@ -269,3 +297,6 @@ private open class SimpleSdpObserver : SdpObserver {
     override fun onCreateFailure(p0: String?) {}
     override fun onSetFailure(p0: String?) {}
 }
+''',
+    "CallManager.kt (stateLock added -- WebRTC dispose/use race fixed)"
+)
