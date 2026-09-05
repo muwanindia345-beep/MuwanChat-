@@ -53,6 +53,9 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
+            firebaseCrashlytics {
+                nativeSymbolUploadEnabled = true
+            }
         }
     }
 
@@ -139,6 +142,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-crashlytics-ktx")
+    implementation("com.google.firebase:firebase-crashlytics-ndk")
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
     implementation("androidx.media3:media3-datasource:1.3.1")
