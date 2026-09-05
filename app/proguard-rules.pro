@@ -77,6 +77,23 @@
 -keep class androidx.security.crypto.** { *; }
 -dontwarn androidx.security.crypto.**
 
+# ---------- WebRTC (voice/video calling) ----------
+# WebRTC ki native (JNI/C++) library Java classes aur methods ko EXACT naam
+# se reference karti hai (PeerConnectionFactory, SdpObserver callbacks, video
+# encoder/decoder factories, etc). R8 obfuscation/shrinking in naamon ko badal
+# ya strip kar deta hai kyunki koi Java code sidha inhe "use" hota nahi dikhta
+# (sirf native side se call hota hai) -- isse release build me CallScreen
+# crash hota tha jabki beta/debug (unminified) build me theek chalta tha.
+-keep class org.webrtc.** { *; }
+-keepclassmembers class org.webrtc.** { *; }
+-dontwarn org.webrtc.**
+
+# Apna calling package bhi safe rakhte hain -- CallManager WebRTC callbacks
+# (SdpObserver, PeerConnection.Observer) implement karta hai jo runtime pe
+# native side se invoke hote hain.
+-keep class com.muwan.muwanchat.calling.** { *; }
+-keepclassmembers class com.muwan.muwanchat.calling.** { *; }
+
 # ---------- Media3 / ExoPlayer ----------
 -keep class androidx.media3.** { *; }
 -dontwarn androidx.media3.**
