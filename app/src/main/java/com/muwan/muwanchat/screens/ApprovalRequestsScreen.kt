@@ -23,6 +23,8 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.ChatRepository
+import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.network.JoinRequestEntry
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.util.friendlyErrorMessage
@@ -33,6 +35,7 @@ import kotlinx.coroutines.launch
 fun ApprovalRequestsScreen(navController: NavController, groupId: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
     var requests by remember { mutableStateOf<List<JoinRequestEntry>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -62,17 +65,24 @@ fun ApprovalRequestsScreen(navController: NavController, groupId: String) {
     }
 
     fun approve(uid: String) {
+        val target = requests.find { it.uid == uid }
         scope.launch {
             busyUid = uid
+            val myUsername = AuthDataStore.getUsername(context).first() ?: ""
+            val optimisticId = if (myUsername.isNotBlank() && target != null) {
+                ChatRepository.insertOptimisticSystemMessage(db, groupId, "@$myUsername approved @${target.username}'s join request")
+            } else null
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@launch
                 val res = RetrofitClient.chatApi.approveJoinRequest("Bearer $token", groupId, uid)
                 if (res.isSuccessful) {
                     requests = requests.filter { it.uid != uid }
                 } else {
+                    optimisticId?.let { db.messageDao().deleteById(it) }
                     Toast.makeText(context, "Approve nahi ho paya", Toast.LENGTH_SHORT).show()
                 }
             } catch (_: Exception) {
+                optimisticId?.let { db.messageDao().deleteById(it) }
                 Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
             }
             busyUid = null

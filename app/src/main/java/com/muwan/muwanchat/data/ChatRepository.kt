@@ -9,6 +9,28 @@ object ChatRepository {
 
     private val gson = Gson()
 
+    // Group ke andar kick/add/approve jaisi actions turant local system message
+    // dikhane ke liye -- id client-generated hai, jab asli server wali socket se
+    // aayegi (GroupChatScreen ke NewMessage handler me) toh yeh placeholder hata
+    // di jaayegi taaki duplicate na dikhe.
+    suspend fun insertOptimisticSystemMessage(db: MuwanChatDb, roomId: String, content: String): String {
+        val id = java.util.UUID.randomUUID().toString()
+        db.messageDao().insert(
+            MessageEntity(
+                id = id,
+                roomId = roomId,
+                senderUid = "system",
+                receiverUid = roomId,
+                content = content,
+                type = "system",
+                seen = 1,
+                createdAt = nowIso(),
+                status = "SENT"
+            )
+        )
+        return id
+    }
+
     suspend fun recordMessage(
         db: MuwanChatDb,
         id: String,

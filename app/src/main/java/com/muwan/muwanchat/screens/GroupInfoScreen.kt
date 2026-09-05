@@ -127,9 +127,17 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
 
     // "Add Members" se wapas aane par selection yahin dikhega -- confirm karne par API call
     fun confirmAddSelectedMembers() {
-        val toAdd = GroupMemberSelection.selected.map { it.uid }
+        val toAddUsers = GroupMemberSelection.selected.toList()
+        val toAdd = toAddUsers.map { it.uid }
         if (toAdd.isEmpty()) return
+        val myUsername = group?.memberProfiles?.find { it.uid == myUid }?.username ?: ""
         scope.launch {
+            val optimisticIds = if (myUsername.isNotBlank()) {
+                toAddUsers.map { u ->
+                    ChatRepository.insertOptimisticSystemMessage(db, groupId, "@$myUsername added @${u.username}")
+                }
+            } else emptyList()
+
             isBusy = true
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@launch
@@ -140,9 +148,11 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
                     GroupMemberSelection.clear()
                     refreshGroup()
                 } else {
+                    optimisticIds.forEach { db.messageDao().deleteById(it) }
                     Toast.makeText(context, "Members add nahi ho paye", Toast.LENGTH_SHORT).show()
                 }
             } catch (_: Exception) {
+                optimisticIds.forEach { db.messageDao().deleteById(it) }
                 Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
             }
             isBusy = false
@@ -213,8 +223,13 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
         }
     }
 
-    fun kickMember(uid: String) {
+    fun kickMember(uid: String, targetUsername: String) {
+        val myUsername = group?.memberProfiles?.find { it.uid == myUid }?.username ?: ""
         scope.launch {
+            val optimisticId = if (myUsername.isNotBlank()) {
+                ChatRepository.insertOptimisticSystemMessage(db, groupId, "@$myUsername removed @$targetUsername")
+            } else null
+
             isBusy = true
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@launch
@@ -223,9 +238,11 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
                     selectedMemberForSheet = null
                     refreshGroup()
                 } else {
+                    optimisticId?.let { db.messageDao().deleteById(it) }
                     Toast.makeText(context, "Member remove nahi ho paya", Toast.LENGTH_SHORT).show()
                 }
             } catch (_: Exception) {
+                optimisticId?.let { db.messageDao().deleteById(it) }
                 Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
             }
             isBusy = false
@@ -334,7 +351,7 @@ fun GroupInfoScreen(navController: NavController, groupId: String) {
                         label = "Kick this member",
                         tint = Color(0xFFFF3B30)
                     ) {
-                        kickMember(member.uid)
+                        kickMember(member.uid, member.username)
                     }
                 }
             }
@@ -566,7 +583,7 @@ private fun InfoActionRow(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = DarkAccent, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Text(label, color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
         if (showRedDot) {
