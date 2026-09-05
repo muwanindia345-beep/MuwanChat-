@@ -74,7 +74,10 @@ private suspend fun forwardOneMessage(
     if (target.isGroup) {
         val success = if (AppSocketManager.isConnected) {
             sendViaSocketAwait { cb ->
-                AppSocketManager.sendGroupMessage(id, target.roomId, content, msg.type, msg.fileName, msg.mimeType, null, true, cb)
+                AppSocketManager.sendGroupMessage(
+                    id, target.roomId, content, msg.type, msg.fileName, msg.mimeType, null, true,
+                    onAck = cb
+                )
             }
         } else false
         db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
