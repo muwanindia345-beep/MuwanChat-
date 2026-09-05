@@ -1259,7 +1259,7 @@ Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 220.dp)
-                    .background(DarkInputBg)
+                    .background(DarkSheet)
             ) {
                 Text(
                     "Mention someone",
@@ -1280,20 +1280,12 @@ Box(
                                 .padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
-                                    .background(DarkAccent),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    member.username.take(1).uppercase(),
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                            }
+                            AvatarView(
+                                avatarBase64 = member.avatar,
+                                fallbackText = member.username,
+                                size = 34.dp,
+                                fontSize = 14.sp
+                            )
                             Spacer(Modifier.width(12.dp))
                             Text(member.username, color = Color.White, fontSize = 15.sp)
                         }
