@@ -49,8 +49,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true    // TEST 1 -- code shrinking/obfuscation ON
-            isShrinkResources = false // TEST 1 -- resource shrinking still OFF
+            isMinifyEnabled = false   // TEMP test
+            isShrinkResources = false   // TEMP test
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
             firebaseCrashlytics {

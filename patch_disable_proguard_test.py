@@ -1,36 +1,35 @@
 import re
 
-path = "app/build.gradle.kts"
+gradle_path = "app/build.gradle.kts"
 
-with open(path, "r", encoding="utf-8") as f:
+# ============================================================================
+# TEST 1 ko revert karo -- wapas dono OFF (minify=false, shrinkResources=false)
+# kyunki crash reproduce ho gaya minify=true, shrinkResources=false state me.
+# Isse wapas TEST 1 pe jaane ke liye patch_test_minify_only.py chalao.
+# ============================================================================
+
+with open(gradle_path, "r", encoding="utf-8") as f:
     content = f.read()
 
-# ============================================================================
-# TEMPORARY TEST -- ProGuard/R8 minification band kar rahe hain taaki confirm
-# ho sake ki SIGTRAP crash ka ProGuard se koi lena dena hai ya nahi.
-# Isko wapas laane ke liye patch_reenable_proguard.py chalao.
-# ============================================================================
-
-old = '''        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+old_release = '''        release {
+            isMinifyEnabled = true    // TEST 1 -- code shrinking/obfuscation ON
+            isShrinkResources = false // TEST 1 -- resource shrinking still OFF
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
-        }'''
+            signingConfig = signingConfigs.getByName("release")'''
 
-new = '''        release {
-            isMinifyEnabled = false   // TEMPORARY -- crash test ke liye off
-            isShrinkResources = false // TEMPORARY -- crash test ke liye off
+new_release = '''        release {
+            isMinifyEnabled = false   // TEMP test
+            isShrinkResources = false   // TEMP test
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
-        }'''
+            signingConfig = signingConfigs.getByName("release")'''
 
-if "isMinifyEnabled = false" in content:
-    print("[SKIP] ProGuard already off hai")
-elif old in content:
-    content = content.replace(old, new, 1)
-    with open(path, "w", encoding="utf-8") as f:
+if "isMinifyEnabled = false" in content and "isShrinkResources = false" in content:
+    print("[SKIP] ProGuard already off hai (minify=false, shrinkResources=false)")
+elif old_release in content:
+    content = content.replace(old_release, new_release, 1)
+    with open(gradle_path, "w", encoding="utf-8") as f:
         f.write(content)
-    print("[OK] ProGuard/R8 temporarily OFF kar diya (dono flavors ke liye -- beta aur production dono 'release' buildType share karte hain)")
+    print("[OK] ProGuard/R8 wapas OFF kar diya (minify=false, shrinkResources=false)")
 else:
-    print("[MANUAL FIX NEEDED] release buildType ka block expected shape se match nahi hua -- khud isMinifyEnabled/isShrinkResources ko false karo.")
+    print("[MANUAL FIX NEEDED] release buildType block expected shape se match nahi hua")
+    print("Khud isMinifyEnabled=false aur isShrinkResources=false set karo app/build.gradle.kts me")
