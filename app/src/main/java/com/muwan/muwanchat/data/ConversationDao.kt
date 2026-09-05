@@ -6,7 +6,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ConversationDao {
 
-    @Query("SELECT * FROM conversations ORDER BY lastTime DESC")
+    // Pinned chats (pinnedAt not null) hamesha upar — sabse recent pin sabse
+    // top, unke neeche baaki sab normal lastTime DESC order mein
+    @Query("""
+        SELECT * FROM conversations
+        ORDER BY CASE WHEN pinnedAt IS NULL THEN 1 ELSE 0 END, pinnedAt DESC, lastTime DESC
+    """)
     fun observeConversations(): Flow<List<ConversationEntity>>
 
     @Query("SELECT * FROM conversations")
@@ -59,4 +64,11 @@ interface ConversationDao {
 
     @Query("DELETE FROM conversations")
     suspend fun clearAll()
+
+    // ── Pin chat (local-only, max 3 — limit ChatRepository mein enforce hoti hai) ──
+    @Query("SELECT COUNT(*) FROM conversations WHERE pinnedAt IS NOT NULL")
+    suspend fun getPinnedCount(): Int
+
+    @Query("UPDATE conversations SET pinnedAt = :pinnedAt WHERE roomId = :roomId")
+    suspend fun setPinned(roomId: String, pinnedAt: Long?)
 }

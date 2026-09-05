@@ -19,7 +19,8 @@ data class ConversationItem(
     val memberCount: Int = 0,
     val onlineCount: Int = 0,
     val isRemoved: Boolean = false,
-    val removedByUsername: String? = null
+    val removedByUsername: String? = null,
+    val isPinned: Boolean = false
 )
 
 data class RemovalStatusResponse(

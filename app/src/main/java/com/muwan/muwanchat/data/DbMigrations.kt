@@ -51,5 +51,13 @@ object DbMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_23_24)
+    // Pin chat feature — conversations table mein naya nullable column,
+    // purana data (chats, unread count, wallpaper, theme sab) safe rehta hai.
+    val MIGRATION_24_25 = object : Migration(24, 25) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE conversations ADD COLUMN pinnedAt INTEGER DEFAULT NULL")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_23_24, MIGRATION_24_25)
 }

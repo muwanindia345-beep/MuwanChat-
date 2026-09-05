@@ -172,7 +172,11 @@ object ChatRepository {
                         unreadCount = it.unreadCount,
                         isGroup = it.isGroup,
                         memberCount = it.memberCount,
-                        onlineCount = it.onlineCount
+                        onlineCount = it.onlineCount,
+                        // Pin sirf local/per-device hai, server ko iska pata nahi —
+                        // resync mein purana local pin state carry-forward karo,
+                        // warna REPLACE upsert usko chupchap null kar deta
+                        pinnedAt = local?.pinnedAt
                     )
                 )
             } else if (it.lastTime > hidden.hiddenAt) {
@@ -190,7 +194,8 @@ object ChatRepository {
                         unreadCount = it.unreadCount,
                         isGroup = it.isGroup,
                         memberCount = it.memberCount,
-                        onlineCount = it.onlineCount
+                        onlineCount = it.onlineCount,
+                        pinnedAt = local?.pinnedAt
                     )
                 )
             }
@@ -264,4 +269,34 @@ object ChatRepository {
     suspend fun clearUnread(db: MuwanChatDb, roomId: String) {
         db.conversationDao().clearUnread(roomId)
     }
+
+    // ── Pin chat (ConversationListScreen ke multi-select se call hota hai) ──
+    // WhatsApp jaisa max 3 pinned chats — is limit ke andar hi in roomIds
+    // mein se jo abhi unpinned hain unko pin karta hai (already-pinned wale
+    // untouched rehte hain, unka purana pin-order bana rehta hai).
+    // Return false = limit cross ho rahi thi, kuch bhi pin nahi hua (all-or-nothing).
+    suspend fun pinChats(db: MuwanChatDb, roomIds: Set<String>): Boolean {
+        val all = db.conversationDao().getAll().associateBy { it.roomId }
+        val alreadyPinnedCount = all.values.count { it.pinnedAt != null }
+        val newlyToPin = roomIds.filter { all[it]?.pinnedAt == null }
+
+        if (alreadyPinnedCount + newlyToPin.size > MAX_PINNED_CHATS) return false
+
+        // Har naye pin ko alag-alag millisecond timestamp taaki order stable
+        // rahe (sabse recent pin sabse upar dikhega)
+        var t = System.currentTimeMillis()
+        for (roomId in newlyToPin) {
+            db.conversationDao().setPinned(roomId, t)
+            t += 1
+        }
+        return true
+    }
+
+    suspend fun unpinChats(db: MuwanChatDb, roomIds: Set<String>) {
+        for (roomId in roomIds) {
+            db.conversationDao().setPinned(roomId, null)
+        }
+    }
+
+    const val MAX_PINNED_CHATS = 3
 }

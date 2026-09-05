@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
@@ -95,7 +97,8 @@ fun ConversationListScreen(navController: NavController) {
                 memberCount = e.memberCount,
                 onlineCount = e.onlineCount,
                 isRemoved = e.isRemoved,
-                removedByUsername = e.removedByUsername
+                removedByUsername = e.removedByUsername,
+                isPinned = e.pinnedAt != null
             )
         }
     }
@@ -126,6 +129,29 @@ fun ConversationListScreen(navController: NavController) {
             selectedRoomIds + roomId
         }
         if (selectedRoomIds.isEmpty()) isSelectionMode = false
+    }
+
+    // Selection mein sab already pinned hai to yeh unpin karega, warna pin
+    // (max 3 tak — limit cross hone par Toast dikha ke kuch bhi change nahi karta)
+    fun togglePinSelected() {
+        val pinnedByRoom = conversationEntities.associate { it.roomId to (it.pinnedAt != null) }
+        val allSelectedPinned = selectedRoomIds.isNotEmpty() && selectedRoomIds.all { pinnedByRoom[it] == true }
+        scope.launch {
+            if (allSelectedPinned) {
+                ChatRepository.unpinChats(db, selectedRoomIds)
+            } else {
+                val ok = ChatRepository.pinChats(db, selectedRoomIds)
+                if (!ok) {
+                    Toast.makeText(
+                        context,
+                        "You can pin up to ${ChatRepository.MAX_PINNED_CHATS} chats only",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@launch
+                }
+            }
+            exitSelectionMode()
+        }
     }
 
     suspend fun reloadConversations(token: String) {
@@ -413,6 +439,18 @@ fun ConversationListScreen(navController: NavController) {
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(
+                        onClick = { togglePinSelected() },
+                        enabled = selectedRoomIds.isNotEmpty()
+                    ) {
+                        val allSelectedPinned = selectedRoomIds.isNotEmpty() &&
+                            selectedRoomIds.all { id -> conversationEntities.find { it.roomId == id }?.pinnedAt != null }
+                        Icon(
+                            if (allSelectedPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                            contentDescription = if (allSelectedPinned) "Unpin" else "Pin",
+                            tint = if (selectedRoomIds.isNotEmpty()) DarkAccent else Color(0xFF555577)
+                        )
+                    }
+                    IconButton(
                         onClick = { if (selectedRoomIds.isNotEmpty()) showDeleteConfirm = true },
                         enabled = selectedRoomIds.isNotEmpty()
                     ) {
@@ -620,6 +658,16 @@ fun ConversationRow(
         }
         Spacer(modifier = Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
+            // Pin badge — offline/date se pehle, sirf pinned chats par dikhta hai
+            if (conv.isPinned) {
+                Icon(
+                    Icons.Filled.PushPin,
+                    contentDescription = "Pinned",
+                    tint = Color(0xFF666688),
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+            }
             Text(formatConvTime(conv.lastTime), color = Color(0xFF666688), fontSize = 11.sp)
             Spacer(modifier = Modifier.height(4.dp))
             if (hasUnread) {

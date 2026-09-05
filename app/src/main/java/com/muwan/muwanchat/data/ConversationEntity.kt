@@ -24,5 +24,10 @@ data class ConversationEntity(
     // Group ki admin-only-send setting ka local cache — taaki screen open hote
     // hi (network wait kiye bina) sahi input bar / banner turant dikh jaaye.
     val onlyAdminsCanSend: Boolean = false,
-    val amIAdmin: Boolean = false
+    val amIAdmin: Boolean = false,
+    // Pin chat feature — purely local/per-device (server ko iska pata nahi
+    // chalta, jaise wallpaper/theme). null = pinned nahi hai. Non-null value
+    // us waqt ka timestamp hai jab pin kiya gaya — isi se sabse recent pin
+    // sabse upar order hota hai (max 3 tak — enforce ChatRepository.pinChats() mein).
+    val pinnedAt: Long? = null
 )
