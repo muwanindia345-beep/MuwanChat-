@@ -1,4 +1,23 @@
-name: MuwanChat Beta Build
+import os
+
+def create(path, content, label):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"[OK] {label}")
+
+# ============================================================================
+# build.yml -- "Create GitHub Pre-release" step hata di. Ye step signed
+# assembleBetaRelease APK se ek naya GitHub Release/tag banata tha. Signing
+# config experiments ki wajah se jab bhi ye step fail hota tha, poora job
+# fail dikhta tha aur "Upload APK artifact" step tak nahi pahuchta tha --
+# isliye artifact bhi nahi ban paata tha, jabki sirf release-creation step
+# hi actually problem thi. Ab sirf artifact upload rahega, koi Release/tag
+# nahi banega.
+# ============================================================================
+create(
+    ".github/workflows/build.yml",
+'''name: MuwanChat Beta Build
 
 on:
   push:
@@ -44,7 +63,7 @@ jobs:
       - name: Update build.gradle.kts
         run: |
           sed -i "s/versionCode = [0-9]*/versionCode = ${{ steps.ver.outputs.new_code }}/" app/build.gradle.kts
-          sed -i "s/versionName = \".*\"/versionName = \"${{ steps.ver.outputs.new_name }}\"/" app/build.gradle.kts
+          sed -i "s/versionName = \\".*\\"/versionName = \\"${{ steps.ver.outputs.new_name }}\\"/" app/build.gradle.kts
           grep -E "versionCode|versionName" app/build.gradle.kts
 
       - name: Commit version bump
@@ -74,3 +93,6 @@ jobs:
         with:
           name: MuwanChat-beta
           path: app/build/outputs/apk/beta/release/app-beta-release.apk
+''',
+    "build.yml (Pre-release step removed, sirf artifact upload)"
+)
