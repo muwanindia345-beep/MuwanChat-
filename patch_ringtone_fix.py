@@ -1,4 +1,23 @@
-package com.muwan.muwanchat.calling
+import os
+
+def create(path, content, label):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"[OK] {label}")
+
+# ============================================================================
+# CallRingtoneManager.kt -- raw MediaPlayer se system ringtone URI play karna
+# kaafi OEM devices (MIUI/EMUI) pe silently fail ho jaata hai (vibration
+# chalta rahta hai kyunki uska code path bilkul alag hai). Ab Android ka
+# apna `Ringtone` class use kiya hai (RingtoneManager.getRingtone) jo iske
+# liye specifically bana hai, saath mein ek chhota watchdog jo har 500ms
+# check karke true looping guarantee karta hai (Ringtone.isLooping sirf
+# API 28+ pe kaam karta hai, watchdog sabhi versions pe consistent rakhta hai).
+# ============================================================================
+create(
+    "app/src/main/java/com/muwan/muwanchat/calling/CallRingtoneManager.kt",
+'''package com.muwan.muwanchat.calling
 
 import android.content.Context
 import android.media.AudioAttributes
@@ -111,3 +130,9 @@ class CallRingtoneManager(private val context: Context) {
         toneGenerator = null
     }
 }
+''',
+    "CallRingtoneManager.kt: fix silent ringtone (MediaPlayer -> Ringtone class)"
+)
+
+print()
+print("[DONE] Incoming call ringtone fix applied")
