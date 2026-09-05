@@ -88,6 +88,13 @@
 -keepclassmembers class org.webrtc.** { *; }
 -dontwarn org.webrtc.**
 
+# JNI native method registration ke liye -- kisi bhi class me agar native
+# method hai, uska naam/signature R8 se exact rehna chahiye, warna
+# RegisterNatives() fail hoke native side SIGTRAP jaisa crash de sakta hai.
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
 # Apna calling package bhi safe rakhte hain -- CallManager WebRTC callbacks
 # (SdpObserver, PeerConnection.Observer) implement karta hai jo runtime pe
 # native side se invoke hote hain.
