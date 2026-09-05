@@ -43,5 +43,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  *   val ALL: Array<Migration> = arrayOf(MIGRATION_22_23)
  */
 object DbMigrations {
-    val ALL: Array<Migration> = arrayOf()
+    // Group @mentions feature: MessageEntity mein "mentions" column add hua
+    // (comma-separated uids) — purana data safe rehta hai, reset nahi hota.
+    val MIGRATION_23_24 = object : Migration(23, 24) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `messages` ADD COLUMN `mentions` TEXT DEFAULT NULL")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_23_24)
 }

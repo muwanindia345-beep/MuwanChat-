@@ -404,6 +404,7 @@ fun GroupChatScreen(
     }
 
     var input by remember { mutableStateOf("") }
+    var showMentionPicker by remember { mutableStateOf(false) }
     var replyTo by remember { mutableStateOf<ChatMessage?>(null) }
     var editingMessage by remember { mutableStateOf<ChatMessage?>(null) }
     val listState = rememberLazyListState()
@@ -665,6 +666,16 @@ fun GroupChatScreen(
         }
     }
 
+    // Group message ke text mein "@username" pattern dhoondh ke, un usernames ko
+    // group ke actual members se match karke unke uid nikaal deta hai — sirf
+    // valid group members hi mention ban paate hain, random text nahi.
+    fun extractMentionedUids(text: String): List<String> {
+        val profiles = group?.memberProfiles ?: return emptyList()
+        val matchedUsernames = Regex("@([A-Za-z0-9_]+)").findAll(text)
+            .map { it.groupValues[1] }.toSet()
+        return profiles.filter { it.username in matchedUsernames }.map { it.uid }
+    }
+
     // ── Send logic — receiverUid ki jagah room_id-based group send ──
     fun sendMessageWithId(
         id: String, content: String, createdAt: String, isRetry: Boolean,
@@ -691,7 +702,8 @@ fun GroupChatScreen(
                     status = "PENDING",
                     fileName = fileName,
                     mimeType = mimeType,
-                    replyToId = replyToId
+                    replyToId = replyToId,
+                    mentions = if (type == "text") extractMentionedUids(content) else emptyList()
                 )
             }
         } else {
@@ -702,7 +714,10 @@ fun GroupChatScreen(
                 delay(8000)
                 if (isActive) db.messageDao().updateStatus(id, "FAILED")
             }
-            AppSocketManager.sendGroupMessage(id, groupId, content, type, fileName, mimeType, replyToId) { success ->
+            AppSocketManager.sendGroupMessage(
+                id, groupId, content, type, fileName, mimeType, replyToId,
+                mentions = if (type == "text") extractMentionedUids(content) else emptyList()
+            ) { success ->
                 timeoutJob.cancel()
                 scope.launch {
                     db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
@@ -833,7 +848,8 @@ fun GroupChatScreen(
                             fileName = event.fileName,
                             mimeType = event.mimeType,
                             replyToId = event.replyToId,
-                            isForwarded = event.isForwarded
+                            isForwarded = event.isForwarded,
+                            mentions = event.mentions
                         )
                         if (event.senderUid != myUid) {
                             try {
@@ -1151,6 +1167,7 @@ Box(
                         myUid = myUid,
                         senderAvatar = memberAvatars[msg.senderUid],
                         senderName = if (msg.senderUid != myUid) memberNames[msg.senderUid] else null,
+                        groupMemberUsernames = group?.memberProfiles?.map { it.username } ?: emptyList(),
                         onSenderTap = { uid ->
                             navController.navigate(Screen.UserProfile.createRoute(uid))
                         },
@@ -1236,6 +1253,54 @@ Box(
         AnimatedVisibility(visible = showEmojiPicker) {
             EmojiPickerRow { emoji -> input += emoji }
         }
+        AnimatedVisibility(visible = showMentionPicker) {
+            val members = group?.memberProfiles?.filter { it.uid != myUid } ?: emptyList()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 220.dp)
+                    .background(DarkInputBg)
+            ) {
+                Text(
+                    "Mention someone",
+                    color = Color(0xFF888888),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                LazyColumn {
+                    items(members) { member ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val prefix = if (input.isNotEmpty() && !input.endsWith(" ")) "$input " else input
+                                    input = "$prefix@${member.username} "
+                                    showMentionPicker = false
+                                }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(DarkAccent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    member.username.take(1).uppercase(),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Text(member.username, color = Color.White, fontSize = 15.sp)
+                        }
+                    }
+                }
+            }
+        }
         if (conversationEntity?.isRemoved == true) {
             Row(
                 modifier = Modifier
@@ -1316,6 +1381,11 @@ Box(
                     } else {
                         recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
+                },
+                showMentionButton = true,
+                onMentionClick = {
+                    showMentionPicker = !showMentionPicker
+                    if (showMentionPicker && showEmojiPicker) showEmojiPicker = false
                 }
             )
         }

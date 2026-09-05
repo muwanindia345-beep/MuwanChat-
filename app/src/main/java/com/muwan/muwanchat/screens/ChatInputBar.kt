@@ -31,7 +31,9 @@ fun ChatInputBar(
     onPickImage: () -> Unit,
     onSend: () -> Unit,
     onVoiceMessage: () -> Unit,
-    onGifReceived: (Uri, String, () -> Unit) -> Unit = { _, _, release -> release() }
+    onGifReceived: (Uri, String, () -> Unit) -> Unit = { _, _, release -> release() },
+    showMentionButton: Boolean = false,
+    onMentionClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -93,6 +95,16 @@ fun ChatInputBar(
                     }
                 }
             )
+
+            if (showMentionButton) {
+                IconButton(
+                    onClick = onMentionClick,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(Icons.Filled.AlternateEmail, contentDescription = "Mention",
+                        tint = Color(0xFF888888), modifier = Modifier.size(18.dp))
+                }
+            }
 
             IconButton(
                 onClick = onPickImage,

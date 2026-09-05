@@ -25,7 +25,8 @@ object ChatRepository {
         fileName: String? = null,
         mimeType: String? = null,
         replyToId: String? = null,
-        isForwarded: Boolean = false
+        isForwarded: Boolean = false,
+        mentions: List<String> = emptyList()
     ) {
         db.messageDao().insert(
             MessageEntity(
@@ -41,7 +42,8 @@ object ChatRepository {
                 fileName = fileName,
                 mimeType = mimeType,
                 replyToId = replyToId,
-                isForwarded = isForwarded
+                isForwarded = isForwarded,
+                mentions = if (mentions.isNotEmpty()) mentions.joinToString(",") else null
             )
         )
 

@@ -24,7 +24,8 @@ sealed class SocketEvent {
         val fileName: String? = null,
         val mimeType: String? = null,
         val replyToId: String? = null,
-        val isForwarded: Boolean = false
+        val isForwarded: Boolean = false,
+        val mentions: List<String> = emptyList()
     ) : SocketEvent()
 
     data class UserOnline(val uid: String) : SocketEvent()
@@ -172,6 +173,10 @@ object AppSocketManager {
 
             s.on("new_message") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
+                val mentionsArray = json.optJSONArray("mentions")
+                val mentionsList = if (mentionsArray != null) {
+                    (0 until mentionsArray.length()).map { mentionsArray.getString(it) }
+                } else emptyList()
                 _events.tryEmit(
                     SocketEvent.NewMessage(
                         id = json.optString("id"),
@@ -183,7 +188,8 @@ object AppSocketManager {
                         fileName = if (json.isNull("file_name")) null else json.optString("file_name"),
                         mimeType = if (json.isNull("mime_type")) null else json.optString("mime_type"),
                         replyToId = if (json.isNull("reply_to_id")) null else json.optString("reply_to_id"),
-                        isForwarded = json.optBoolean("is_forwarded", false)
+                        isForwarded = json.optBoolean("is_forwarded", false),
+                        mentions = mentionsList
                     )
                 )
             }
@@ -501,6 +507,7 @@ object AppSocketManager {
         mimeType: String? = null,
         replyToId: String? = null,
         isForwarded: Boolean = false,
+        mentions: List<String> = emptyList(),
         onAck: (Boolean) -> Unit = {}
     ) {
         val s = socket
@@ -517,6 +524,9 @@ object AppSocketManager {
             put("mime_type", mimeType)
             put("reply_to_id", replyToId)
             put("is_forwarded", isForwarded)
+            if (mentions.isNotEmpty()) {
+                put("mentions", org.json.JSONArray(mentions))
+            }
         }
         s.emit("send_message", arrayOf(json), Ack { args ->
             val res = args.getOrNull(0) as? JSONObject

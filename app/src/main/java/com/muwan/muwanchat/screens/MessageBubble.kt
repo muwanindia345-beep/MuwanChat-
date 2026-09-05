@@ -74,7 +74,7 @@ private val LinkColorOnSent = Color(0xFFFFE0B2)
 // karte hain taaki WEB_URL match par dobara annotation na lage.
 private val CUSTOM_SCHEME_LINK = Regex("""muwanchat://\S+""")
 
-private fun linkifyText(text: String, sent: Boolean): AnnotatedString {
+private fun linkifyText(text: String, sent: Boolean, mentionUsernames: List<String> = emptyList()): AnnotatedString {
     val builder = AnnotatedString.Builder(text)
     val linkColor = if (sent) LinkColorOnSent else DarkAccent
     val coveredRanges = mutableListOf<IntRange>()
@@ -103,6 +103,25 @@ private fun linkifyText(text: String, sent: Boolean): AnnotatedString {
             )
             builder.addStringAnnotation(tag = LINK_TAG, annotation = match.value, start = start, end = end)
         }
+        coveredRanges.add(start until end)
+    }
+
+    // @mention highlight — sirf actual group members ke usernames match hote
+    // hain (random "@" text ko highlight nahi karte), aur links ke saath
+    // overlap avoid karte hain
+    if (mentionUsernames.isNotEmpty()) {
+        val mentionColor = if (sent) Color.White else DarkAccent
+        Regex("@([A-Za-z0-9_]+)").findAll(text).forEach { match ->
+            val start = match.range.first
+            val end = match.range.last + 1
+            val username = match.groupValues[1]
+            if (username in mentionUsernames && coveredRanges.none { it.first < end && start < it.last + 1 }) {
+                builder.addStyle(
+                    SpanStyle(color = mentionColor, fontWeight = FontWeight.Bold),
+                    start, end
+                )
+            }
+        }
     }
 
     return builder.toAnnotatedString()
@@ -127,7 +146,8 @@ fun MessageBubble(
     senderAvatar: String? = null,
     senderName: String? = null,
     onSenderTap: (String) -> Unit = {},
-    bubbleTheme: BubbleTheme = BubbleThemePresets.ORIGINAL
+    bubbleTheme: BubbleTheme = BubbleThemePresets.ORIGINAL,
+    groupMemberUsernames: List<String> = emptyList()
 ) {
     if (message.type == "system") {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
@@ -154,7 +174,12 @@ fun MessageBubble(
 
     var offsetX by remember { mutableFloatStateOf(0f) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val annotatedText = remember(message.text, message.sent) { linkifyText(message.text, message.sent) }
+    val annotatedText = remember(message.text, message.sent, groupMemberUsernames) {
+        linkifyText(message.text, message.sent, groupMemberUsernames)
+    }
+    // Mujhe is message mein mention kiya gaya hai — bubble ko halka highlight
+    // karke turant noticeable banate hain (WhatsApp jaisa)
+    val isMentioningMe = !message.sent && myUid.isNotBlank() && message.mentions.contains(myUid)
     val animatedOffset by animateFloatAsState(
         targetValue = offsetX,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
@@ -275,7 +300,7 @@ fun MessageBubble(
                         bottomStart = if (message.sent) bubbleCornerBig else bubbleCornerTail
                     )
                 )
-                .background(if (isSticker) Color.Transparent else if (message.sent) bubbleTheme.sentColor else DarkBubbleReceived)
+                .background(if (isSticker) Color.Transparent else if (message.sent) bubbleTheme.sentColor else if (isMentioningMe) Color(0xFF3D3418) else DarkBubbleReceived)
                 .padding(
                     horizontal = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else bubbleHPad,
                     vertical = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else bubbleVPad
