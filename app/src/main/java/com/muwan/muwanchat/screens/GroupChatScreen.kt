@@ -85,6 +85,7 @@ import com.muwan.muwanchat.data.GroupInfoCacheEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.data.UploadProgressTracker
+import com.muwan.muwanchat.data.UploadScope
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.GroupData
 import com.muwan.muwanchat.network.SendMessageRequest
@@ -600,7 +601,7 @@ fun GroupChatScreen(
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
-            scope.launch {
+            UploadScope.io.launch {
                 uris.forEach { uri ->
                     uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db) {}
                 }
@@ -609,21 +610,21 @@ fun GroupChatScreen(
     }
 
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadGroupVideoMessage(context, it, myToken, groupId, myUid, groupId, groupName, db) {} } }
+        uri?.let { UploadScope.io.launch { uploadGroupVideoMessage(context, it, myToken, groupId, myUid, groupId, groupName, db) {} } }
     }
 
     val docPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "document", myToken, groupId, myUid, groupId, groupName, db) {} } }
+        uri?.let { UploadScope.io.launch { uploadGroupMediaMessage(context, it, "document", myToken, groupId, myUid, groupId, groupName, db) {} } }
     }
 
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadGroupMediaMessage(context, it, "audio", myToken, groupId, myUid, groupId, groupName, db, displayType = "music") {} } }
+        uri?.let { UploadScope.io.launch { uploadGroupMediaMessage(context, it, "audio", myToken, groupId, myUid, groupId, groupName, db, displayType = "music") {} } }
     }
 
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
-            cameraImageUri?.let { uri -> scope.launch { uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db) {} } }
+            cameraImageUri?.let { uri -> UploadScope.io.launch { uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db) {} } }
         }
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -646,7 +647,7 @@ fun GroupChatScreen(
     var cameraVideoUri by remember { mutableStateOf<Uri?>(null) }
     val cameraVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
         if (success) {
-            cameraVideoUri?.let { uri -> scope.launch { uploadGroupVideoMessage(context, uri, myToken, groupId, myUid, groupId, groupName, db) {} } }
+            cameraVideoUri?.let { uri -> UploadScope.io.launch { uploadGroupVideoMessage(context, uri, myToken, groupId, myUid, groupId, groupName, db) {} } }
         }
     }
     val cameraVideoPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -1403,7 +1404,7 @@ Box(
             onCancel = { showVoiceRecorder = false },
             onSend = { file ->
                 showVoiceRecorder = false
-                scope.launch {
+                UploadScope.io.launch {
                     uploadGroupAudioMessage(context, file, myToken, groupId, myUid, groupId, groupName, db) {}
                 }
             }

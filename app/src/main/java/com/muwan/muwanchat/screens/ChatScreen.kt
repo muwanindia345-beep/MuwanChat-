@@ -72,6 +72,7 @@ import com.muwan.muwanchat.data.DeletedMessageEntity
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.data.UploadProgressTracker
+import com.muwan.muwanchat.data.UploadScope
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.network.SendMessageRequest
 import com.muwan.muwanchat.network.EditMessageRequest
@@ -381,7 +382,7 @@ fun ChatScreen(
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
-            scope.launch {
+            UploadScope.io.launch {
                 uris.forEach { uri ->
                     uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) {}
                 }
@@ -390,21 +391,21 @@ fun ChatScreen(
     }
 
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadVideoMessage(context, it, myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+        uri?.let { UploadScope.io.launch { uploadVideoMessage(context, it, myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
     }
 
     val docPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadMediaMessage(context, it, "document", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+        uri?.let { UploadScope.io.launch { uploadMediaMessage(context, it, "document", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
     }
 
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db, displayType = "music") {} } }
+        uri?.let { UploadScope.io.launch { uploadMediaMessage(context, it, "audio", myToken, roomId, myUid, receiverUid, receiverUsername, db, displayType = "music") {} } }
     }
 
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
-            cameraImageUri?.let { uri -> scope.launch { uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+            cameraImageUri?.let { uri -> UploadScope.io.launch { uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
         }
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -427,7 +428,7 @@ fun ChatScreen(
     var cameraVideoUri by remember { mutableStateOf<Uri?>(null) }
     val cameraVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
         if (success) {
-            cameraVideoUri?.let { uri -> scope.launch { uploadVideoMessage(context, uri, myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
+            cameraVideoUri?.let { uri -> UploadScope.io.launch { uploadVideoMessage(context, uri, myToken, roomId, myUid, receiverUid, receiverUsername, db) {} } }
         }
     }
     val cameraVideoPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -1041,7 +1042,7 @@ fun ChatScreen(
             onPickImage = { showMediaSheet = true },
             onSend = { sendMessage() },
             onGifReceived = { uri, _, release ->
-                scope.launch {
+                UploadScope.io.launch {
                     // Backend sirf "image" | "document" category accept karta hai — "gif" bhejne se
                     // type silently "text" pe fallback ho jata tha aur chat me raw URL dikhta tha.
                     // "image" bhejo, MessageBubble already isko AsyncImage se render karta hai.
@@ -1077,7 +1078,7 @@ fun ChatScreen(
             onCancel = { showVoiceRecorder = false },
             onSend = { file ->
                 showVoiceRecorder = false
-                scope.launch {
+                UploadScope.io.launch {
                     uploadAudioMessage(context, file, myToken, roomId, myUid, receiverUid, receiverUsername, db) {}
                 }
             }
