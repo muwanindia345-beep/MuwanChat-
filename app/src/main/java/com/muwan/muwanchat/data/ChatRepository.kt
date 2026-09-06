@@ -98,6 +98,7 @@ object ChatRepository {
         val existing = db.conversationDao().getByRoomId(roomId)
         val previewText = if (type == "text") content else when (type) {
             "image" -> "📷 Photo"
+            "gif" -> "🎬 GIF"
             "video" -> "🎥 Video"
             "audio" -> "🎤 Voice message"
             "music" -> "🎵 ${fileName ?: "Music"}"
@@ -142,6 +143,7 @@ object ChatRepository {
         val previewText = when (latest.type) {
             "text" -> latest.content
             "image" -> "📷 Photo"
+            "gif" -> "🎬 GIF"
             "video" -> "🎥 Video"
             "audio" -> "🎤 Voice message"
             "music" -> "🎵 ${latest.fileName ?: "Music"}"

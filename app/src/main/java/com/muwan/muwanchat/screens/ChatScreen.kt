@@ -1043,10 +1043,11 @@ fun ChatScreen(
             onSend = { sendMessage() },
             onGifReceived = { uri, _, release ->
                 UploadScope.io.launch {
-                    // Backend sirf "image" | "document" category accept karta hai — "gif" bhejne se
-                    // type silently "text" pe fallback ho jata tha aur chat me raw URL dikhta tha.
-                    // "image" bhejo, MessageBubble already isko AsyncImage se render karta hai.
-                    uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, setUploading = {})
+                    // Backend "gif" category/type ko ab fully support karta hai — raw passthrough,
+                    // koi re-compress nahi (routes/chat.js check kiya). Isliye "image" ki jagah
+                    // "gif" bhejo: MessageBubble ka already-built borderless sticker-style bubble
+                    // (no orange/green background, poora Fit render) turant unlock ho jaata hai.
+                    uploadMediaMessage(context, uri, "gif", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, setUploading = {})
                     release()
                 }
             },

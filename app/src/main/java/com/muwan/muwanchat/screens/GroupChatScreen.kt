@@ -1363,8 +1363,12 @@ Box(
                 onPickImage = { showMediaSheet = true },
                 onSend = { sendMessage() },
                 onGifReceived = { uri, _, release ->
-                    scope.launch {
-                        uploadGroupMediaMessage(context, uri, "image", myToken, groupId, myUid, groupId, groupName, db, skipCompression = true, setUploading = {})
+                    UploadScope.io.launch {
+                        // "image" ki jagah "gif" — backend gif category/type ko as-is store karta
+                        // hai (koi re-compress nahi), isse sticker-style borderless bubble aur
+                        // "🎬 GIF" list preview dono unlock ho jaate hain (1:1 chat jaisa hi). Scope
+                        // bhi UploadScope pe move kiya (navigate-away cancel se bachne ke liye).
+                        uploadGroupMediaMessage(context, uri, "gif", myToken, groupId, myUid, groupId, groupName, db, skipCompression = true, setUploading = {})
                         release()
                     }
                 },
