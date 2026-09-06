@@ -1305,6 +1305,8 @@ private suspend fun uploadMediaMessage(
                 Base64.encodeToString(bytes, Base64.NO_WRAP) to guessedMime
             }
         }
+        val payloadKb = base64Data.length / 1024
+        android.util.Log.d("MuwanUpload", "uploadMedia start id=$id category=$category sizeKb=$payloadKb")
         val res = RetrofitClient.chatApi.uploadMedia(
             "Bearer $token",
             UploadMediaRequest(filename = filename, mime_type = mime, data = base64Data, category = category),
@@ -1317,6 +1319,12 @@ private suspend fun uploadMediaMessage(
                     AppSocketManager.sendMessage(id, receiverUid, body.url, displayType, body.file_name ?: filename, body.mime_type ?: mime) { success ->
                         kotlinx.coroutines.GlobalScope.launch {
                             db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
+                            if (!success) {
+                                android.util.Log.e("MuwanUpload", "send_message ack failed id=$id category=$category sizeKb=$payloadKb")
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "$displayType nahi bheja gaya (ack failed, $payloadKb KB)", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
                     }
                 } else {
@@ -1326,16 +1334,32 @@ private suspend fun uploadMediaMessage(
                             SendMessageRequest(receiverUid, body.url, displayType, body.file_name ?: filename, body.mime_type ?: mime)
                         )
                         db.messageDao().updateStatus(id, if (sendRes.isSuccessful) "SENT" else "FAILED")
-                    } catch (_: Exception) {
+                        if (!sendRes.isSuccessful) {
+                            android.util.Log.e("MuwanUpload", "sendMessage http failed id=$id code=${sendRes.code()} category=$category sizeKb=$payloadKb")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MuwanUpload", "sendMessage exception id=$id category=$category sizeKb=$payloadKb", e)
                         db.messageDao().updateStatus(id, "FAILED")
                     }
                 }
-            } ?: db.messageDao().updateStatus(id, "FAILED")
+            } ?: run {
+                android.util.Log.e("MuwanUpload", "uploadMedia body null id=$id category=$category sizeKb=$payloadKb")
+                db.messageDao().updateStatus(id, "FAILED")
+            }
         } else {
+            val errBody = try { res.errorBody()?.string() } catch (_: Exception) { null }
+            android.util.Log.e("MuwanUpload", "uploadMedia http failed id=$id code=${res.code()} category=$category sizeKb=$payloadKb body=$errBody")
             db.messageDao().updateStatus(id, "FAILED")
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "$displayType upload fail (HTTP ${res.code()}, $payloadKb KB)", Toast.LENGTH_SHORT).show()
+            }
         }
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        android.util.Log.e("MuwanUpload", "uploadMediaMessage exception id=$id category=$category", e)
         db.messageDao().updateStatus(id, "FAILED")
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "$displayType nahi bheja gaya: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     } finally {
         UploadProgressTracker.clear(id)
         setUploading(false)
