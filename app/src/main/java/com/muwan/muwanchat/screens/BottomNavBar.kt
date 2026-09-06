@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.DonutLarge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -95,8 +96,10 @@ fun BottomNavBar(
                 Text(
                     tab.label,
                     color = if (selected) DarkAccent else Color(0xFF888888),
-                    fontSize = 12.5.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                    fontSize = 11.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
