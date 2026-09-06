@@ -393,7 +393,7 @@ fun MessageBubble(
                     }
 
                     "gif" -> message.mediaUrl?.let { url ->
-                        Box(contentAlignment = Alignment.BottomEnd) {
+                        Column(horizontalAlignment = Alignment.End) {
                             AsyncImage(
                                 model = url,
                                 contentDescription = "Sticker",
@@ -404,15 +404,15 @@ fun MessageBubble(
                                     .clickable { if (isSelectionMode) onTap() },
                                 contentScale = ContentScale.Fit
                             )
+                            Spacer(Modifier.height(2.dp))
                             Row(
                                 modifier = Modifier
-                                    .padding(6.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0x99000000))
+                                    .background(Color(0x33000000))
                                     .padding(horizontal = 6.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(message.time, color = Color.White, fontSize = 10.sp)
+                                Text(message.time, color = Color(0xAAFFFFFF), fontSize = 10.sp)
                                 if (message.sent) {
                                     Spacer(Modifier.width(3.dp))
                                     val (icon, tint) = when (message.status) {
