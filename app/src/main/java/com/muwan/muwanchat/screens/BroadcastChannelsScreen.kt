@@ -4,10 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,9 +25,13 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkSheet
 
 @Composable
 fun BroadcastChannelsScreen(navController: NavController) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showCreateComingSoon by remember { mutableStateOf(false) }
+
     Scaffold(containerColor = DarkBg) { padding ->
         Column(
             modifier = Modifier
@@ -36,9 +46,35 @@ fun BroadcastChannelsScreen(navController: NavController) {
                     .fillMaxWidth()
                     .background(DarkHeader)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Broadcast Channels", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More Options", tint = Color.White)
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier.background(DarkSheet)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Create Channel", color = Color.White) },
+                            onClick = {
+                                showMenu = false
+                                showCreateComingSoon = true
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (showCreateComingSoon) {
+                ComingSoonDialog(
+                    feature = "Create Channel",
+                    onDismiss = { showCreateComingSoon = false }
+                )
             }
 
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
