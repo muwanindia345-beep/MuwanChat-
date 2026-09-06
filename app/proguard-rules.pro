@@ -133,3 +133,17 @@
 -keepclassmembers class * implements android.os.Parcelable {
     static ** CREATOR;
 }
+
+# Call screen (UI) -- poori call flow (backend data model se leke UI tak)
+# ab R8 shrink/rename se bahar hai.
+-keep class com.muwan.muwanchat.screens.CallScreen { *; }
+-keepclassmembers class com.muwan.muwanchat.screens.CallScreen { *; }
+
+# ---------- Disable R8 optimize pass (WebRTC/JNI safety) ----------
+# Keep rules sirf class/method ko delete ya rename hone se rokte hain --
+# method ke ANDAR ka bytecode restructure hone se (inlining, merging,
+# dead-code-within-method) nahi rokte. WebRTC ka native/JNI side isi
+# internal structure pe depend karta hai. Ye flag optimize pass ko
+# poori app ke liye off karta hai; shrink (unused code delete) aur
+# obfuscate (naam badalna) baaki sab jagah chalte rahenge.
+-dontoptimize
