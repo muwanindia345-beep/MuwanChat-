@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
@@ -38,6 +41,11 @@
             </intent-filter>
 
         </activity>
+
+        <service
+            android:name=".calling.CallForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
 
         <service
             android:name=".MuwanFirebaseService"
