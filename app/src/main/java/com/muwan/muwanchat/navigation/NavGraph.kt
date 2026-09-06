@@ -81,12 +81,12 @@ sealed class Screen(val route: String) {
 @Composable
 fun NavGraph(openUpdateScreen: Boolean = false) {
     val navController = rememberNavController()
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Global incoming-call listener -- app kahin bhi ho (koi bhi screen khuli
     // ho), call_offer aate hi CallScreen "incoming" mode mein khul jaayega.
     // SDP yahan PendingIncomingCall mein rakh dete hain (URL args mein itna
     // bada string safely nahi jaata), CallScreen wahan se turant utha lega.
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         com.muwan.muwanchat.data.AppSocketManager.events.collect { event ->
             if (event is com.muwan.muwanchat.data.SocketEvent.CallOfferReceived) {
@@ -246,6 +246,7 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.AcceptedUsers.route) { AcceptedUsersScreen(navController) }
         composable(Screen.CheckUpdates.route) { CheckUpdatesScreen(navController) }
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
     var pendingUpdate by remember { mutableStateOf<com.muwan.muwanchat.network.AppVersionInfo?>(null) }
     var sheetDismissed by remember { mutableStateOf(false) }
 

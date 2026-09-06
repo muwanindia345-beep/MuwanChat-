@@ -407,7 +407,12 @@ fun ConversationListScreen(navController: NavController) {
                 FloatingActionButton(
                     onClick = { showFabSheet = true },
                     containerColor = DarkAccent,
-                    shape = CircleShape
+                    shape = CircleShape,
+                    // Beta build ke floating bottom nav bar se overlap na ho, isliye
+                    // FAB ko uske upar shift kar diya. Official build mein flag
+                    // false hai, nav bar hai hi nahi — FAB apni normal jagah rehta hai.
+                    modifier = if (com.muwan.muwanchat.BuildConfig.ENABLE_NEW_NAV)
+                        Modifier.padding(bottom = 72.dp) else Modifier
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = "New Chat", tint = Color.White)
                 }
