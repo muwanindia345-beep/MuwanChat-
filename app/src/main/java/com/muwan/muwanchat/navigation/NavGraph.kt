@@ -1,6 +1,12 @@
 package com.muwan.muwanchat.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -19,6 +25,8 @@ sealed class Screen(val route: String) {
         fun createRoute(phone: String) = "phone_otp/$phone"
     }
     object ConversationList: Screen("conversations")
+    object BroadcastChannels: Screen("broadcast_channels")
+    object Status           : Screen("status")
     object UserSearch      : Screen("user_search")
     object Requests        : Screen("requests")
     object Profile         : Screen("profile/{mode}") {
@@ -78,15 +86,46 @@ sealed class Screen(val route: String) {
     }
 }
 
+// Wraps Chats/Broadcast/Status with the floating bottom nav bar — only in the
+// beta flavor (BuildConfig.ENABLE_NEW_NAV). In the official app this is a
+// pure pass-through: same screen, no extra layer, nothing visually changes.
+@Composable
+private fun MainTabScaffold(
+    navController: androidx.navigation.NavController,
+    currentRoute: String,
+    content: @Composable () -> Unit
+) {
+    if (com.muwan.muwanchat.BuildConfig.ENABLE_NEW_NAV) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            content()
+            BottomNavBar(
+                currentRoute = currentRoute,
+                onNavigate = { route ->
+                    navController.navigate(route) {
+                        popUpTo(Screen.ConversationList.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 24.dp, vertical = 14.dp)
+            )
+        }
+    } else {
+        content()
+    }
+}
+
 @Composable
 fun NavGraph(openUpdateScreen: Boolean = false) {
     val navController = rememberNavController()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Global incoming-call listener -- app kahin bhi ho (koi bhi screen khuli
     // ho), call_offer aate hi CallScreen "incoming" mode mein khul jaayega.
     // SDP yahan PendingIncomingCall mein rakh dete hain (URL args mein itna
     // bada string safely nahi jaata), CallScreen wahan se turant utha lega.
-    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         com.muwan.muwanchat.data.AppSocketManager.events.collect { event ->
             if (event is com.muwan.muwanchat.data.SocketEvent.CallOfferReceived) {
@@ -136,7 +175,21 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.PhoneOTP.route) { back ->
             PhoneOTPScreen(navController, back.arguments?.getString("phone") ?: "")
         }
-        composable(Screen.ConversationList.route) { ConversationListScreen(navController) }
+        composable(Screen.ConversationList.route) {
+            MainTabScaffold(navController, Screen.ConversationList.route) {
+                ConversationListScreen(navController)
+            }
+        }
+        composable(Screen.BroadcastChannels.route) {
+            MainTabScaffold(navController, Screen.BroadcastChannels.route) {
+                BroadcastChannelsScreen(navController)
+            }
+        }
+        composable(Screen.Status.route) {
+            MainTabScaffold(navController, Screen.Status.route) {
+                StatusScreen(navController)
+            }
+        }
         composable(Screen.UserSearch.route) { UserSearchScreen(navController) }
         composable(Screen.Requests.route) { RequestsScreen(navController) }
         composable(Screen.Profile.route) { back ->
@@ -246,7 +299,6 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.AcceptedUsers.route) { AcceptedUsersScreen(navController) }
         composable(Screen.CheckUpdates.route) { CheckUpdatesScreen(navController) }
     }
-    val context = androidx.compose.ui.platform.LocalContext.current
     var pendingUpdate by remember { mutableStateOf<com.muwan.muwanchat.network.AppVersionInfo?>(null) }
     var sheetDismissed by remember { mutableStateOf(false) }
 
