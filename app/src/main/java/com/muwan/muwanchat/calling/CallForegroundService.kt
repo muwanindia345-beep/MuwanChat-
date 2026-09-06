@@ -70,7 +70,7 @@ class CallForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_SHOW -> {
-                val callId = intent.getStringExtra(EXTRA_CALL_ID) ?: return stopSelfResult(startId)
+                val callId = intent.getStringExtra(EXTRA_CALL_ID) ?: return stopSelfImmediately(startId)
                 val fromUsername = intent.getStringExtra(EXTRA_FROM_USERNAME) ?: "Unknown"
                 val notification = buildIncomingCallNotification(callId, fromUsername)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -88,7 +88,7 @@ class CallForegroundService : Service() {
                 // pe laana hai, bilkul waisa hi jaisa message notification
                 // tap karne pe hota hai (MuwanFirebaseService dekho).
                 val launchIntent = Intent(this, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                    this.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 startActivity(launchIntent)
                 stopForegroundCompat()
@@ -111,7 +111,7 @@ class CallForegroundService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun stopSelfResult(startId: Int): Int {
+    private fun stopSelfImmediately(startId: Int): Int {
         stopSelf(startId)
         return START_NOT_STICKY
     }
