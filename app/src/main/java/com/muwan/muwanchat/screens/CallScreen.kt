@@ -177,6 +177,19 @@ fun CallScreen(
         }
     }
 
+    // Agar user ne CallScreen ke bajaye seedha system notification se
+    // Decline dabaya (CallForegroundService), reject already bhej diya gaya
+    // hai -- yahan sirf UI band karni hai, dobara reject nahi bhejna.
+    LaunchedEffect(Unit) {
+        com.muwan.muwanchat.calling.CallControlEvents.declinedFromNotification.collect { declinedCallId ->
+            if (declinedCallId == callId) {
+                callState = CallState.ENDED
+                callManager.release()
+                navController.popBackStack()
+            }
+        }
+    }
+
     // Ongoing call ka duration timer
     LaunchedEffect(callState) {
         if (callState == CallState.ONGOING) {

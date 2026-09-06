@@ -86,6 +86,7 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
     // ho), call_offer aate hi CallScreen "incoming" mode mein khul jaayega.
     // SDP yahan PendingIncomingCall mein rakh dete hain (URL args mein itna
     // bada string safely nahi jaata), CallScreen wahan se turant utha lega.
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         com.muwan.muwanchat.data.AppSocketManager.events.collect { event ->
             if (event is com.muwan.muwanchat.data.SocketEvent.CallOfferReceived) {
@@ -105,6 +106,19 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
                         isIncoming = true
                     )
                 )
+                // CallScreen ki UI/UX bilkul waisi hi hai -- yeh sirf ek
+                // system-level notification (Accept/Decline seedha
+                // notification se) alag se dikhata hai, screen off/app
+                // background case ke liye.
+                com.muwan.muwanchat.calling.CallForegroundService.showIncomingCall(
+                    context = context,
+                    callId = event.callId,
+                    fromUsername = event.fromUsername
+                )
+            } else if (event is com.muwan.muwanchat.data.SocketEvent.CallEndReceived) {
+                // Caller ne answer se pehle hi hangup kar diya -- ringing
+                // notification ab meaningless hai, hata do.
+                com.muwan.muwanchat.calling.CallForegroundService.dismiss(context)
             }
         }
     }
