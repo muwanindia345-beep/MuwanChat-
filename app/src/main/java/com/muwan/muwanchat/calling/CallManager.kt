@@ -4,36 +4,36 @@ import android.content.Context
 import android.media.AudioManager
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
-import org.webrtc.DefaultVideoDecoderFactory
-import org.webrtc.DefaultVideoEncoderFactory
-import org.webrtc.EglBase
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
 import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
-import org.webrtc.audio.JavaAudioDeviceModule
 
 /**
- * WebRTC ka poora kaam yahan hota hai -- PeerConnectionFactory init, local
- * audio track banana, offer/answer create karna, ICE candidates handle
- * karna. CallScreen.kt sirf iske callbacks use karta hai, WebRTC ke internal
- * types se seedha waasta nahi rakhta -- taaki UI clean rahe aur video call
- * (Phase 2) add karte waqt yeh class hi extend ho, UI dobara na likhni pade.
+ * WebRTC ka poora kaam yahan hota hai -- naya PeerConnection banana (per-call),
+ * local audio track, offer/answer create karna, ICE candidates handle karna.
+ * CallScreen.kt sirf iske callbacks use karta hai, WebRTC ke internal types se
+ * seedha waasta nahi rakhta -- taaki UI clean rahe aur video call (Phase 2)
+ * add karte waqt yeh class hi extend ho, UI dobara na likhni pade.
+ *
+ * NOTE: PeerConnectionFactory yahan nahi banti -- woh `WebRtcEngine` (app-wide
+ * singleton) se aati hai, kyunki WebRTC ka rule hai factory poori app life
+ * mein sirf ek baar banni chahiye. Pehle yeh per-call dobara ban rahi thi,
+ * jisse doosri/teesri call pe native SIGTRAP crash aata tha.
  *
  * NOTE (TURN): Abhi sirf free public STUN hai. Cross-network (jaise ek WiFi
  * ek mobile-data) call test karne se pehle Metered.ca ka free Open Relay
  * TURN account bana ke neeche TURN_USERNAME/TURN_CREDENTIAL fill karo --
  * warna restrictive networks pe call connect nahi hogi.
  *
- * THREAD SAFETY: peerConnection/localAudioTrack/audioSource/
- * peerConnectionFactory ko UI thread (mute/speaker/end-call buttons) aur
- * WebRTC ke apne signaling thread (onConnectionChange -> auto end call)
- * dono touch karte hain. `stateLock` ke bina dispose-then-use race lag
- * sakti thi (already-freed native object pe method call -> native SIGTRAP
- * crash). Isliye har jagah jaha inhe padha/badla jaata hai, stateLock ke
- * andar hi hota hai.
+ * THREAD SAFETY: peerConnection/localAudioTrack/audioSource ko UI thread
+ * (mute/speaker/end-call buttons) aur WebRTC ke apne signaling thread
+ * (onConnectionChange -> auto end call) dono touch karte hain. `stateLock`
+ * ke bina dispose-then-use race lag sakti thi (already-freed native object
+ * pe method call -> native SIGTRAP crash). Isliye har jagah jaha inhe
+ * padha/badla jaata hai, stateLock ke andar hi hota hai.
  */
 class CallManager(
     private val context: Context,
@@ -47,7 +47,6 @@ class CallManager(
     private var peerConnection: PeerConnection? = null
     private var localAudioTrack: AudioTrack? = null
     private var audioSource: AudioSource? = null
-    private val eglBase: EglBase by lazy { EglBase.create() }
 
     private val audioManager by lazy {
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -69,28 +68,12 @@ class CallManager(
         )
 
     fun init() {
-        val options = PeerConnectionFactory.InitializationOptions.builder(context)
-            .setEnableInternalTracer(false)
-            .createInitializationOptions()
-        PeerConnectionFactory.initialize(options)
-
-        val adm = JavaAudioDeviceModule.builder(context)
-            .setUseHardwareAcousticEchoCanceler(true)
-            .setUseHardwareNoiseSuppressor(true)
-            .createAudioDeviceModule()
-
-        val factory = PeerConnectionFactory.builder()
-            .setAudioDeviceModule(adm)
-            .setVideoEncoderFactory(DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
-            .setVideoDecoderFactory(DefaultVideoDecoderFactory(eglBase.eglBaseContext))
-            .createPeerConnectionFactory()
-
+        val factory = WebRtcEngine.getFactory(context)
         synchronized(stateLock) {
             peerConnectionFactory = factory
         }
-
-        adm.release()
     }
+
 
     /** Naya PeerConnection banata hai (caller aur callee dono ke liye same) */
     private fun createPeerConnection() {
@@ -256,7 +239,8 @@ class CallManager(
     fun release() {
         endCall()
         synchronized(stateLock) {
-            peerConnectionFactory?.dispose()
+            // Factory ab shared singleton (WebRtcEngine) hai -- yahan
+            // dispose NAHI karna, warna agli call ke liye bhi tut jaayegi.
             peerConnectionFactory = null
         }
     }
