@@ -28,6 +28,7 @@ sealed class Screen(val route: String) {
     object ConversationList: Screen("conversations")
     object BroadcastChannels: Screen("broadcast_channels")
     object Status           : Screen("status")
+    object CallHistory      : Screen("call_history")
     object UserSearch      : Screen("user_search")
     object Requests        : Screen("requests")
     object Profile         : Screen("profile/{mode}") {
@@ -190,6 +191,11 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.Status.route) {
             MainTabScaffold(navController, Screen.Status.route) {
                 StatusScreen(navController)
+            }
+        }
+        composable(Screen.CallHistory.route) {
+            MainTabScaffold(navController, Screen.CallHistory.route) {
+                CallHistoryScreen(navController)
             }
         }
         composable(Screen.UserSearch.route) { UserSearchScreen(navController) }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.DonutLarge
@@ -36,7 +37,8 @@ private data class NavTab(val route: String, val label: String, val icon: ImageV
 private val navTabs = listOf(
     NavTab(Screen.ConversationList.route, "Chats", Icons.Filled.Chat),
     NavTab(Screen.BroadcastChannels.route, "Broadcast", Icons.Filled.Campaign),
-    NavTab(Screen.Status.route, "Status", Icons.Filled.DonutLarge)
+    NavTab(Screen.Status.route, "Status", Icons.Filled.DonutLarge),
+    NavTab(Screen.CallHistory.route, "Calls", Icons.Filled.Call)
 )
 
 // Beta-only floating bottom nav. Deliberately compact (small icons, tight
@@ -56,6 +58,7 @@ fun BottomNavBar(
 
     Row(
         modifier = modifier
+            .fillMaxWidth()
             .shadow(elevation = 10.dp, shape = RoundedCornerShape(22.dp))
             .clip(RoundedCornerShape(22.dp))
             .background(DarkSheet)
@@ -66,7 +69,7 @@ fun BottomNavBar(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .width(92.dp)
+                    .weight(1f)
                     .clickable(enabled = !selected) { onNavigate(tab.route) }
                     .padding(vertical = 4.dp)
             ) {
