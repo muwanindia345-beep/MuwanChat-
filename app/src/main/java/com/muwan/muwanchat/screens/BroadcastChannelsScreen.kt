@@ -32,7 +32,6 @@ import com.muwan.muwanchat.DarkSheet
 @Composable
 fun BroadcastChannelsScreen(navController: NavController) {
     var showMenu by remember { mutableStateOf(false) }
-    var showCreateComingSoon by remember { mutableStateOf(false) }
 
     Scaffold(containerColor = DarkBg) { padding ->
         Column(
@@ -65,18 +64,11 @@ fun BroadcastChannelsScreen(navController: NavController) {
                             text = { Text("Create Channel", color = Color.White) },
                             onClick = {
                                 showMenu = false
-                                showCreateComingSoon = true
+                                navController.navigate(com.muwan.muwanchat.navigation.Screen.CreateChannel.route)
                             }
                         )
                     }
                 }
-            }
-
-            if (showCreateComingSoon) {
-                ComingSoonDialog(
-                    feature = "Create Channel",
-                    onDismiss = { showCreateComingSoon = false }
-                )
             }
 
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

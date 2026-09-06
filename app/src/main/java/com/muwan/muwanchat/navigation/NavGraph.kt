@@ -36,6 +36,7 @@ sealed class Screen(val route: String) {
     }
     object AvatarCrop      : Screen("avatar_crop")
     object CreateGroup     : Screen("create_group")
+    object CreateChannel   : Screen("create_channel")
     object AddFromContacts : Screen("add_from_contacts")
     object SearchMembersForGroup : Screen("search_members_for_group")
     object UserProfile     : Screen("user_profile/{uid}?fromChat={fromChat}") {
@@ -205,6 +206,7 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         }
         composable(Screen.AvatarCrop.route) { AvatarCropScreen(navController) }
         composable(Screen.CreateGroup.route) { CreateGroupScreen(navController) }
+        composable(Screen.CreateChannel.route) { CreateChannelScreen(navController) }
         composable(Screen.AddFromContacts.route) { AddFromContactsScreen(navController) }
         composable(Screen.Forward.route) { ForwardScreen(navController) }
         composable(Screen.ViewAvatar.route) { ViewAvatarScreen(navController) }
