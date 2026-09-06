@@ -52,7 +52,6 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
             firebaseCrashlytics {
                 nativeSymbolUploadEnabled = true
             }
@@ -65,6 +64,7 @@ android {
         create("production") {
             dimension = "channel"
             buildConfigField("boolean", "ENABLE_NEW_NAV", "false")
+            signingConfig = signingConfigs.getByName("release")
         }
         // Pre-release/beta build — separate applicationId so it installs alongside
         // the official app on the same phone instead of conflicting with it.

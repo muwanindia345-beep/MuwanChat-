@@ -1,45 +1,69 @@
 import re
 
-path = "app/build.gradle.kts"
+PATH = "app/build.gradle.kts"
 
-with open(path, "r", encoding="utf-8") as f:
+# ============================================================================
+# Bug: build-beta CI always failed with
+#   "SigningConfig 'release' is missing required property 'storeFile'"
+# even though the beta flavor explicitly sets signingConfig = betaRelease.
+#
+# Reason: signingConfig was set BOTH in buildTypes.release AND in
+# productFlavors.beta. When AGP merges a flavor + buildType into a variant
+# (here: beta + release -> betaRelease), the buildType's signingConfig wins
+# over the flavor's -- so it silently ignored betaRelease and tried to use
+# "release", whose storeFile only comes from the KEYSTORE_PATH env var
+# (not set in CI).
+#
+# Fix: remove signingConfig from buildTypes.release, and set it explicitly
+# per-flavor instead (production -> release, beta -> betaRelease already
+# present). This removes the ambiguity entirely.
+# ============================================================================
+
+with open(PATH, "r", encoding="utf-8") as f:
     content = f.read()
 
-# ============================================================================
-# Beta flavor abhi "release" (production) signingConfig use kar raha tha ya
-# koi signingConfig assign hi nahi tha -- isliye CI mein
-# "SigningConfig 'release' is missing required property 'storeFile'" error
-# aa raha tha (KEYSTORE_PATH env var sirf official release workflow mein
-# set hota hai, beta workflow mein nahi). Beta ko apni fixed committed
-# keystore (betaRelease) use karni chahiye.
-# ============================================================================
+old_build_type_block = '''            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+            firebaseCrashlytics {
+                nativeSymbolUploadEnabled = true
+            }
+        }
+    }
 
-old_block = '''        create("beta") {
+    flavorDimensions += "channel"
+    productFlavors {
+        // Official build — same applicationId as always, ships only confirmed features.
+        create("production") {
             dimension = "channel"
-            applicationIdSuffix = ".beta"
-            versionNameSuffix = "-beta"
-            resValue("string", "app_name", "TalkWave Beta")
-            buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
+            buildConfigField("boolean", "ENABLE_NEW_NAV", "false")
         }'''
 
-new_block = '''        create("beta") {
+new_build_type_block = '''            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            firebaseCrashlytics {
+                nativeSymbolUploadEnabled = true
+            }
+        }
+    }
+
+    flavorDimensions += "channel"
+    productFlavors {
+        // Official build — same applicationId as always, ships only confirmed features.
+        create("production") {
             dimension = "channel"
-            applicationIdSuffix = ".beta"
-            versionNameSuffix = "-beta"
-            resValue("string", "app_name", "TalkWave Beta")
-            buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
-            signingConfig = signingConfigs.getByName("betaRelease")
+            buildConfigField("boolean", "ENABLE_NEW_NAV", "false")
+            signingConfig = signingConfigs.getByName("release")
         }'''
 
-if "signingConfig = signingConfigs.getByName(\"betaRelease\")" in content:
-    print("[SKIP] beta flavor already has signingConfig = betaRelease -- kuch nahi badla")
-elif old_block in content:
-    content = content.replace(old_block, new_block, 1)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-    print("[OK] beta flavor mein signingConfig = betaRelease add kar diya")
+if old_build_type_block not in content:
+    if new_build_type_block in content:
+        print(f"[SKIP] {PATH} already patched")
+    else:
+        raise SystemExit(
+            f"[FAIL] Expected block not found in {PATH} -- "
+            "file may have changed, patch not applied."
+        )
 else:
-    print("[MANUAL FIX NEEDED] beta flavor ka block expected shape se match nahi hua.")
-    print("Khud app/build.gradle.kts mein productFlavors { create(\"beta\") { ... } } ke")
-    print("andar ye line add karo:")
-    print('    signingConfig = signingConfigs.getByName("betaRelease")')
+    content = content.replace(old_build_type_block, new_build_type_block, 1)
+    with open(PATH, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"[OK] Fixed signingConfig override bug in {PATH}")
