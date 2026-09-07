@@ -22,13 +22,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import android.widget.Toast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.navigation.Screen
+import com.muwan.muwanchat.network.CreateChannelRequest
+import com.muwan.muwanchat.network.RetrofitClient
+import com.muwan.muwanchat.util.friendlyErrorMessage
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 // CreateGroupScreen jaisa hi header/field/avatar pattern (consistency ke
 // liye) -- bas "Add members" section nahi hai, kyunki members add karna
@@ -38,10 +45,47 @@ import com.muwan.muwanchat.navigation.Screen
 @Composable
 fun CreateChannelScreen(navController: NavController) {
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     var channelName by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
     var avatarBase64 by rememberSaveable { mutableStateOf<String?>(null) }
-    var showComingSoon by remember { mutableStateOf(false) }
+    var isCreating by remember { mutableStateOf(false) }
+
+    fun confirmCreateChannel() {
+        val name = channelName.trim()
+        if (name.isEmpty() || isCreating) return
+        isCreating = true
+        scope.launch {
+            try {
+                val token = AuthDataStore.getToken(context).first()
+                if (token == null) {
+                    Toast.makeText(context, "Login required", Toast.LENGTH_SHORT).show()
+                    isCreating = false
+                    return@launch
+                }
+                val res = RetrofitClient.chatApi.createChannel(
+                    "Bearer $token",
+                    CreateChannelRequest(name = name, avatar = avatarBase64, description = description.trim())
+                )
+                val group = res.body()?.group
+                if (res.isSuccessful && res.body()?.success == true && group != null) {
+                    navController.navigate(
+                        Screen.AddMembersForChannel.createRoute(group.id, group.name)
+                    ) {
+                        popUpTo(Screen.BroadcastChannels.route) { inclusive = false }
+                    }
+                } else {
+                    Toast.makeText(context, "Channel nahi ban paya, dobara try karo", Toast.LENGTH_SHORT).show()
+                    isCreating = false
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, friendlyErrorMessage(e), Toast.LENGTH_SHORT).show()
+                isCreating = false
+            }
+        }
+    }
 
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
     val croppedAvatarFlow = remember(savedStateHandle) {
@@ -157,28 +201,26 @@ fun CreateChannelScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(28.dp))
 
                 Button(
-                    onClick = { showComingSoon = true },
+                    onClick = { confirmCreateChannel() },
+                    enabled = channelName.isNotBlank() && !isCreating,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Confirm", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    if (isCreating) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Confirm", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
-    }
-
-    if (showComingSoon) {
-        ComingSoonDialog(
-            feature = "Create Channel",
-            onDismiss = { showComingSoon = false }
-        )
     }
 }
 

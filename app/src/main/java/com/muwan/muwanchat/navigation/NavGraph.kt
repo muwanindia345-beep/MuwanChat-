@@ -38,6 +38,10 @@ sealed class Screen(val route: String) {
     object CreateGroup     : Screen("create_group")
     object CreateChannel   : Screen("create_channel")
     object AddFromContacts : Screen("add_from_contacts")
+    object AddMembersForChannel : Screen("add_members_for_channel/{channelId}/{channelName}") {
+        fun createRoute(channelId: String, channelName: String) =
+            "add_members_for_channel/$channelId/${android.net.Uri.encode(channelName)}"
+    }
     object SearchMembersForGroup : Screen("search_members_for_group")
     object UserProfile     : Screen("user_profile/{uid}?fromChat={fromChat}") {
         fun createRoute(uid: String, fromChat: Boolean = false) = "user_profile/$uid?fromChat=$fromChat"
@@ -208,6 +212,13 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.CreateGroup.route) { CreateGroupScreen(navController) }
         composable(Screen.CreateChannel.route) { CreateChannelScreen(navController) }
         composable(Screen.AddFromContacts.route) { AddFromContactsScreen(navController) }
+        composable(Screen.AddMembersForChannel.route) { back ->
+            AddFromContactsScreen(
+                navController = navController,
+                channelId = back.arguments?.getString("channelId"),
+                channelName = android.net.Uri.decode(back.arguments?.getString("channelName") ?: "")
+            )
+        }
         composable(Screen.Forward.route) { ForwardScreen(navController) }
         composable(Screen.ViewAvatar.route) { ViewAvatarScreen(navController) }
         composable(Screen.Media.route) { back ->

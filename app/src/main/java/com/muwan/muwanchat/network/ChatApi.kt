@@ -173,7 +173,8 @@ data class GroupData(
     val membersCanAdd: Boolean = false,
     val onlyAdminsCanSend: Boolean = false,
     val readReceiptsEnabled: Boolean = true,
-    val pendingRequests: List<JoinRequestEntry> = emptyList()
+    val pendingRequests: List<JoinRequestEntry> = emptyList(),
+    val isChannel: Boolean = false
 )
 
 data class JoinRequestEntry(
@@ -253,6 +254,17 @@ data class CreateGroupResponse(
     val group: GroupData?
 )
 
+data class CreateChannelRequest(
+    val name: String,
+    val avatar: String?,
+    val description: String? = null
+)
+
+data class CreateChannelResponse(
+    val success: Boolean,
+    val group: GroupData?
+)
+
 data class EditGroupRequest(
     val name: String? = null,
     val avatar: String? = null,
@@ -278,6 +290,12 @@ interface ChatApi {
         @Header("Authorization") token: String,
         @Body request: CreateGroupRequest
     ): Response<CreateGroupResponse>
+
+    @POST("groups/create-channel")
+    suspend fun createChannel(
+        @Header("Authorization") token: String,
+        @Body request: CreateChannelRequest
+    ): Response<CreateChannelResponse>
 
     @GET("groups/{roomId}")
     suspend fun getGroup(
