@@ -216,6 +216,21 @@ fun SettingsScreen(navController: NavController) {
         }
         Divider(color = Color(0xFF1E2040), thickness = 0.5.dp)
 
+        // 3.8 Lock App
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { navController.navigate(Screen.AppLock.route) }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.Lock, contentDescription = "Lock App", tint = Color.White)
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("Lock App", color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color(0xFF888888))
+        }
+        Divider(color = Color(0xFF1E2040), thickness = 0.5.dp)
+
         Spacer(modifier = Modifier.height(8.dp))
 
         // 4. Logout

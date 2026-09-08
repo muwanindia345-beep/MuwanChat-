@@ -22,6 +22,7 @@ sealed class Screen(val route: String) {
     object TermsPolicy     : Screen("terms_policy")
     object TermsPrivacy    : Screen("terms_privacy")
     object ApplicationRules : Screen("application_rules")
+    object AppLock          : Screen("app_lock")
     object PhoneOTP        : Screen("phone_otp/{phone}") {
         fun createRoute(phone: String) = "phone_otp/$phone"
     }
@@ -180,6 +181,7 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.TermsPolicy.route) { TermsPolicyScreen(navController) }
         composable(Screen.TermsPrivacy.route) { TermsPrivacyScreen(navController) }
         composable(Screen.ApplicationRules.route) { ApplicationRulesScreen(navController) }
+        composable(Screen.AppLock.route) { AppLockMethodsScreen(navController) }
         composable(Screen.PhoneOTP.route) { back ->
             PhoneOTPScreen(navController, back.arguments?.getString("phone") ?: "")
         }
