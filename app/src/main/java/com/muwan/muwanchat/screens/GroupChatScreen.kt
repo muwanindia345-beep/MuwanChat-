@@ -1336,6 +1336,10 @@ Box(
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
+        } else if ((group?.isChannel ?: false) && !isAdmin) {
+            // Broadcast channel member: bilkul kuch nahi -- na input bar,
+            // na "only admins" banner. Screen seedha last message pe khatam
+            // ho jaati hai.
         } else if (onlyAdminsCanSend && !isAdmin) {
             Row(
                 modifier = Modifier
