@@ -597,6 +597,7 @@ fun ConversationRow(
     isTyping: Boolean = false,
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
+    showOnlineStatus: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
     onAvatarClick: (() -> Unit)? = null
@@ -689,6 +690,9 @@ fun ConversationRow(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            } else if (!showOnlineStatus) {
+                // Broadcast channel row -- sirf timestamp, koi online/
+                // offline text nahi.
             } else if (conv.isGroup) {
                 val othersCount = (conv.memberCount - 1).coerceAtLeast(0)
                 val offlineCount = (othersCount - conv.onlineCount).coerceAtLeast(0)

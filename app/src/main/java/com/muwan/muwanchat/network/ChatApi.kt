@@ -356,6 +356,11 @@ interface ChatApi {
         @Header("Authorization") token: String
     ): Response<ConversationsResponse>
 
+    @GET("chat/channels/mine")
+    suspend fun getChannels(
+        @Header("Authorization") token: String
+    ): Response<ConversationsResponse>
+
     @GET("chat/messages/{roomId}")
     suspend fun getMessages(
         @Header("Authorization") token: String,

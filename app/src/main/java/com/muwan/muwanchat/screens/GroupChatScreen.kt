@@ -66,6 +66,10 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Wallpaper
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.navigation.NavController
@@ -1043,7 +1047,23 @@ Box(
                 onMessageTheme = {
                     showMenuSheet = false
                     navController.navigate(com.muwan.muwanchat.navigation.Screen.MessageTheme.createRoute(groupId))
-                }
+                },
+                isChannel = group?.isChannel ?: false,
+                onShareLink = {
+                    val code = group?.inviteCode
+                    if (code == null) {
+                        Toast.makeText(context, "No invite link yet", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val shareText = "Join \"${groupName}\" on MuwanChat: muwanchat://join/$code"
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Share invite link"))
+                    }
+                },
+                onProfile = { comingSoonFeature = "Channel Profile" },
+                onLeave = { comingSoonFeature = "Leave Channel" }
             )
         }
 
@@ -1658,7 +1678,11 @@ private fun GroupChatHeader(
     showMenu: Boolean = false,
     onMenuDismiss: () -> Unit = {},
     onSetWallpaper: () -> Unit = {},
-    onMessageTheme: () -> Unit = {}
+    onMessageTheme: () -> Unit = {},
+    isChannel: Boolean = false,
+    onShareLink: () -> Unit = {},
+    onProfile: () -> Unit = {},
+    onLeave: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -1689,29 +1713,38 @@ private fun GroupChatHeader(
                     groupName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
-                val statusText = when {
-                    typingUsernames.isNotEmpty() ->
-                        if (typingUsernames.size == 1) "${typingUsernames[0]} is typing..."
-                        else "${typingUsernames.size} people typing..."
-                    else -> "$memberCount member${if (memberCount != 1) "s" else ""}"
+                if (!isChannel) {
+                    val statusText = when {
+                        typingUsernames.isNotEmpty() ->
+                            if (typingUsernames.size == 1) "${typingUsernames[0]} is typing..."
+                            else "${typingUsernames.size} people typing..."
+                        else -> "$memberCount member${if (memberCount != 1) "s" else ""}"
+                    }
+                    Text(
+                        statusText,
+                        color = if (typingUsernames.isNotEmpty()) DarkAccent else Color(0xFF888888),
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-                Text(
-                    statusText,
-                    color = if (typingUsernames.isNotEmpty()) DarkAccent else Color(0xFF888888),
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         }
         Row {
-            IconButton(onClick = onVideoCall) {
-                Icon(androidx.compose.material.icons.Icons.Filled.VideoCall, contentDescription = "Video",
-                    tint = Color.White, modifier = Modifier.size(22.dp))
-            }
-            IconButton(onClick = onVoiceCall) {
-                Icon(androidx.compose.material.icons.Icons.Filled.Call, contentDescription = "Call",
-                    tint = Color.White, modifier = Modifier.size(22.dp))
+            if (!isChannel) {
+                IconButton(onClick = onVideoCall) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.VideoCall, contentDescription = "Video",
+                        tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+                IconButton(onClick = onVoiceCall) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.Call, contentDescription = "Call",
+                        tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+            } else {
+                IconButton(onClick = onShareLink) {
+                    Icon(Icons.Filled.Link, contentDescription = "Share Link",
+                        tint = Color.White, modifier = Modifier.size(22.dp))
+                }
             }
             Box {
                 IconButton(onClick = onMenuClick) {
@@ -1723,26 +1756,59 @@ private fun GroupChatHeader(
                     onDismissRequest = onMenuDismiss,
                     modifier = Modifier.background(DarkSheet)
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Set Wallpaper", color = Color.White) },
-                        leadingIcon = {
-                            Icon(Icons.Filled.Wallpaper, contentDescription = null, tint = DarkAccent)
-                        },
-                        onClick = {
-                            onMenuDismiss()
-                            onSetWallpaper()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Message Theme", color = Color.White) },
-                        leadingIcon = {
-                            Icon(Icons.Filled.Palette, contentDescription = null, tint = DarkAccent)
-                        },
-                        onClick = {
-                            onMenuDismiss()
-                            onMessageTheme()
-                        }
-                    )
+                    if (isChannel) {
+                        DropdownMenuItem(
+                            text = { Text("Profile", color = Color.White) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Info, contentDescription = null, tint = DarkAccent)
+                            },
+                            onClick = {
+                                onMenuDismiss()
+                                onProfile()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Share", color = Color.White) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Share, contentDescription = null, tint = DarkAccent)
+                            },
+                            onClick = {
+                                onMenuDismiss()
+                                onShareLink()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Leave", color = Color(0xFFFF3B30)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.ExitToApp, contentDescription = null, tint = Color(0xFFFF3B30))
+                            },
+                            onClick = {
+                                onMenuDismiss()
+                                onLeave()
+                            }
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text("Set Wallpaper", color = Color.White) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Wallpaper, contentDescription = null, tint = DarkAccent)
+                            },
+                            onClick = {
+                                onMenuDismiss()
+                                onSetWallpaper()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Message Theme", color = Color.White) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Palette, contentDescription = null, tint = DarkAccent)
+                            },
+                            onClick = {
+                                onMenuDismiss()
+                                onMessageTheme()
+                            }
+                        )
+                    }
                 }
             }
         }
