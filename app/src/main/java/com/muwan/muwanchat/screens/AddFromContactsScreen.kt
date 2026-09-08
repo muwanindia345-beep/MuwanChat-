@@ -214,6 +214,7 @@ fun AddFromContactsScreen(
             text = { Text("Skip") },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
                 .padding(20.dp)
         )
     }
