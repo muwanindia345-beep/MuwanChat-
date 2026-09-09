@@ -801,6 +801,12 @@ fun GroupChatScreen(
                 memberCount = g.members.size
                 db.conversationDao().updateAdminSettings(groupId, g.onlyAdminsCanSend, g.admins.contains(myUid))
                 db.groupInfoCacheDao().upsert(GroupInfoCacheEntity(groupId = groupId, json = Gson().toJson(g)))
+                if (g.isChannel) {
+                    // Broadcast channel kabhi Chats tab me nahi dikhna chahiye --
+                    // agar recordMessage() ne pehle message par galti se yahan
+                    // ek row bana di thi, use yahin hata do.
+                    db.conversationDao().deleteByRoom(groupId)
+                }
             }
         } catch (_: Exception) {}
 
