@@ -206,7 +206,11 @@ fun CreateChannelScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkAccent,
+                        disabledContainerColor = DarkAccent.copy(alpha = 0.45f),
+                        disabledContentColor = Color.White
+                    ),
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     if (isCreating) {
