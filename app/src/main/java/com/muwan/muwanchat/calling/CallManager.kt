@@ -42,6 +42,13 @@ class CallManager(
     private val onConnectionFailed: () -> Unit
 ) {
     private val stateLock = Any()
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    @Volatile private var connState: PeerConnection.PeerConnectionState? = null
+
+    companion object {
+        // Sirf diagnostics ke liye: aakhri connection state ka naam (CallScreen toast mein dikhata hai)
+        @Volatile var lastConnectionState: String = ""
+    }
 
     private var peerConnectionFactory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
@@ -94,10 +101,21 @@ class CallManager(
                         if (receiver.track()?.kind() == "audio") onRemoteAudioTrackAdded()
                     }
                     override fun onConnectionChange(newState: PeerConnection.PeerConnectionState) {
-                        if (newState == PeerConnection.PeerConnectionState.FAILED ||
-                            newState == PeerConnection.PeerConnectionState.DISCONNECTED
-                        ) {
-                            onConnectionFailed()
+                        connState = newState
+                        lastConnectionState = newState.name
+                        android.util.Log.d("CallManager", "connection state: $newState")
+                        when (newState) {
+                            PeerConnection.PeerConnectionState.FAILED ->
+                                mainHandler.post { onConnectionFailed() }
+                            // DISCONNECTED aksar temporary hota hai (network blip) --
+                            // 8 second wait karo, tab bhi na sudhre to hi call kaato
+                            PeerConnection.PeerConnectionState.DISCONNECTED ->
+                                mainHandler.postDelayed({
+                                    if (connState == PeerConnection.PeerConnectionState.DISCONNECTED) {
+                                        onConnectionFailed()
+                                    }
+                                }, 8000)
+                            else -> {}
                         }
                     }
                     override fun onSignalingChange(p0: PeerConnection.SignalingState?) {}

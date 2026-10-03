@@ -105,6 +105,13 @@ fun CallScreen(
             onConnectionFailed = {
                 if (callState != CallState.ENDED) {
                     callState = CallState.ENDED
+                    Toast.makeText(
+                        context,
+                        "Call connection failed (${CallManager.lastConnectionState})",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    // Doosre side ko bhi batao, warna wo ringing/ongoing pe atka rehta hai
+                    AppSocketManager.sendCallEnd(callId)
                     navController.popBackStack()
                 }
             }
