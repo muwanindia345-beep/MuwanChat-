@@ -53,6 +53,9 @@ class MuwanFirebaseService : FirebaseMessagingService() {
         val body = message.notification?.body ?: message.data["body"] ?: "New message"
 
         CoroutineScope(Dispatchers.IO).launch {
+            // Pehle message local DB mein (notification band ho tab bhi save hona chahiye)
+            storePushedMessage(message.data)
+
             val notificationsEnabled = try {
                 AuthDataStore.getNotificationsEnabled(applicationContext).first()
             } catch (_: Exception) {
@@ -61,6 +64,38 @@ class MuwanFirebaseService : FirebaseMessagingService() {
             if (!notificationsEnabled) return@launch
 
             showNotification(title, body)
+        }
+    }
+
+    // Backend (FCM_DATA_ONLY=true) push mein poora message bhejta hai -- use seedha Room mein
+    // save kar do, taaki app kholte hi chat mein pehle se maujood ho. Koi bhi gadbad ho
+    // to chupchap skip (notification phir bhi dikhega, message sync se aa jaayega).
+    private suspend fun storePushedMessage(data: Map<String, String>) {
+        try {
+            val msgId = data["msg_id"] ?: return
+            val roomId = data["room_id"] ?: return
+            val senderUid = data["sender_uid"] ?: return
+            val content = data["content"] ?: return // bada text: sirf notification, baaki sync se
+            val myUid = AuthDataStore.getUid(applicationContext).first() ?: return
+            if (myUid.isBlank() || senderUid == myUid) return
+            val db = com.muwan.muwanchat.data.MuwanChatDb.get(applicationContext, myUid)
+            com.muwan.muwanchat.data.ChatRepository.recordPushMessage(
+                db = db,
+                id = msgId,
+                roomId = roomId,
+                senderUid = senderUid,
+                content = content,
+                type = data["msg_type"] ?: "text",
+                createdAt = data["created_at"]?.takeIf { it.isNotBlank() }
+                    ?: com.muwan.muwanchat.screens.nowIso(),
+                myUid = myUid,
+                fileName = data["file_name"],
+                mimeType = data["mime_type"],
+                replyToId = data["reply_to_id"],
+                isForwarded = data["is_forwarded"] == "1",
+                mentions = data["mentions"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+            )
+        } catch (_: Exception) {
         }
     }
 

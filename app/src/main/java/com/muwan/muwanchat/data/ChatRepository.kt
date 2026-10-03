@@ -1,6 +1,8 @@
 package com.muwan.muwanchat.data
 
 import com.google.gson.Gson
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.MessageItem
 import com.muwan.muwanchat.screens.nowIso
@@ -8,6 +10,50 @@ import com.muwan.muwanchat.screens.nowIso
 object ChatRepository {
 
     private val gson = Gson()
+
+    // FCM push se aaye message (app background / socket dead) ko Room mein save karne ke liye.
+    // Mutex isliye ki push aur socket ek saath aayein to duplicate/double-unread na ho.
+    private val pushStoreMutex = Mutex()
+
+    suspend fun recordPushMessage(
+        db: MuwanChatDb,
+        id: String,
+        roomId: String,
+        senderUid: String,
+        content: String,
+        type: String,
+        createdAt: String,
+        myUid: String,
+        fileName: String?,
+        mimeType: String?,
+        replyToId: String?,
+        isForwarded: Boolean,
+        mentions: List<String>
+    ) {
+        pushStoreMutex.withLock {
+            // Socket se ya sync se pehle hi aa chuka hai -- dobara kuch mat karo
+            if (db.messageDao().getById(id) != null) return
+            // Conversation local mein nahi hai (naya/hidden chat) to yahan na banao,
+            // list sync aane par sahi metadata ke saath apne aap aa jaayegi
+            if (db.conversationDao().getByRoomId(roomId) == null) return
+            recordMessage(
+                db = db,
+                id = id,
+                roomId = roomId,
+                senderUid = senderUid,
+                receiverUid = myUid,
+                content = content,
+                type = type,
+                createdAt = createdAt,
+                myUid = myUid,
+                fileName = fileName,
+                mimeType = mimeType,
+                replyToId = replyToId,
+                isForwarded = isForwarded,
+                mentions = mentions
+            )
+        }
+    }
 
     // Group ke andar kick/add/approve jaisi actions turant local system message
     // dikhane ke liye -- id client-generated hai, jab asli server wali socket se

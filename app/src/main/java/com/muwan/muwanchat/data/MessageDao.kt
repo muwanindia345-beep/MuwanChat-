@@ -27,6 +27,9 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(message: MessageEntity)
 
+    @Query("SELECT * FROM messages WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): MessageEntity?
+
     // "Delete for me" — row hi hata do, dusre bande ki screen se koi matlab nahi
     @Query("DELETE FROM messages WHERE id = :id")
     suspend fun deleteById(id: String)
