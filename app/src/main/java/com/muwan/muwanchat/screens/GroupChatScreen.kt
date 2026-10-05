@@ -103,6 +103,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -562,14 +564,30 @@ fun GroupChatScreen(
 
     fun deleteSelectedForEveryone() {
         val ids = selectedMessageIds.toList()
+        // BG_OPTIMISTIC_DELETE_PATCH: pehle screen pe turant "deleted" dikhao (server ka wait nahi),
+        // phir background mein server call. Fail ho to message wapas aa jaata hai + toast.
         scope.launch {
-            ids.forEach { id ->
-                try {
-                    RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", groupId, id)
-                } catch (_: Exception) {}
-                db.messageDao().markDeleted(id)
-            }
+            val backups = ids.mapNotNull { db.messageDao().getById(it) }
+            ids.forEach { db.messageDao().markDeleted(it) }
             ChatRepository.refreshLastMessagePreview(db, groupId)
+
+            val failedIds = ids.map { id ->
+                async {
+                    val ok = try {
+                        val res = RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", groupId, id)
+                        res.isSuccessful || res.code() == 404   // 404 = server pe pehle se nahi hai
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (ok) null else id
+                }
+            }.awaitAll().filterNotNull()
+
+            if (failedIds.isNotEmpty()) {
+                backups.filter { it.id in failedIds }.forEach { db.messageDao().insert(it) }
+                ChatRepository.refreshLastMessagePreview(db, groupId)
+                Toast.makeText(context, "Couldn't delete for everyone. Check your connection.", Toast.LENGTH_SHORT).show()
+            }
         }
         exitSelectionMode()
     }
