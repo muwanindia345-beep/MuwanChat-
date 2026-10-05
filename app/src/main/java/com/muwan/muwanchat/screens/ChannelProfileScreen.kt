@@ -145,10 +145,12 @@ fun ChannelProfileScreen(navController: NavController, groupId: String) {
                 Spacer(Modifier.height(14.dp))
 
                 if (!g.description.isNullOrBlank()) {
+                    // [center-desc]
                     Text(
                         g.description,
                         color = Color(0xFFCCCCCC),
                         fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
