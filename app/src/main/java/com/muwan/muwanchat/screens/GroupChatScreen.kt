@@ -1040,7 +1040,7 @@ Box(
                 onBack = { navController.popBackStack() },
                 onHeaderTap = {
                     if (group?.isChannel == true) {
-                        comingSoonFeature = "Channel Profile"
+                        navController.navigate(Screen.ChannelProfile.createRoute(groupId))
                     } else {
                         navController.navigate(Screen.GroupInfo.createRoute(groupId))
                     }
@@ -1091,7 +1091,7 @@ Box(
                         context.startActivity(Intent.createChooser(intent, "Share invite link"))
                     }
                 },
-                onProfile = { comingSoonFeature = "Channel Profile" },
+                onProfile = { navController.navigate(Screen.ChannelProfile.createRoute(groupId)) },
                 onLeave = { comingSoonFeature = "Leave Channel" }
             )
         }
