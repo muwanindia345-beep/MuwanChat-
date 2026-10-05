@@ -37,6 +37,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChannelsCacheEntity
+import com.muwan.muwanchat.data.ChatRepository
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.util.isNetworkAvailable
 import com.muwan.muwanchat.navigation.Screen
@@ -76,6 +77,8 @@ fun BroadcastChannelsScreen(navController: NavController) {
                     val fresh = res.body()?.conversations ?: emptyList()
                     channels = fresh
                     db.channelsCacheDao().upsert(ChannelsCacheEntity(json = gson.toJson(fresh)))
+                    // CHANNEL_PREFETCH_PATCH: channels ke messages bhi background mein local kar lo
+                    ChatRepository.prefetchMessagesInBackground(db, token, fresh)
                 }
             }
         } catch (_: Exception) {
