@@ -682,8 +682,7 @@ fun MessageBubble(
 // CALL_BUBBLE_PATCH
 // Call history bubble: sent = caller (apna color = Message Theme ka sentColor),
 // received = DarkBubbleReceived. Shape/padding/font bhi theme.compact ke hisaab se,
-// taaki custom theme ke saath bilkul match kare. Green dot = ringing/connected/ended,
-// red dot = missed/declined. Tap = wapas call.
+// taaki custom theme ke saath bilkul match kare. Tap = wapas call.
 @Composable
 private fun CallBubble(
     message: ChatMessage,
@@ -695,8 +694,6 @@ private fun CallBubble(
     onLongPress: (ChatMessage) -> Unit
 ) {
     val info = remember(message.callInfo) { parseCallInfo(message.callInfo) }
-    val isRed = info.status == "missed" || info.status == "declined"
-    val dotColor = if (isRed) Color(0xFFFF3B30) else Color(0xFF00E676)
     val kindLabel = if (info.kind == "video") "video call" else "voice call"
     val title = when (info.status) {
         "ringing" -> if (message.sent) "Calling…" else "Incoming $kindLabel"
@@ -777,14 +774,6 @@ private fun CallBubble(
                         contentDescription = "Call",
                         tint = Color.White,
                         modifier = Modifier.size(19.dp)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 2.dp, end = 2.dp)
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(dotColor)
                     )
                 }
                 Spacer(Modifier.width(10.dp))
