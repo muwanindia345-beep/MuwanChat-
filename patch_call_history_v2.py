@@ -1,4 +1,38 @@
-package com.muwan.muwanchat.screens
+import sys
+
+BASE = "app/src/main/java/com/muwan/muwanchat/"
+SCREEN = BASE + "screens/CallHistoryScreen.kt"
+DAO = BASE + "data/MessageDao.kt"
+
+# ---------- 1) MessageDao: call messages ki query (pehle se ho to skip) ----------
+dao = open(DAO, encoding="utf-8").read()
+if "observeCallMessages" not in dao:
+    anchor = '''    @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt ASC")
+    fun observeMessages(roomId: String): Flow<List<MessageEntity>>
+'''
+    if dao.count(anchor) != 1:
+        print("ERROR: MessageDao mein anchor nahi mila. Kuch change nahi kiya.")
+        sys.exit(1)
+    add = anchor + '''
+    // Call History screen: saari 1-1 call bubbles (naye se purane), max 200
+    @Query("SELECT * FROM messages WHERE type = 'call' AND deleted = 0 ORDER BY createdAt DESC LIMIT 200")
+    fun observeCallMessages(): Flow<List<MessageEntity>>
+'''
+    open(DAO, "w", encoding="utf-8").write(dao.replace(anchor, add))
+    print("MessageDao: observeCallMessages() add ho gaya")
+else:
+    print("MessageDao: pehle se patched")
+
+# ---------- 2) CallHistoryScreen.kt (Conversation List jaisa look) ----------
+old = open(SCREEN, encoding="utf-8").read()
+if "CALL_HISTORY_V2" in old:
+    print("CallHistoryScreen: v2 pehle se laga hua hai")
+    sys.exit(0)
+if "fun CallHistoryScreen" not in old:
+    print("ERROR: CallHistoryScreen.kt expected jaisi nahi hai. Kuch change nahi kiya.")
+    sys.exit(1)
+
+KT = r'''package com.muwan.muwanchat.screens
 
 // CALL_HISTORY_V2
 import androidx.compose.foundation.background
@@ -188,3 +222,8 @@ private fun CallContactRow(
         }
     }
 }
+'''
+
+open(SCREEN, "w", encoding="utf-8").write(KT)
+print("CallHistoryScreen: v2 (Conversation List style) laga diya")
+print("Done. Ab commit + push karo.")

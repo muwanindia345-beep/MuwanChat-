@@ -10,6 +10,10 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt ASC")
     fun observeMessages(roomId: String): Flow<List<MessageEntity>>
 
+    // Call History screen: saari 1-1 call bubbles (naye se purane), max 200
+    @Query("SELECT * FROM messages WHERE type = 'call' AND deleted = 0 ORDER BY createdAt DESC LIMIT 200")
+    fun observeCallMessages(): Flow<List<MessageEntity>>
+
     @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY createdAt ASC")
     suspend fun getMessages(roomId: String): List<MessageEntity>
 
