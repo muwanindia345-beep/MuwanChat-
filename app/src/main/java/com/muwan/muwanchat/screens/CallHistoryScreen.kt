@@ -15,6 +15,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.delay
+import com.muwan.muwanchat.data.parseCallInfo
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -41,7 +51,9 @@ private data class CallContact(
     val roomId: String,
     val uid: String,
     val username: String,
-    val avatar: String?
+    val avatar: String?,
+    val lastStatus: String,   // CALL_HISTORY_LIVE
+    val lastCreatedAt: String
 )
 
 @Composable
@@ -55,6 +67,11 @@ fun CallHistoryScreen(navController: NavController) {
 
     // callMessages naye se purane order mein aate hain, isliye distinctBy
     // har user ki sabse recent call rakhta hai aur order bhi wahi rehta hai.
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) { delay(15_000); nowMs = System.currentTimeMillis() }
+    }
+
     val contacts = remember(callMessages, conversations) {
         val byRoom = conversations.filter { !it.isGroup }.associateBy { it.roomId }
         callMessages
@@ -65,7 +82,9 @@ fun CallHistoryScreen(navController: NavController) {
                     roomId = conv.roomId,
                     uid = conv.uid,
                     username = conv.username,
-                    avatar = conv.avatar
+                    avatar = conv.avatar,
+                    lastStatus = parseCallInfo(m.content).status,
+                    lastCreatedAt = m.createdAt
                 )
             }
     }
@@ -121,11 +140,7 @@ fun CallHistoryScreen(navController: NavController) {
                     items(contacts, key = { it.roomId }) { c ->
                         CallContactRow(
                             contact = c,
-                            onClick = {
-                                navController.navigate(
-                                    Screen.Chat.createRoute(c.uid, c.username, c.roomId)
-                                )
-                            },
+                            nowMs = nowMs,
                             onAvatarClick = {
                                 AvatarViewerSelection.set(c.avatar, c.username)
                                 navController.navigate(Screen.ViewAvatar.route)
@@ -154,14 +169,13 @@ fun CallHistoryScreen(navController: NavController) {
 @Composable
 private fun CallContactRow(
     contact: CallContact,
-    onClick: () -> Unit,
+    nowMs: Long,
     onAvatarClick: () -> Unit,
     onCall: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -173,18 +187,55 @@ private fun CallContactRow(
             onClick = onAvatarClick
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            contact.username,
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                contact.username,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            val createdMs = callCreatedMs(contact.lastCreatedAt)
+            val ageMs = if (createdMs != null) nowMs - createdMs else Long.MAX_VALUE
+            // 6 ghante se purana "answered" = stale, ongoing nahi maante
+            val ongoing = contact.lastStatus == "answered" && ageMs < 6L * 60 * 60 * 1000
+            val dateTime = callDateTimeText(contact.lastCreatedAt)
+            Spacer(modifier = Modifier.height(2.dp))
+            when {
+                ongoing -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF25D366))
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Ongoing call", color = Color(0xFF25D366), fontSize = 13.sp)
+                }
+                contact.lastStatus == "missed" ->
+                    Text("Missed call \u00B7 $dateTime", color = Color(0xFFFF5252), fontSize = 13.sp, maxLines = 1)
+                else ->
+                    Text(dateTime, color = Color(0xFF888888), fontSize = 13.sp, maxLines = 1)
+            }
+        }
         Spacer(modifier = Modifier.width(8.dp))
         IconButton(onClick = onCall) {
             Icon(Icons.Filled.Call, contentDescription = "Call", tint = DarkAccent)
         }
     }
+}
+
+// CALL_HISTORY_LIVE: createdAt UTC ISO hota hai -> local "05 Oct, 1:43 PM"
+private fun callCreatedMs(raw: String): Long? = try {
+    val p = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+    p.timeZone = TimeZone.getTimeZone("UTC")
+    p.parse(raw.take(19))?.time
+} catch (_: Exception) { null }
+
+private fun callDateTimeText(raw: String): String {
+    val ms = callCreatedMs(raw) ?: return raw.take(16).replace("T", " ")
+    val f = SimpleDateFormat("dd MMM, h:mm a", Locale.getDefault())
+    f.timeZone = TimeZone.getDefault()
+    return f.format(java.util.Date(ms))
 }
