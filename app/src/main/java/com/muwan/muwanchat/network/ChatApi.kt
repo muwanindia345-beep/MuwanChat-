@@ -204,7 +204,8 @@ data class JoinPreviewData(
     val avatar: String?,
     val description: String? = "",
     val memberCount: Int,
-    val joinApprovalRequired: Boolean
+    val joinApprovalRequired: Boolean,
+    val isChannel: Boolean = false
 )
 
 data class JoinPreviewResponse(

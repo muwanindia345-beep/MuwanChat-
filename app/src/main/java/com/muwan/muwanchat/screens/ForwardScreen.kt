@@ -53,6 +53,7 @@ private suspend fun forwardOneMessage(
     val id = UUID.randomUUID().toString()
     val createdAt = nowIso()
     val content = if (msg.type == "text" || msg.type == "system") msg.text else (msg.mediaUrl ?: "")
+    val fwd = !ForwardMessageSelection.sendAsOriginal
 
     ChatRepository.recordMessage(
         db = db,
@@ -68,14 +69,14 @@ private suspend fun forwardOneMessage(
         status = "PENDING",
         fileName = msg.fileName,
         mimeType = msg.mimeType,
-        isForwarded = true
+        isForwarded = fwd
     )
 
     if (target.isGroup) {
         val success = if (AppSocketManager.isConnected) {
             sendViaSocketAwait { cb ->
                 AppSocketManager.sendGroupMessage(
-                    id, target.roomId, content, msg.type, msg.fileName, msg.mimeType, null, true,
+                    id, target.roomId, content, msg.type, msg.fileName, msg.mimeType, null, fwd,
                     onAck = cb
                 )
             }
@@ -84,14 +85,14 @@ private suspend fun forwardOneMessage(
     } else {
         if (AppSocketManager.isConnected) {
             val success = sendViaSocketAwait { cb ->
-                AppSocketManager.sendMessage(id, target.uid, content, msg.type, msg.fileName, msg.mimeType, null, true, cb)
+                AppSocketManager.sendMessage(id, target.uid, content, msg.type, msg.fileName, msg.mimeType, null, fwd, cb)
             }
             db.messageDao().updateStatus(id, if (success) "SENT" else "FAILED")
         } else {
             try {
                 val res = RetrofitClient.chatApi.sendMessage(
                     "Bearer $myToken",
-                    SendMessageRequest(target.uid, content, msg.type, msg.fileName, msg.mimeType, null, true)
+                    SendMessageRequest(target.uid, content, msg.type, msg.fileName, msg.mimeType, null, fwd)
                 )
                 db.messageDao().updateStatus(id, if (res.isSuccessful) "SENT" else "FAILED")
             } catch (_: Exception) {
@@ -136,7 +137,7 @@ fun ForwardScreen(navController: NavController) {
             }) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
-            Text("Forward to", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(if (ForwardMessageSelection.sendAsOriginal) "Send invite to" else "Forward to", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
 
         val activeConversations = conversations.filterNot { it.isRemoved }
@@ -187,6 +188,7 @@ fun ForwardScreen(navController: NavController) {
                     sending = true
                     val targets = activeConversations.filter { selectedRoomIds.contains(it.roomId) }
                     val toForward = ForwardMessageSelection.messages
+                    val asInvite = ForwardMessageSelection.sendAsOriginal
                     scope.launch {
                         targets.forEach { target ->
                             toForward.forEach { msg ->
@@ -194,7 +196,7 @@ fun ForwardScreen(navController: NavController) {
                             }
                         }
                         ForwardMessageSelection.clear()
-                        Toast.makeText(context, "Forwarded", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (asInvite) "Invite sent" else "Forwarded", Toast.LENGTH_SHORT).show()
                         navController.popBackStack()
                     }
                 },

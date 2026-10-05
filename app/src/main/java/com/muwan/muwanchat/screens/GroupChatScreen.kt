@@ -1059,6 +1059,25 @@ Box(
                     navController.navigate(com.muwan.muwanchat.navigation.Screen.MessageTheme.createRoute(groupId))
                 },
                 isChannel = group?.isChannel ?: false,
+                onSendInviteInApp = {
+                    val code = group?.inviteCode
+                    if (code == null) {
+                        Toast.makeText(context, "No invite link yet", Toast.LENGTH_SHORT).show()
+                    } else {
+                        ForwardMessageSelection.set(
+                            listOf(
+                                ChatMessage(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    text = "Join \"${groupName}\" on MuwanChat: muwanchat://join/$code",
+                                    sent = true,
+                                    time = ""
+                                )
+                            )
+                        )
+                        ForwardMessageSelection.sendAsOriginal = true
+                        navController.navigate(Screen.Forward.route)
+                    }
+                },
                 onShareLink = {
                     val code = group?.inviteCode
                     if (code == null) {
@@ -1696,6 +1715,7 @@ private fun GroupChatHeader(
     onMessageTheme: () -> Unit = {},
     isChannel: Boolean = false,
     onShareLink: () -> Unit = {},
+    onSendInviteInApp: () -> Unit = {},
     onProfile: () -> Unit = {},
     onLeave: () -> Unit = {}
 ) {
@@ -1756,7 +1776,7 @@ private fun GroupChatHeader(
                         tint = Color.White, modifier = Modifier.size(22.dp))
                 }
             } else {
-                IconButton(onClick = onShareLink) {
+                IconButton(onClick = onSendInviteInApp) {
                     Icon(Icons.Filled.Link, contentDescription = "Share Link",
                         tint = Color.White, modifier = Modifier.size(22.dp))
                 }

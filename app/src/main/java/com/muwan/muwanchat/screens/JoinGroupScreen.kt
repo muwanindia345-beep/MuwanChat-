@@ -35,7 +35,7 @@ private sealed class JoinSheetState {
         val alreadyMember: Boolean,
         val alreadyRequested: Boolean
     ) : JoinSheetState()
-    data class Joined(val groupId: String, val groupName: String) : JoinSheetState()
+    data class Joined(val groupId: String, val groupName: String, val isChannel: Boolean = false) : JoinSheetState()
     object Pending : JoinSheetState()
 }
 
@@ -91,7 +91,7 @@ fun JoinGroupScreen(navController: NavController, code: String) {
                 val body = res.body()
                 if (res.isSuccessful && body?.success == true) {
                     if (body.joined && body.group != null) {
-                        state = JoinSheetState.Joined(body.group.id, body.group.name)
+                        state = JoinSheetState.Joined(body.group.id, body.group.name, body.group.isChannel)
                     } else if (body.pending) {
                         state = JoinSheetState.Pending
                     } else {
@@ -188,7 +188,8 @@ fun JoinGroupScreen(navController: NavController, code: String) {
                                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
                                 } else {
                                     Text(
-                                        if (s.data.joinApprovalRequired) "Request to Join" else "Join",
+                                        if (s.data.joinApprovalRequired) "Request to Join"
+                                        else if (s.data.isChannel) "Join Channel" else "Join",
                                         color = Color.White
                                     )
                                 }
@@ -199,7 +200,7 @@ fun JoinGroupScreen(navController: NavController, code: String) {
 
                 is JoinSheetState.Joined -> {
                     Spacer(Modifier.height(16.dp))
-                    Text("Group join ho gaya! \uD83C\uDF89", color = Color.White, fontSize = 16.sp, textAlign = TextAlign.Center)
+                    Text(if (s.isChannel) "Channel join ho gaya! \uD83C\uDF89" else "Group join ho gaya! \uD83C\uDF89", color = Color.White, fontSize = 16.sp, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(20.dp))
                     Button(
                         onClick = {
