@@ -72,5 +72,18 @@ object DbMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
+    // Status feature offline-first cache -- sirf ek NAYA table, koi existing
+    // table/column touch nahi hota, isliye chats/messages/wallpaper/theme safe.
+    val MIGRATION_26_27 = object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `status_cache` (" +
+                    "`key` TEXT NOT NULL, " +
+                    "`json` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`key`))"
+            )
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27)
 }
