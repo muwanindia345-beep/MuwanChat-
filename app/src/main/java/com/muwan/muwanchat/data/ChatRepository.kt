@@ -1,7 +1,19 @@
 package com.muwan.muwanchat.data
 
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import com.muwan.muwanchat.network.RetrofitClient
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.sync.withLock
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.GroupData
@@ -11,6 +23,68 @@ import com.muwan.muwanchat.screens.nowIso
 object ChatRepository {
 
     private val gson = Gson()
+
+    // ───────── BG_PREFETCH_PATCH ─────────
+    // Chat list sync hote hi, jin chats mein unread / naya message hai unke messages
+    // chupke se Room mein download kar lo -- taaki chat tap karte hi sab local ho
+    // aur "purana chat dikhta hai, phir delay se update" wali problem na aaye.
+    // NOTE: yahan markSeen / clearUnread KABHI nahi hota -- wo sirf chat kholne par hoga.
+    private const val PREFETCH_MAX_ROOMS = 15
+    private const val PREFETCH_PARALLEL = 3
+    private val prefetchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val prefetchRunning = AtomicBoolean(false)
+    // roomId -> "lastTime|unread" jo ek baar successfully prefetch ho chuka (loop/duplicate se bachne ke liye)
+    private val prefetchedState = ConcurrentHashMap<String, String>()
+
+    fun prefetchMessagesInBackground(db: MuwanChatDb, token: String, items: List<ConversationItem>) {
+        if (token.isBlank() || items.isEmpty()) return
+        if (!prefetchRunning.compareAndSet(false, true)) return
+        prefetchScope.launch {
+            try {
+                val ordered = items
+                    .filter { !it.isRemoved && it.lastTime.isNotBlank() }
+                    .sortedWith(
+                        compareByDescending<ConversationItem> { it.unreadCount > 0 }
+                            .thenByDescending { it.lastTime }
+                    )
+                val targets = ArrayList<ConversationItem>()
+                for (item in ordered) {
+                    if (targets.size >= PREFETCH_MAX_ROOMS) break
+                    val stateKey = "${item.lastTime}|${item.unreadCount}"
+                    if (prefetchedState[item.room_id] == stateKey) continue
+                    val localLatest = db.messageDao().getLatestMessage(item.room_id)
+                    val stale = localLatest == null || localLatest.createdAt < item.lastTime
+                    if (item.unreadCount > 0 || stale) targets.add(item)
+                }
+                if (targets.isEmpty()) return@launch
+
+                val gate = Semaphore(PREFETCH_PARALLEL)
+                coroutineScope {
+                    targets.map { item ->
+                        async { gate.withPermit { prefetchOneRoom(db, token, item) } }
+                    }.awaitAll()
+                }
+            } catch (_: Exception) {
+                // best-effort: fail ho to chat kholne par normal fetch chalega hi
+            } finally {
+                prefetchRunning.set(false)
+            }
+        }
+    }
+
+    private suspend fun prefetchOneRoom(db: MuwanChatDb, token: String, item: ConversationItem) {
+        try {
+            val res = RetrofitClient.chatApi.getMessages("Bearer $token", item.room_id)
+            if (res.isSuccessful) {
+                val memberCount = if (item.isGroup && item.memberCount > 0) item.memberCount else null
+                syncMessages(db, res.body()?.messages ?: emptyList(), memberCount)
+                prefetchedState[item.room_id] = "${item.lastTime}|${item.unreadCount}"
+            }
+        } catch (_: Exception) {
+            // network fail -- agli list sync pe dobara try hoga
+        }
+    }
+    // ───────── /BG_PREFETCH_PATCH ─────────
 
     // FCM push se aaye message (app background / socket dead) ko Room mein save karne ke liye.
     // Mutex isliye ki push aur socket ek saath aayein to duplicate/double-unread na ho.

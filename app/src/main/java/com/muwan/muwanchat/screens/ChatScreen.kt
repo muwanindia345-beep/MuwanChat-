@@ -547,14 +547,17 @@ fun ChatScreen(
         AppSocketManager.checkPresence(receiverUid)
 
         // Wallpaper local na mile (reinstall ke baad) toh backend se apna preset restore karo
-        try {
-            if (db.chatWallpaperDao().getByRoomId(roomId) == null) {
-                val res = RetrofitClient.chatApi.getWallpaper("Bearer $token", roomId)
-                res.body()?.wallpaper?.let { wp ->
-                    db.chatWallpaperDao().upsert(ChatWallpaperEntity(roomId, wp.type, wp.value))
+        // BG_PREFETCH_PATCH: alag coroutine mein -- messages ki fetch ko ab block nahi karta
+        launch {
+            try {
+                if (db.chatWallpaperDao().getByRoomId(roomId) == null) {
+                    val wpRes = RetrofitClient.chatApi.getWallpaper("Bearer $token", roomId)
+                    wpRes.body()?.wallpaper?.let { wp ->
+                        db.chatWallpaperDao().upsert(ChatWallpaperEntity(roomId, wp.type, wp.value))
+                    }
                 }
-            }
-        } catch (_: Exception) {}
+            } catch (_: Exception) {}
+        }
 
         try {
             val res = RetrofitClient.chatApi.getMessages("Bearer $token", roomId)

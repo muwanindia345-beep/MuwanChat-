@@ -160,6 +160,8 @@ fun ConversationListScreen(navController: NavController) {
             if (res.isSuccessful) {
                 val serverItems = res.body()?.conversations ?: emptyList()
                 ChatRepository.syncConversations(db, serverItems)
+                // BG_PREFETCH_PATCH: unread/naye chats ke messages background mein local kar lo
+                ChatRepository.prefetchMessagesInBackground(db, token, serverItems)
 
                 // Offline hote waqt jo "removed" socket event miss ho gaya tha,
                 // usko yahan REST se catch-up karte hain -- server response me

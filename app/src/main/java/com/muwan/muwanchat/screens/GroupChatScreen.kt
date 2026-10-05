@@ -810,14 +810,17 @@ fun GroupChatScreen(
             }
         } catch (_: Exception) {}
 
-        try {
-            if (db.chatWallpaperDao().getByRoomId(groupId) == null) {
-                val res = RetrofitClient.chatApi.getWallpaper("Bearer $token", groupId)
-                res.body()?.wallpaper?.let { wp ->
-                    db.chatWallpaperDao().upsert(ChatWallpaperEntity(groupId, wp.type, wp.value))
+        // BG_PREFETCH_PATCH: alag coroutine mein -- messages ki fetch ko ab block nahi karta
+        launch {
+            try {
+                if (db.chatWallpaperDao().getByRoomId(groupId) == null) {
+                    val wpRes = RetrofitClient.chatApi.getWallpaper("Bearer $token", groupId)
+                    wpRes.body()?.wallpaper?.let { wp ->
+                        db.chatWallpaperDao().upsert(ChatWallpaperEntity(groupId, wp.type, wp.value))
+                    }
                 }
-            }
-        } catch (_: Exception) {}
+            } catch (_: Exception) {}
+        }
 
         try {
             val res = RetrofitClient.chatApi.getMessages("Bearer $token", groupId)
