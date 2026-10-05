@@ -1284,7 +1284,7 @@ Box(
         AnimatedVisibility(visible = showEmojiPicker) {
             EmojiPickerRow { emoji -> input += emoji }
         }
-        AnimatedVisibility(visible = showMentionPicker) {
+        AnimatedVisibility(visible = showMentionPicker && !(group?.isChannel ?: false)) {
             val members = group?.memberProfiles?.filter { it.uid != myUid } ?: emptyList()
             Column(
                 modifier = Modifier
@@ -1413,7 +1413,8 @@ Box(
                         recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 },
-                showMentionButton = true,
+                // Broadcast channel me @mention ka matlab nahi (sirf admin post karta hai)
+                showMentionButton = !(group?.isChannel ?: false),
                 onMentionClick = {
                     showMentionPicker = !showMentionPicker
                     if (showMentionPicker && showEmojiPicker) showEmojiPicker = false
