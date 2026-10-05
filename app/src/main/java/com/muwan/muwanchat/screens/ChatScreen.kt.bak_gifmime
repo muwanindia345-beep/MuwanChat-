@@ -1041,13 +1041,13 @@ fun ChatScreen(
             },
             onPickImage = { showMediaSheet = true },
             onSend = { sendMessage() },
-            onGifReceived = { uri, kbMime, release ->
+            onGifReceived = { uri, _, release ->
                 UploadScope.io.launch {
                     // Backend "gif" category/type ko ab fully support karta hai — raw passthrough,
                     // koi re-compress nahi (routes/chat.js check kiya). Isliye "image" ki jagah
                     // "gif" bhejo: MessageBubble ka already-built borderless sticker-style bubble
                     // (no orange/green background, poora Fit render) turant unlock ho jaata hai.
-                    uploadMediaMessage(context, uri, "gif", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, mimeOverride = kbMime, setUploading = {})
+                    uploadMediaMessage(context, uri, "gif", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, setUploading = {})
                     release()
                 }
             },
@@ -1272,14 +1272,11 @@ private suspend fun uploadMediaMessage(
     db: MuwanChatDb,
     skipCompression: Boolean = false,
     displayType: String = category,
-    mimeOverride: String? = null,
     setUploading: (Boolean) -> Unit
 ) {
     val id = UUID.randomUUID().toString()
     val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
-    val guessedMime = mimeOverride?.takeIf { it.startsWith("image/") }
-        ?: context.contentResolver.getType(uri)
-        ?: "application/octet-stream"
+    val guessedMime = context.contentResolver.getType(uri) ?: "application/octet-stream"
 
     // Network hi nahi hai — seedha FAILED, koi "uploading" progress layer nahi dikhega
     if (!isNetworkAvailable(context)) {
