@@ -1792,6 +1792,17 @@ private fun GroupChatHeader(
                                 onShareLink()
                             }
                         )
+                        // [channel-message-theme]
+                        DropdownMenuItem(
+                            text = { Text("Message Theme", color = Color.White) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Palette, contentDescription = null, tint = DarkAccent)
+                            },
+                            onClick = {
+                                onMenuDismiss()
+                                onMessageTheme()
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("Leave", color = Color(0xFFFF3B30)) },
                             leadingIcon = {
