@@ -417,6 +417,7 @@ fun GroupChatScreen(
     val listState = rememberLazyListState()
 
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
+    var showLeaveChannelConfirm by remember { mutableStateOf(false) }
     var fullscreenImage by remember { mutableStateOf<ChatMessage?>(null) }
     var fullscreenVideo by remember { mutableStateOf<ChatMessage?>(null) }
     var showEmojiPicker by remember { mutableStateOf(false) }
@@ -1113,7 +1114,7 @@ Box(
                     }
                 },
                 onProfile = { navController.navigate(Screen.ChannelProfile.createRoute(groupId)) },
-                onLeave = { comingSoonFeature = "Leave Channel" }
+                onLeave = { showLeaveChannelConfirm = true }
             )
         }
 
@@ -1485,6 +1486,59 @@ Box(
                 showVoiceRecorder = false
                 UploadScope.io.launch {
                     uploadGroupAudioMessage(context, file, myToken, groupId, myUid, groupId, groupName, db) {}
+                }
+            }
+        )
+    }
+
+    if (showLeaveChannelConfirm) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showLeaveChannelConfirm = false },
+            containerColor = DarkSheet,
+            title = { Text("Leave Channel?", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Ye channel aapki Broadcast list se hat jayega.",
+                    color = Color(0xFFAAAAAA)
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    showLeaveChannelConfirm = false
+                    scope.launch {
+                        try {
+                            val res = RetrofitClient.chatApi.removeGroupMember("Bearer $myToken", groupId, myUid)
+                            if (res.isSuccessful && res.body()?.success == true) {
+                                db.messageDao().deleteByRoom(groupId)
+                                db.conversationDao().deleteByRoom(groupId)
+                                // Broadcast tab cache se turant hatao
+                                try {
+                                    val cached = db.channelsCacheDao().get()
+                                    if (cached != null) {
+                                        val listType = object : com.google.gson.reflect.TypeToken<List<com.muwan.muwanchat.network.ConversationItem>>() {}.type
+                                        val old: List<com.muwan.muwanchat.network.ConversationItem> = Gson().fromJson(cached.json, listType)
+                                        db.channelsCacheDao().upsert(
+                                            com.muwan.muwanchat.data.ChannelsCacheEntity(
+                                                json = Gson().toJson(old.filter { it.room_id != groupId })
+                                            )
+                                        )
+                                    }
+                                } catch (_: Exception) {}
+                                navController.navigate(Screen.BroadcastChannels.route) {
+                                    popUpTo(Screen.BroadcastChannels.route) { inclusive = true }
+                                }
+                            } else {
+                                Toast.makeText(context, "Owner channel nahi chhod sakta", Toast.LENGTH_LONG).show()
+                            }
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) { Text("Leave", color = Color(0xFFFF3B30), fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showLeaveChannelConfirm = false }) {
+                    Text("Cancel", color = Color.White)
                 }
             }
         )
