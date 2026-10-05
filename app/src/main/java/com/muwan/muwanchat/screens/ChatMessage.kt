@@ -41,7 +41,8 @@ data class ChatMessage(
     val previewImage: String? = null,
     val previewUrl: String? = null,
     val isForwarded: Boolean = false,
-    val mentions: List<String> = emptyList()
+    val mentions: List<String> = emptyList(),
+    val callInfo: String? = null // CALL_BUBBLE_PATCH: type == "call" ka raw JSON
 )
 
 fun formatMessageTime(raw: String): String {
@@ -60,11 +61,15 @@ fun formatMessageTime(raw: String): String {
 
 fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     id = id,
-    text = if (type == "text" || type == "system") content else "",
+    text = when (type) {
+        "text", "system" -> content
+        "call" -> com.muwan.muwanchat.data.callPreviewText(content)
+        else -> ""
+    },
     sent = sender_uid == myUid,
     time = formatMessageTime(created_at),
     type = type,
-    mediaUrl = if (type != "text" && type != "system") content else null,
+    mediaUrl = if (type != "text" && type != "system" && type != "call") content else null,
     fileName = file_name,
     mimeType = mime_type,
     replyToId = reply_to_id,
@@ -78,16 +83,21 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     previewImage = link_preview?.image,
     previewUrl = link_preview?.url,
     isForwarded = is_forwarded,
-    mentions = mentions ?: emptyList()
+    mentions = mentions ?: emptyList(),
+    callInfo = if (type == "call") content else null
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     id = id,
-    text = if (type == "text" || type == "system") content else "",
+    text = when (type) {
+        "text", "system" -> content
+        "call" -> com.muwan.muwanchat.data.callPreviewText(content)
+        else -> ""
+    },
     sent = senderUid == myUid,
     time = formatMessageTime(createdAt),
     type = type,
-    mediaUrl = if (type != "text" && type != "system") content else null,
+    mediaUrl = if (type != "text" && type != "system" && type != "call") content else null,
     fileName = fileName,
     mimeType = mimeType,
     replyToId = replyToId,
@@ -101,7 +111,8 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     previewImage = previewImage,
     previewUrl = previewUrl,
     isForwarded = isForwarded,
-    mentions = mentions?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+    mentions = mentions?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
+    callInfo = if (type == "call") content else null
 )
 
 fun nowTime(): String {

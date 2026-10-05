@@ -730,7 +730,7 @@ fun ChatScreen(
                 }
 
                 val canPin = selectedMessageIds.isNotEmpty() &&
-                    selectedMessageIds.all { id -> messages.firstOrNull { it.id == id }?.isDeleted == false }
+                    selectedMessageIds.all { id -> messages.firstOrNull { it.id == id }?.let { m -> !m.isDeleted && m.type != "call" } == true }
 
                 if (canPin) {
                     IconButton(onClick = {
@@ -749,7 +749,7 @@ fun ChatScreen(
                 }
 
                 val canForward = selectedMessageIds.isNotEmpty() &&
-                    selectedMessageIds.all { id -> messages.firstOrNull { it.id == id }?.isDeleted == false }
+                    selectedMessageIds.all { id -> messages.firstOrNull { it.id == id }?.let { m -> !m.isDeleted && m.type != "call" } == true }
 
                 if (canForward) {
                     IconButton(onClick = {
@@ -934,6 +934,16 @@ fun ChatScreen(
                         isSelected = selectedMessageIds.contains(msg.id),
                         onTap = { toggleMessageSelection(msg.id) },
                         onSwipeReply = { replyTo = it },
+                        onCallTap = { // CALL_BUBBLE_PATCH
+                            navController.navigate(
+                                com.muwan.muwanchat.navigation.Screen.Call.createRoute(
+                                    uid = receiverUid,
+                                    username = receiverUsername,
+                                    callType = "voice",
+                                    isIncoming = false
+                                )
+                            )
+                        },
                         onImageTap = { _ -> fullscreenImage = msg },
                         onVideoTap = { _ -> fullscreenVideo = msg },
                         onDocumentTap = { url, fileName, mimeType ->
@@ -958,7 +968,7 @@ fun ChatScreen(
                             if (!isSelectionMode) {
                                 isSelectionMode = true
                                 selectedMessageIds = setOf(it.id)
-                                if (!it.isDeleted) showReactionPicker = true
+                                if (!it.isDeleted && it.type != "call") showReactionPicker = true // CALL_BUBBLE_PATCH: call bubble pe reaction nahi
                             }
                         },
                         bubbleTheme = bubbleTheme

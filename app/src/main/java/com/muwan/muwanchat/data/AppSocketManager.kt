@@ -129,6 +129,16 @@ sealed class SocketEvent {
 
     data class CallBusyReceived(val callId: String) : SocketEvent()
 
+    // CALL_BUBBLE_PATCH: call bubble ka naya status (ringing -> missed/declined/ended + duration)
+    data class CallMessageUpdate(
+        val id: String,
+        val roomId: String,
+        val senderUid: String,
+        val receiverUid: String,
+        val content: String,
+        val createdAt: String
+    ) : SocketEvent()
+
     data class IceCandidateReceived(
         val callId: String,
         val sdpMid: String?,
@@ -419,6 +429,20 @@ object AppSocketManager {
             s.on("call_busy") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
                 _events.tryEmit(SocketEvent.CallBusyReceived(callId = json.optString("callId")))
+            }
+
+            s.on("call_msg_update") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.CallMessageUpdate(
+                        id = json.optString("id"),
+                        roomId = json.optString("room_id"),
+                        senderUid = json.optString("sender_uid"),
+                        receiverUid = json.optString("receiver_uid"),
+                        content = json.optString("content"),
+                        createdAt = json.optString("created_at")
+                    )
+                )
             }
 
             s.on("ice_candidate") { args ->

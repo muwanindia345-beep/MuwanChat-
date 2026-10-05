@@ -170,6 +170,32 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
                 // Caller ne answer se pehle hi hangup kar diya -- ringing
                 // notification ab meaningless hai, hata do.
                 com.muwan.muwanchat.calling.CallForegroundService.dismiss(context)
+            } else if (event is com.muwan.muwanchat.data.SocketEvent.CallMessageUpdate) {
+                // CALL_BUBBLE_PATCH: bubble ka status live update (ringing -> missed/declined/ended)
+                try {
+                    val myUid = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        com.muwan.muwanchat.data.AuthDataStore.getUidBlocking(context)
+                    }
+                    if (myUid.isNotBlank()) {
+                        val db = com.muwan.muwanchat.data.MuwanChatDb.get(context, myUid)
+                        val old = db.messageDao().getById(event.id)
+                        db.messageDao().insert(
+                            com.muwan.muwanchat.data.MessageEntity(
+                                id = event.id,
+                                roomId = event.roomId,
+                                senderUid = event.senderUid,
+                                receiverUid = event.receiverUid,
+                                content = event.content,
+                                type = "call",
+                                seen = old?.seen ?: 0,
+                                createdAt = event.createdAt,
+                                status = old?.status ?: "SENT",
+                                deleted = old?.deleted ?: false
+                            )
+                        )
+                        com.muwan.muwanchat.data.ChatRepository.refreshLastMessagePreview(db, event.roomId)
+                    }
+                } catch (_: Exception) {}
             }
         }
     }

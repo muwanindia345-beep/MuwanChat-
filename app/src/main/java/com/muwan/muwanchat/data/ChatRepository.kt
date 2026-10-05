@@ -173,6 +173,7 @@ object ChatRepository {
             "audio" -> "🎤 Voice message"
             "music" -> "🎵 ${fileName ?: "Music"}"
             "document" -> "📄 ${fileName ?: "Document"}"
+            "call" -> callPreviewText(content) // CALL_BUBBLE_PATCH
             else -> content
         }
         if (existing == null) {
@@ -218,6 +219,7 @@ object ChatRepository {
             "audio" -> "🎤 Voice message"
             "music" -> "🎵 ${latest.fileName ?: "Music"}"
             "document" -> "📄 ${latest.fileName ?: "Document"}"
+            "call" -> callPreviewText(latest.content) // CALL_BUBBLE_PATCH
             else -> latest.content
         }
         db.conversationDao().syncLastMessagePreview(roomId, previewText, latest.createdAt, latest.senderUid)
