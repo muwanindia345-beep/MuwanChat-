@@ -1275,7 +1275,8 @@ Box(
                                 if (!it.isDeleted) showReactionPicker = true
                             }
                         },
-                        bubbleTheme = bubbleTheme
+                        bubbleTheme = bubbleTheme,
+                        isChannel = group?.isChannel ?: false // CHANNEL_BUBBLE_PATCH
                     )
                 }
             }

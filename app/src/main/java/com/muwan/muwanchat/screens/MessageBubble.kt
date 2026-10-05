@@ -150,7 +150,8 @@ fun MessageBubble(
     onSenderTap: (String) -> Unit = {},
     bubbleTheme: BubbleTheme = BubbleThemePresets.ORIGINAL,
     groupMemberUsernames: List<String> = emptyList(),
-    onCallTap: (ChatMessage) -> Unit = {}
+    onCallTap: (ChatMessage) -> Unit = {},
+    isChannel: Boolean = false // CHANNEL_BUBBLE_PATCH
 ) {
     if (message.type == "system") {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
@@ -205,6 +206,9 @@ fun MessageBubble(
     // Sticker/GIF ka apna pattern hai: koi chat-bubble background/padding nahi (WhatsApp jaisa),
     // bada size, aur timestamp seedha image ke corner pe overlay hota hai — niche alag row nahi.
     val isSticker = message.type == "gif"
+    // CHANNEL_BUBBLE_PATCH: channel mein SENT/SEEN tick nahi; PENDING/UPLOADING/FAILED rehte hain
+    val showStatusIcon = !isChannel || message.status == "PENDING" ||
+        message.status == "UPLOADING" || message.status == "FAILED"
 
     // Message Theme ke hisaab se sirf bubble ka color/size/shape decide hota hai —
     // baaki kuch bhi (gestures, media layout, reactions, timestamp) unaffected rehta hai.
@@ -252,7 +256,10 @@ fun MessageBubble(
             )
             Spacer(modifier = Modifier.width(6.dp))
         }
-        Column(horizontalAlignment = if (message.sent) Alignment.End else Alignment.Start) {
+        Column(
+            modifier = if (isChannel) Modifier.weight(1f) else Modifier,
+            horizontalAlignment = if (message.sent) Alignment.End else Alignment.Start
+        ) {
         if (!message.sent && senderName != null) {
             Text(
                 senderName,
@@ -265,6 +272,7 @@ fun MessageBubble(
             )
         }
         Box(
+            modifier = if (isChannel) Modifier.fillMaxWidth() else Modifier,
             contentAlignment = if (message.sent) Alignment.BottomEnd else Alignment.BottomStart
         ) {
         Box(
@@ -308,7 +316,7 @@ fun MessageBubble(
                         }
                     )
                 }
-                .widthIn(max = 280.dp)
+                .then(if (isChannel && !isSticker) Modifier.fillMaxWidth() else Modifier.widthIn(max = 280.dp))
                 .clip(
                     RoundedCornerShape(
                         topStart = bubbleCornerBig, topEnd = bubbleCornerBig,
@@ -429,7 +437,7 @@ fun MessageBubble(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(message.time, color = Color(0xAAFFFFFF), fontSize = 10.sp)
-                                if (message.sent) {
+                                if (message.sent && showStatusIcon) {
                                     Spacer(Modifier.width(3.dp))
                                     val (icon, tint) = when (message.status) {
                                         "UPLOADING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
@@ -582,7 +590,7 @@ fun MessageBubble(
                         color = Color(0xAAFFFFFF),
                         fontSize = 11.sp
                     )
-                    if (message.sent) {
+                    if (message.sent && showStatusIcon) {
                         Spacer(Modifier.width(4.dp))
                         val (icon, tint) = when (message.status) {
                             "UPLOADING" -> Icons.Filled.AccessTime to Color(0xAAFFFFFF)
