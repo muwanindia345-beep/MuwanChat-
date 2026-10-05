@@ -7,8 +7,8 @@ import androidx.room.RoomDatabase
 import java.util.concurrent.ConcurrentHashMap
 
 @Database(
-    entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class, MyProfileEntity::class, ChatWallpaperEntity::class, DeletedMessageEntity::class, ChatBubbleThemeEntity::class, ChatRequestEntity::class, CachedUserProfileEntity::class, GroupInfoCacheEntity::class, AcceptedUsersCacheEntity::class],
-    version = 25,
+    entities = [MessageEntity::class, ConversationEntity::class, HiddenConversationEntity::class, MyProfileEntity::class, ChatWallpaperEntity::class, DeletedMessageEntity::class, ChatBubbleThemeEntity::class, ChatRequestEntity::class, CachedUserProfileEntity::class, GroupInfoCacheEntity::class, AcceptedUsersCacheEntity::class, ChannelsCacheEntity::class],
+    version = 26,
     exportSchema = true
 )
 abstract class MuwanChatDb : RoomDatabase() {
@@ -23,6 +23,7 @@ abstract class MuwanChatDb : RoomDatabase() {
     abstract fun cachedUserProfileDao(): CachedUserProfileDao
     abstract fun groupInfoCacheDao(): GroupInfoCacheDao
     abstract fun acceptedUsersCacheDao(): AcceptedUsersCacheDao
+    abstract fun channelsCacheDao(): ChannelsCacheDao
 
     companion object {
         private val instances = ConcurrentHashMap<String, MuwanChatDb>()

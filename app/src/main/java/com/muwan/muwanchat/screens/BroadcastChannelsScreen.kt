@@ -33,7 +33,12 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.DarkSheet
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.ChannelsCacheEntity
+import com.muwan.muwanchat.data.MuwanChatDb
+import com.muwan.muwanchat.util.isNetworkAvailable
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.RetrofitClient
@@ -43,21 +48,38 @@ import kotlinx.coroutines.flow.first
 fun BroadcastChannelsScreen(navController: NavController) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
+    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
+    val gson = remember { Gson() }
+    val listType = remember { object : TypeToken<List<ConversationItem>>() {}.type }
     var channels by remember { mutableStateOf<List<ConversationItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    // Cache read hone tak (kuch ms) kuch render nahi — warna ek frame ke liye
+    // galat "No broadcast channel yet" flash ho sakta hai.
+    var cacheChecked by remember { mutableStateOf(false) }
+    // Spinner SIRF tab jab cache kabhi bana hi nahi (first-ever load) aur net hai.
+    // Cache hai to turant list, offline + cache nahi to seedha empty-state.
+    var isLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        val cached = try { db.channelsCacheDao().get() } catch (_: Exception) { null }
+        if (cached != null) {
+            try { channels = gson.fromJson(cached.json, listType) } catch (_: Exception) {}
+        }
+        cacheChecked = true
+        if (cached == null && isNetworkAvailable(context)) isLoading = true
+
+        // Background refresh — fail ho to cache wali list jaisi hai waisi rahegi
         try {
             val token = AuthDataStore.getToken(context).first()
             if (token != null) {
                 val res = RetrofitClient.chatApi.getChannels("Bearer $token")
                 if (res.isSuccessful) {
-                    channels = res.body()?.conversations ?: emptyList()
+                    val fresh = res.body()?.conversations ?: emptyList()
+                    channels = fresh
+                    db.channelsCacheDao().upsert(ChannelsCacheEntity(json = gson.toJson(fresh)))
                 }
             }
         } catch (_: Exception) {
-            // List khaali reh jaayegi, empty-state dikh jaayega -- pull-to-
-            // refresh jaisi cheez abhi is screen pe nahi hai.
+            // Offline/error: cache (ya empty-state) hi dikhta rahega.
         }
         isLoading = false
     }
@@ -100,7 +122,9 @@ fun BroadcastChannelsScreen(navController: NavController) {
                 }
             }
 
-            if (isLoading) {
+            if (!cacheChecked) {
+                // cache read ho raha hai (ms) — kuch draw nahi karna
+            } else if (isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = DarkAccent)
                 }

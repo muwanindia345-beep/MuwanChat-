@@ -59,5 +59,18 @@ object DbMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_23_24, MIGRATION_24_25)
+    // Broadcast tab offline-first cache — sirf ek NAYA table, koi existing
+    // table/column touch nahi hota, isliye chats/messages/wallpaper/theme safe.
+    val MIGRATION_25_26 = object : Migration(25, 26) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `channels_cache` (" +
+                    "`key` TEXT NOT NULL, " +
+                    "`json` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`key`))"
+            )
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
 }
