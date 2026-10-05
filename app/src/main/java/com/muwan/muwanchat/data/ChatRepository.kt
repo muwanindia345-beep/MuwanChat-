@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.muwan.muwanchat.network.ConversationItem
+import com.muwan.muwanchat.network.GroupData
 import com.muwan.muwanchat.network.MessageItem
 import com.muwan.muwanchat.screens.nowIso
 
@@ -94,6 +95,22 @@ object ChatRepository {
         }
     }
 
+    // Room broadcast channel hai ya nahi -- local caches se (network wait nahi).
+    // group_info_cache channel kholte hi bharti hai, channels_cache Broadcast
+    // tab se. Koi bhi error aaye to false (normal behaviour, kuch break nahi).
+    private suspend fun isChannelRoom(db: MuwanChatDb, roomId: String): Boolean {
+        return try {
+            val info = db.groupInfoCacheDao().get(roomId)?.json
+            if (info != null && gson.fromJson(info, GroupData::class.java)?.isChannel == true) {
+                return true
+            }
+            val channels = db.channelsCacheDao().get()?.json
+            channels != null && channels.contains("\"$roomId\"")
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     suspend fun recordMessage(
         db: MuwanChatDb,
         id: String,
@@ -139,6 +156,13 @@ object ChatRepository {
                 mentions = if (mentions.isNotEmpty()) mentions.joinToString(",") else null
             )
         )
+
+        // Broadcast channel kabhi Chats tab mein nahi dikhna chahiye -- message
+        // save ho chuka, ab conversation row banane/rakhne ki jagah hata do.
+        if (isChannelRoom(db, roomId)) {
+            db.conversationDao().deleteByRoom(roomId)
+            return
+        }
 
         val otherUid = if (senderUid == myUid) receiverUid else senderUid
         val existing = db.conversationDao().getByRoomId(roomId)
