@@ -197,6 +197,17 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
                                 deleted = old?.deleted ?: false
                             )
                         )
+                        // CALL_UNREAD_PATCH: missed call (sirf callee ko, chat khula ho to nahi) unread +1.
+                        // Count server se bhi aata hai (sync) -- wahan overwrite hota hai, jodta nahi, to double count nahi.
+                        val newStatus = try { org.json.JSONObject(event.content).optString("status") } catch (_: Exception) { "" }
+                        val oldStatus = try { org.json.JSONObject(old?.content ?: "").optString("status") } catch (_: Exception) { "" }
+                        if (newStatus == "missed" && oldStatus != "missed" && event.receiverUid == myUid) {
+                            val entry = navController.currentBackStackEntry
+                            val openRoom = if (entry?.destination?.route == Screen.Chat.route) {
+                                entry?.arguments?.getString("roomId")
+                            } else null
+                            if (openRoom != event.roomId) db.conversationDao().incrementUnread(event.roomId)
+                        }
                         com.muwan.muwanchat.data.ChatRepository.refreshLastMessagePreview(db, event.roomId)
                     }
                 } catch (_: Exception) {}

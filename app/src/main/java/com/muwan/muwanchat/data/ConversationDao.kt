@@ -53,6 +53,10 @@ interface ConversationDao {
     @Query("UPDATE conversations SET unreadCount = 0 WHERE roomId = :roomId")
     suspend fun clearUnread(roomId: String)
 
+    // CALL_UNREAD_PATCH: missed call ke liye unread +1
+    @Query("UPDATE conversations SET unreadCount = unreadCount + 1 WHERE roomId = :roomId")
+    suspend fun incrementUnread(roomId: String)
+
     @Query("DELETE FROM conversations WHERE roomId = :roomId")
     suspend fun deleteByRoom(roomId: String)
 

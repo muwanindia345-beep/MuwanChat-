@@ -260,11 +260,16 @@ object ChatRepository {
                     lastMessage = previewText,
                     lastTime = createdAt,
                     lastSenderUid = senderUid,
-                    unreadCount = if (senderUid != myUid) 1 else 0
+                    unreadCount = if (senderUid != myUid && type != "call") 1 else 0 // CALL_UNREAD_PATCH
                 )
             )
         } else {
-            db.conversationDao().updateLastMessage(roomId, previewText, createdAt, senderUid, myUid)
+            if (type == "call") {
+                // CALL_UNREAD_PATCH: ringing call unread nahi badhati -- sirf missed badhata hai (NavGraph, CallMessageUpdate)
+                db.conversationDao().syncLastMessagePreview(roomId, previewText, createdAt, senderUid)
+            } else {
+                db.conversationDao().updateLastMessage(roomId, previewText, createdAt, senderUid, myUid)
+            }
         }
     }
 
