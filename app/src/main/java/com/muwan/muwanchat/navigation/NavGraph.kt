@@ -144,7 +144,9 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
     // bada string safely nahi jaata), CallScreen wahan se turant utha lega.
     LaunchedEffect(Unit) {
         com.muwan.muwanchat.data.AppSocketManager.events.collect { event ->
-            if (event is com.muwan.muwanchat.data.SocketEvent.CallOfferReceived) {
+            if (event is com.muwan.muwanchat.data.SocketEvent.CallOfferReceived &&
+                !com.muwan.muwanchat.calling.CallControlEvents.declinedCallIds.contains(event.callId) // CALL_PUSH_PATCH
+            ) {
                 com.muwan.muwanchat.calling.PendingIncomingCall.data =
                     com.muwan.muwanchat.calling.PendingIncomingCall.Data(
                         callId = event.callId,
@@ -165,11 +167,14 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
                 // system-level notification (Accept/Decline seedha
                 // notification se) alag se dikhata hai, screen off/app
                 // background case ke liye.
-                com.muwan.muwanchat.calling.CallForegroundService.showIncomingCall(
-                    context = context,
-                    callId = event.callId,
-                    fromUsername = event.fromUsername
-                )
+                // CALL_PUSH_PATCH: notification se Answer ho chuka ho to dobara ring-notification mat dikhao
+                if (com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId != event.callId) {
+                    com.muwan.muwanchat.calling.CallForegroundService.showIncomingCall(
+                        context = context,
+                        callId = event.callId,
+                        fromUsername = event.fromUsername
+                    )
+                }
             } else if (event is com.muwan.muwanchat.data.SocketEvent.CallEndReceived) {
                 // Caller ne answer se pehle hi hangup kar diya -- ringing
                 // notification ab meaningless hai, hata do.

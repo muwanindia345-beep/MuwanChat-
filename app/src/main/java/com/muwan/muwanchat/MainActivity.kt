@@ -45,10 +45,27 @@ class MainActivity : ComponentActivity() {
 
         // "Update Available" notification pe tap kiya hai to seedha
         // Check Updates screen khulni chahiye — is extra se pata chalta hai.
+        handleCallAnswerIntent(intent) // CALL_PUSH_PATCH
         val openUpdateScreen = intent?.getBooleanExtra(UpdateManager.EXTRA_OPEN_UPDATE_SCREEN, false) ?: false
 
         setContent {
             NavGraph(openUpdateScreen = openUpdateScreen)
         }
+    }
+
+    // CALL_PUSH_PATCH: app already khuli thi to naya intent yahan aata hai
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleCallAnswerIntent(intent)
+    }
+
+    // Notification ke "Answer" se aaye to ring band karo, notification hatao, aur CallScreen ko auto-accept ka signal do
+    private fun handleCallAnswerIntent(intent: android.content.Intent?) {
+        if (intent?.action != com.muwan.muwanchat.calling.CallControlEvents.ACTION_ANSWER_FROM_NOTIFICATION) return
+        val callId = intent?.getStringExtra("callId") ?: return
+        com.muwan.muwanchat.calling.PushRinger.stop()
+        com.muwan.muwanchat.calling.CallForegroundService.dismiss(applicationContext)
+        com.muwan.muwanchat.calling.CallControlEvents.notifyAnsweredFromNotification(callId)
     }
 }

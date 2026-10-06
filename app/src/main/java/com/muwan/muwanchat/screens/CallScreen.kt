@@ -123,7 +123,13 @@ fun CallScreen(
     // hi state ringing se aage badhe (connecting/ongoing/ended), band ho jaata hai
     LaunchedEffect(callState) {
         when (callState) {
-            CallState.RINGING_INCOMING -> ringtoneManager.startIncomingRing()
+            CallState.RINGING_INCOMING -> {
+                // CALL_PUSH_PATCH: push wali ring band karo; Answer notification se ho chuka ho to ring bajao hi mat
+                com.muwan.muwanchat.calling.PushRinger.stop()
+                if (com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId != callId) {
+                    ringtoneManager.startIncomingRing()
+                }
+            }
             CallState.RINGING_OUTGOING -> ringtoneManager.startOutgoingRingback()
             else -> ringtoneManager.stop()
         }
@@ -268,6 +274,38 @@ fun CallScreen(
         callManager.createAnswer(data.sdp) { answerSdp ->
             AppSocketManager.sendCallAnswer(callId, answerSdp)
             callState = CallState.ONGOING
+        }
+    }
+
+    // CALL_PUSH_PATCH: push dobara ring na kare jab tak ye screen khuli hai
+    DisposableEffect(Unit) {
+        if (isIncoming) com.muwan.muwanchat.calling.CallControlEvents.screenCallId = callId
+        onDispose {
+            if (com.muwan.muwanchat.calling.CallControlEvents.screenCallId == callId) {
+                com.muwan.muwanchat.calling.CallControlEvents.screenCallId = null
+            }
+        }
+    }
+
+    // CALL_PUSH_PATCH: notification se "Answer" dabaya -- dobara Accept dabane ki zaroorat nahi
+    LaunchedEffect(hasMicPermission) {
+        if (isIncoming && hasMicPermission &&
+            com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId == callId &&
+            callState == CallState.RINGING_INCOMING
+        ) {
+            delay(250) // callManager.init() poora hone do
+            if (callState == CallState.RINGING_INCOMING) {
+                com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId = null
+                acceptCall()
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        com.muwan.muwanchat.calling.CallControlEvents.answeredFromNotification.collect { answeredId ->
+            if (answeredId == callId && hasMicPermission && callState == CallState.RINGING_INCOMING) {
+                com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId = null
+                acceptCall()
+            }
         }
     }
 

@@ -49,6 +49,19 @@ class MuwanFirebaseService : FirebaseMessagingService() {
             return
         }
 
+        // CALL_PUSH_PATCH: call push (data-only, high priority) -- app band ho tab bhi ring + Accept/Decline
+        when (message.data["notifType"]) {
+            "call" -> {
+                handleCallPush(message.data)
+                return
+            }
+            "missed_call" -> {
+                // Call kat gayi/miss ho gayi -- ring band karo, neeche normal "Missed call" notification dikhegi
+                com.muwan.muwanchat.calling.PushRinger.stop()
+                com.muwan.muwanchat.calling.CallForegroundService.dismiss(applicationContext)
+            }
+        }
+
         val title = message.notification?.title ?: message.data["title"] ?: "MuwanChat"
         val body = message.notification?.body ?: message.data["body"] ?: "New message"
 
@@ -64,6 +77,26 @@ class MuwanFirebaseService : FirebaseMessagingService() {
             if (!notificationsEnabled) return@launch
 
             showNotification(title, body)
+        }
+    }
+
+    // CALL_PUSH_PATCH
+    private fun handleCallPush(data: Map<String, String>) {
+        val callId = data["callId"] ?: return
+        val fromUsername = data["fromUsername"] ?: "Unknown"
+        // Is call ki CallScreen pehle se khuli hai (socket se aa gayi) -- double ring mat karo
+        if (com.muwan.muwanchat.calling.CallControlEvents.screenCallId == callId) return
+        if (com.muwan.muwanchat.calling.CallControlEvents.declinedCallIds.contains(callId)) return
+        try {
+            com.muwan.muwanchat.calling.CallForegroundService.showIncomingCall(
+                applicationContext, callId, fromUsername, ring = true
+            )
+        } catch (_: Exception) {
+            // Foreground service start na ho paye to kam se kam normal notification dikhe
+            showNotification(
+                data["title"] ?: "Incoming call",
+                data["body"] ?: "$fromUsername is calling you"
+            )
         }
     }
 

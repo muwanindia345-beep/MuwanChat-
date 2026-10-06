@@ -15,6 +15,13 @@ import androidx.core.app.Person
 import com.muwan.muwanchat.MainActivity
 import com.muwan.muwanchat.R
 import com.muwan.muwanchat.data.AppSocketManager
+import com.muwan.muwanchat.data.AuthDataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * CallScreen ki UI/UX bilkul waisi hi rehti hai jaisi thi -- ye service uske
@@ -41,13 +48,15 @@ class CallForegroundService : Service() {
 
         private const val EXTRA_CALL_ID = "callId"
         private const val EXTRA_FROM_USERNAME = "fromUsername"
+        private const val EXTRA_RING = "ring" // CALL_PUSH_PATCH
 
         /** Naya incoming call aaya -- notification dikhao. */
-        fun showIncomingCall(context: Context, callId: String, fromUsername: String) {
+        fun showIncomingCall(context: Context, callId: String, fromUsername: String, ring: Boolean = false) {
             val intent = Intent(context, CallForegroundService::class.java).apply {
                 action = ACTION_SHOW
                 putExtra(EXTRA_CALL_ID, callId)
                 putExtra(EXTRA_FROM_USERNAME, fromUsername)
+                putExtra(EXTRA_RING, ring) // CALL_PUSH_PATCH: push se aayi call (CallScreen nahi) to service ring bajaye
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -73,16 +82,27 @@ class CallForegroundService : Service() {
                 val callId = intent.getStringExtra(EXTRA_CALL_ID) ?: return stopSelfImmediately(startId)
                 val fromUsername = intent.getStringExtra(EXTRA_FROM_USERNAME) ?: "Unknown"
                 val notification = buildIncomingCallNotification(callId, fromUsername)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    startForeground(
-                        NOTIFICATION_ID, notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
-                    )
-                } else {
-                    startForeground(NOTIFICATION_ID, notification)
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(
+                            NOTIFICATION_ID, notification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                        )
+                    } else {
+                        startForeground(NOTIFICATION_ID, notification)
+                    }
+                } catch (e: Exception) {
+                    // CALL_PUSH_PATCH: foreground start fail ho to bhi notification zaroor dikhe
+                    try {
+                        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                            .notify(NOTIFICATION_ID, notification)
+                    } catch (_: Exception) {}
                 }
+                if (intent.getBooleanExtra(EXTRA_RING, false)) PushRinger.start(this)
             }
             ACTION_ANSWER -> {
+                PushRinger.stop() // CALL_PUSH_PATCH
+                intent.getStringExtra(EXTRA_CALL_ID)?.let { CallControlEvents.notifyAnsweredFromNotification(it) }
                 // Navigation pehle se hi ho chuki hai (NavGraph ne call_offer
                 // pe hi CallScreen khol diya tha) -- yahan sirf app ko front
                 // pe laana hai, bilkul waisa hi jaisa message notification
@@ -96,19 +116,54 @@ class CallForegroundService : Service() {
             }
             ACTION_DECLINE -> {
                 val callId = intent.getStringExtra(EXTRA_CALL_ID)
-                if (callId != null) {
-                    AppSocketManager.sendCallReject(callId)
-                    CallControlEvents.notifyDeclinedFromNotification(callId)
-                }
+                PushRinger.stop() // CALL_PUSH_PATCH
                 stopForegroundCompat()
-                stopSelf()
+                if (callId != null) {
+                    CallControlEvents.declinedCallIds.add(callId)
+                    CallControlEvents.notifyDeclinedFromNotification(callId)
+                    // reject bhejne tak service zinda rakho (app killed ho to pehle socket connect hota hai)
+                    rejectCall(callId) { stopSelf() }
+                } else {
+                    stopSelf()
+                }
             }
             ACTION_DISMISS -> {
+                PushRinger.stop() // CALL_PUSH_PATCH
                 stopForegroundCompat()
                 stopSelf()
             }
         }
         return START_NOT_STICKY
+    }
+
+    // CALL_PUSH_PATCH: app band hone par socket nahi hota -- pehle connect karo, phir reject bhejo
+    private fun rejectCall(callId: String, onDone: () -> Unit) {
+        if (AppSocketManager.isConnected) {
+            AppSocketManager.sendCallReject(callId)
+            onDone()
+            return
+        }
+        val appCtx = applicationContext
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val token = AuthDataStore.getToken(appCtx).first()
+                if (!token.isNullOrBlank()) {
+                    AppSocketManager.connect(token)
+                    var waited = 0
+                    while (!AppSocketManager.isConnected && waited < 8000) {
+                        delay(200)
+                        waited += 200
+                    }
+                    if (AppSocketManager.isConnected) {
+                        AppSocketManager.sendCallReject(callId)
+                        delay(500) // emit flush hone do
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                withContext(Dispatchers.Main) { onDone() }
+            }
+        }
     }
 
     private fun stopSelfImmediately(startId: Int): Int {
@@ -136,8 +191,14 @@ class CallForegroundService : Service() {
             action = ACTION_DECLINE
             putExtra(EXTRA_CALL_ID, callId)
         }
-        val answerPendingIntent = PendingIntent.getService(
-            this, 1, answerIntent,
+        // CALL_PUSH_PATCH: Answer seedha MainActivity kholta hai (Android 12+ notification se service->activity block hai)
+        val answerActivityIntent = Intent(this, MainActivity::class.java).apply {
+            action = CallControlEvents.ACTION_ANSWER_FROM_NOTIFICATION
+            putExtra(EXTRA_CALL_ID, callId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val answerPendingIntent = PendingIntent.getActivity(
+            this, 1, answerActivityIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val declinePendingIntent = PendingIntent.getService(

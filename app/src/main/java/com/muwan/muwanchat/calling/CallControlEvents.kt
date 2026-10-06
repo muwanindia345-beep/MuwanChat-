@@ -22,4 +22,24 @@ object CallControlEvents {
     fun notifyDeclinedFromNotification(callId: String) {
         _declinedFromNotification.tryEmit(callId)
     }
+
+    // CALL_PUSH_PATCH: notification ke "Answer" ka signal. CallScreen abhi khuli na ho
+    // (app killed tha) to callId yahan rukta hai, aur khulte hi CallScreen khud accept kar leti hai.
+    @Volatile var answerRequestedCallId: String? = null
+    private val _answeredFromNotification = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val answeredFromNotification = _answeredFromNotification.asSharedFlow()
+
+    fun notifyAnsweredFromNotification(callId: String) {
+        answerRequestedCallId = callId
+        _answeredFromNotification.tryEmit(callId)
+    }
+
+    // Notification se decline ki hui calls -- offer replay aaye to NavGraph dobara screen na khole
+    val declinedCallIds: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    // Jis incoming call ki CallScreen abhi khuli hai (push dobara ring na kare)
+    @Volatile var screenCallId: String? = null
+
+    // Notification ka "Answer" seedha MainActivity kholta hai (Android 12+ service se activity start block karta hai)
+    const val ACTION_ANSWER_FROM_NOTIFICATION = "com.muwan.muwanchat.calling.ANSWER_FROM_NOTIFICATION"
 }
