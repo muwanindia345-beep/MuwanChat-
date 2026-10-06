@@ -1,4 +1,75 @@
-package com.muwan.muwanchat.screens
+#!/usr/bin/env python3
+"""
+STATUS STEP 3d (app) -- New status screen ab WhatsApp jaisi
+  Bug: colour poori window par phailta tha, isliye neeche ki navigation bar (3 buttons) bhi
+       colour mein rang jaati thi aur keyboard ke saath transparent si dikhti thi.
+  Fix: colour sirf content wale hisse mein; neeche navigation bar solid kali.
+       Colour dots + Post button ek thodi gehri shade wali bottom bar mein
+       (WhatsApp ke Photo/Text/Voice wali bar ki jagah -- aage yahin media tabs aayenge).
+
+Step 3 pehle chal chuka hona chahiye (step 3b/3c ke saath kisi bhi order mein theek).
+MuwanChat--main repo root se:
+    python3 patch_app_status_step3d.py --dry-run
+    python3 patch_app_status_step3d.py
+"""
+import os
+import sys
+
+DRY = "--dry-run" in sys.argv
+BASE = os.path.join("app", "src", "main", "java", "com", "muwan", "muwanchat")
+SCREENS = os.path.join(BASE, "screens")
+MARK = "STATUS_V4"
+errors = []
+
+
+def read(path):
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def write(path, text):
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+
+
+def eol_of(text):
+    return "\r\n" if "\r\n" in text else "\n"
+
+
+def put_file(name, content):
+    path = os.path.join(SCREENS, name)
+    if not os.path.exists(path):
+        errors.append(name + " nahi mili -- pehle step 3 chalao")
+        print("  [FAIL] " + name)
+        return
+    if MARK in read(path):
+        print("  [skip] pehle se patched : " + name)
+        return
+    print("  [ ok ] update           : " + name)
+    if not DRY:
+        write(path, content)
+
+
+def edit(path, label, old, new):
+    text = read(path)
+    if new.strip() in text:
+        print("  [skip] " + label)
+        return
+    nl = eol_of(text)
+    o = old.replace("\n", nl)
+    n = new.replace("\n", nl)
+    found = text.count(o)
+    if found != 1:
+        errors.append(path + " :: " + label + " -- anchor " + str(found) + " baar mili (chahiye 1)")
+        print("  [FAIL] " + label)
+        return
+    print("  [ ok ] " + label)
+    if not DRY:
+        write(path, text.replace(o, n, 1))
+
+
+
+NEWSTATUSSCREEN_KT = r'''package com.muwan.muwanchat.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -243,3 +314,25 @@ fun NewStatusScreen(navController: NavController) {
         }
     }
 }
+'''
+
+
+def main():
+    if not os.path.isdir(SCREENS):
+        print("ERROR: repo root se chalao (jahan app/ folder hai).")
+        sys.exit(1)
+    print("== screens ==")
+    put_file("NewStatusScreen.kt", NEWSTATUSSCREEN_KT)
+    print("")
+    if errors:
+        print("ERRORS:")
+        for e in errors:
+            print("  - " + e)
+        sys.exit(1)
+    if DRY:
+        print("DRY RUN -- kuch likha nahi gaya. Sab theek. Ab bina --dry-run ke chalao.")
+    else:
+        print("Ho gaya. Ab: git diff -> commit -> push.")
+
+
+main()
