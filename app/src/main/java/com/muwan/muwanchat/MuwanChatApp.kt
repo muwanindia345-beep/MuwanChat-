@@ -15,6 +15,7 @@ class MuwanChatApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         AuthDataStore.wipeLegacyPlaintextStore(applicationContext)
+        com.muwan.muwanchat.calling.ActiveCall.start(applicationContext) // STEP2_ACTIVE_CALL
     }
 
     override fun newImageLoader(): ImageLoader {

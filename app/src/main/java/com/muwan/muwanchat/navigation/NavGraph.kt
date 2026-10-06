@@ -138,43 +138,45 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
     val navController = rememberNavController()
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    // STEP2_ACTIVE_CALL: incoming call ActiveCall ne pakdi (RINGING_INCOMING) to CallScreen kholo.
+    // Splash ke upar nahi kholte -- splash khatam hone ke baad (route badalne par) khul jaata hai.
+    // Ek callId ke liye sirf ek baar, taaki back dabane ke baad dobara na uchhal aaye.
+    LaunchedEffect(Unit) {
+        var lastOpenedCallId: String? = null
+        kotlinx.coroutines.flow.combine(
+            com.muwan.muwanchat.calling.ActiveCall.phase,
+            navController.currentBackStackEntryFlow
+        ) { p, entry -> p to entry.destination.route }.collect { (p, route) ->
+            val info = com.muwan.muwanchat.calling.ActiveCall.info.value
+            if (p == com.muwan.muwanchat.calling.CallPhase.RINGING_INCOMING &&
+                info != null &&
+                info.callId != lastOpenedCallId &&
+                route != null &&
+                route != Screen.Call.route &&
+                route != Screen.Splash.route
+            ) {
+                lastOpenedCallId = info.callId
+                navController.navigate(
+                    Screen.Call.createRoute(
+                        uid = info.otherUid,
+                        username = info.otherUsername,
+                        callType = info.callType,
+                        isIncoming = true
+                    )
+                )
+            }
+        }
+    }
+
     // Global incoming-call listener -- app kahin bhi ho (koi bhi screen khuli
     // ho), call_offer aate hi CallScreen "incoming" mode mein khul jaayega.
     // SDP yahan PendingIncomingCall mein rakh dete hain (URL args mein itna
     // bada string safely nahi jaata), CallScreen wahan se turant utha lega.
     LaunchedEffect(Unit) {
         com.muwan.muwanchat.data.AppSocketManager.events.collect { event ->
-            if (event is com.muwan.muwanchat.data.SocketEvent.CallOfferReceived &&
-                !com.muwan.muwanchat.calling.CallControlEvents.declinedCallIds.contains(event.callId) // CALL_PUSH_PATCH
-            ) {
-                com.muwan.muwanchat.calling.PendingIncomingCall.data =
-                    com.muwan.muwanchat.calling.PendingIncomingCall.Data(
-                        callId = event.callId,
-                        fromUid = event.fromUid,
-                        fromUsername = event.fromUsername,
-                        callType = event.callType,
-                        sdp = event.sdp
-                    )
-                navController.navigate(
-                    Screen.Call.createRoute(
-                        uid = event.fromUid,
-                        username = event.fromUsername,
-                        callType = event.callType,
-                        isIncoming = true
-                    )
-                )
-                // CallScreen ki UI/UX bilkul waisi hi hai -- yeh sirf ek
-                // system-level notification (Accept/Decline seedha
-                // notification se) alag se dikhata hai, screen off/app
-                // background case ke liye.
-                // CALL_PUSH_PATCH: notification se Answer ho chuka ho to dobara ring-notification mat dikhao
-                if (com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId != event.callId) {
-                    com.muwan.muwanchat.calling.CallForegroundService.showIncomingCall(
-                        context = context,
-                        callId = event.callId,
-                        fromUsername = event.fromUsername
-                    )
-                }
+            if (event is com.muwan.muwanchat.data.SocketEvent.CallOfferReceived) {
+                // STEP2_ACTIVE_CALL: incoming offer ab ActiveCall (app-level) handle karta hai --
+                // ring, notification aur CallScreen kholna upar wale effect se hota hai.
             } else if (event is com.muwan.muwanchat.data.SocketEvent.CallEndReceived) {
                 // Caller ne answer se pehle hi hangup kar diya -- ringing
                 // notification ab meaningless hai, hata do.

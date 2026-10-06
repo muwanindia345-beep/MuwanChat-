@@ -1,8 +1,11 @@
 package com.muwan.muwanchat.screens
 
+// STEP2_ACTIVE_CALL
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.SystemClock
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -30,25 +33,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import com.muwan.muwanchat.calling.CallManager
-import com.muwan.muwanchat.calling.PendingIncomingCall
+import com.muwan.muwanchat.calling.ActiveCall
+import com.muwan.muwanchat.calling.CallControlEvents
+import com.muwan.muwanchat.calling.CallPhase
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.MuwanChatDb
-import com.muwan.muwanchat.data.AppSocketManager
-import com.muwan.muwanchat.data.SocketEvent
 import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import java.util.UUID
 
-private enum class CallState { RINGING_OUTGOING, RINGING_INCOMING, CONNECTING, ONGOING, ENDED }
-
-// Voice call screen -- WebRTC signaling (CallManager) + backend socket
-// events (AppSocketManager) dono se real-wired. isIncoming=true tab CallId
-// aur SDP PendingIncomingCall se aate hain (NavGraph ke global listener ne
-// wahan rakhe the), Accept/Decline UI dikhta hai. isIncoming=false tab yeh
-// screen khud offer banake bhejti hai aur "Ringing..." dikhata hai.
+// Voice call screen -- ab sirf UI hai. Call ki asli state/logic ActiveCall
+// (app-level) mein hai, isliye back dabane ya doosre screen pe jaane se call
+// nahi katti. Call sirf End / Decline button se (ya doosre side se) khatam hoti hai.
 @Composable
 fun CallScreen(
     navController: NavController,
@@ -58,22 +54,23 @@ fun CallScreen(
     isIncoming: Boolean
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
-    val incomingData = remember { if (isIncoming) PendingIncomingCall.data else null }
-    LaunchedEffect(Unit) { PendingIncomingCall.data = null } // consume kar liya, dobara use na ho
+    val phase by ActiveCall.phase.collectAsState()
+    val info by ActiveCall.info.collectAsState()
+    val isMuted by ActiveCall.muted.collectAsState()
+    val isSpeakerOn by ActiveCall.speakerOn.collectAsState()
+    val connectedAt by ActiveCall.connectedAt.collectAsState()
 
-    val callId = remember { incomingData?.callId ?: UUID.randomUUID().toString() }
+    // Screen pe wahi dikhao jo asli call hai (route args se nahi) -- banner/notification
+    // se wapas aane par bhi sahi naam aur photo dikhe.
+    val shownUid = info?.otherUid ?: otherUid
+    val shownName = info?.otherUsername ?: otherUsername
 
     var avatarBase64 by remember { mutableStateOf<String?>(null) }
     var isAvatarLoading by remember { mutableStateOf(true) }
-    var isMuted by remember { mutableStateOf(false) }
-    var isSpeakerOn by remember { mutableStateOf(false) }
-    var callState by remember {
-        mutableStateOf(if (isIncoming) CallState.RINGING_INCOMING else CallState.RINGING_OUTGOING)
-    }
     var durationSeconds by remember { mutableStateOf(0) }
+    var sawActive by remember { mutableStateOf(false) }
     var hasMicPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -86,7 +83,11 @@ fun CallScreen(
         hasMicPermission = granted
         if (!granted) {
             Toast.makeText(context, "Microphone permission is needed to make calls", Toast.LENGTH_SHORT).show()
-            navController.popBackStack()
+            if (isIncoming && ActiveCall.isActive) {
+                ActiveCall.decline() // IDLE hote hi neeche wala effect screen band kar dega
+            } else {
+                navController.popBackStack()
+            }
         }
     }
 
@@ -94,149 +95,88 @@ fun CallScreen(
         if (!hasMicPermission) micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
-    // CallManager ek hi baar banta hai, screen ke poore lifecycle mein reuse hota hai
-    val callManager = remember {
-        CallManager(
-            context = context,
-            onLocalIceCandidate = { candidate ->
-                AppSocketManager.sendIceCandidate(callId, candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp)
-            },
-            onRemoteAudioTrackAdded = { /* audio apne aap play hota hai WebRTC se, UI change ki zaroorat nahi */ },
-            onConnectionFailed = {
-                if (callState != CallState.ENDED) {
-                    callState = CallState.ENDED
-                    Toast.makeText(
-                        context,
-                        "Call connection failed (${CallManager.lastConnectionState})",
-                        Toast.LENGTH_LONG
-                    ).show()
-                    // Doosre side ko bhi batao, warna wo ringing/ongoing pe atka rehta hai
-                    AppSocketManager.sendCallEnd(callId)
+    // Outgoing: permission milte hi call shuru. Pehle se call chal rahi ho (banner/chat se
+    // wapas aaye) to nayi call mat banao -- bas screen usi call se jud jaati hai.
+    LaunchedEffect(hasMicPermission) {
+        if (!isIncoming && hasMicPermission) {
+            val cur = ActiveCall.info.value
+            if (cur == null) {
+                if (!ActiveCall.startOutgoing(otherUid, otherUsername, callType)) {
+                    Toast.makeText(context, "Could not start call", Toast.LENGTH_SHORT).show()
                     navController.popBackStack()
                 }
+            } else if (cur.otherUid != otherUid) {
+                Toast.makeText(context, "You are already on a call", Toast.LENGTH_SHORT).show()
             }
-        )
-    }
-    val ringtoneManager = remember { com.muwan.muwanchat.calling.CallRingtoneManager(context) }
-
-    // Incoming call pe ringtone+vibration, outgoing pe ringback tone -- jaise
-    // hi state ringing se aage badhe (connecting/ongoing/ended), band ho jaata hai
-    LaunchedEffect(callState) {
-        when (callState) {
-            CallState.RINGING_INCOMING -> {
-                // CALL_PUSH_PATCH: push wali ring band karo; Answer notification se ho chuka ho to ring bajao hi mat
-                com.muwan.muwanchat.calling.PushRinger.stop()
-                if (com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId != callId) {
-                    ringtoneManager.startIncomingRing()
-                }
-            }
-            CallState.RINGING_OUTGOING -> ringtoneManager.startOutgoingRingback()
-            else -> ringtoneManager.stop()
         }
     }
 
-    // Outgoing call: offer khud banao aur bhejo
-    LaunchedEffect(hasMicPermission) {
-        if (hasMicPermission && !isIncoming && callState == CallState.RINGING_OUTGOING) {
-            callManager.init()
-            callManager.createOffer { sdp ->
-                AppSocketManager.sendCallOffer(callId, otherUid, callType, sdp) { success, error ->
-                    if (!success) {
-                        Toast.makeText(
-                            context,
-                            if (error == "busy") "User is on another call" else "Could not start call",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        navController.popBackStack()
-                    }
-                }
-            }
-        } else if (hasMicPermission && isIncoming) {
-            callManager.init()
+    // Call khatam (IDLE) hote hi screen band. sawActive ke bina nahi, warna start hone se
+    // pehle ka IDLE galti se screen band kar deta.
+    LaunchedEffect(phase) {
+        if (phase != CallPhase.IDLE) {
+            sawActive = true
+        } else if (sawActive) {
+            navController.popBackStack()
         }
     }
 
-    // Backend se aane wale call events suno
+    // Purani/stale incoming screen (call ab hai hi nahi) -- khali screen pe mat atko
     LaunchedEffect(Unit) {
-        AppSocketManager.events.collect { event ->
-            when (event) {
-                is SocketEvent.CallAnswerReceived -> {
-                    if (event.callId == callId && !isIncoming) {
-                        callManager.setRemoteAnswer(event.sdp)
-                        callState = CallState.ONGOING
-                    }
-                }
-                is SocketEvent.IceCandidateReceived -> {
-                    if (event.callId == callId) {
-                        callManager.addRemoteIceCandidate(event.sdpMid, event.sdpMLineIndex, event.candidate)
-                    }
-                }
-                is SocketEvent.CallEndReceived -> {
-                    if (event.callId == callId) {
-                        callState = CallState.ENDED
-                        callManager.release()
-                        navController.popBackStack()
-                    }
-                }
-                is SocketEvent.CallBusyReceived -> {
-                    if (event.callId == callId) {
-                        Toast.makeText(context, "User is on another call", Toast.LENGTH_SHORT).show()
-                        callState = CallState.ENDED
-                        navController.popBackStack()
-                    }
-                }
-                else -> {}
-            }
+        if (isIncoming) {
+            delay(1500)
+            if (ActiveCall.phase.value == CallPhase.IDLE && !sawActive) navController.popBackStack()
         }
     }
 
-    // Agar user ne CallScreen ke bajaye seedha system notification se
-    // Decline dabaya (CallForegroundService), reject already bhej diya gaya
-    // hai -- yahan sirf UI band karni hai, dobara reject nahi bhejna.
+    // Incoming ringing mein back = decline (pehle bhi back se call khatam hoti thi)
+    BackHandler(enabled = phase == CallPhase.RINGING_INCOMING) {
+        ActiveCall.decline()
+    }
+
+    // Notification se "Answer" dabaya -- dobara Accept dabane ki zaroorat nahi
+    LaunchedEffect(hasMicPermission, phase) {
+        val id = info?.callId
+        if (isIncoming && hasMicPermission && phase == CallPhase.RINGING_INCOMING &&
+            id != null && CallControlEvents.answerRequestedCallId == id
+        ) {
+            ActiveCall.accept()
+        }
+    }
     LaunchedEffect(Unit) {
-        com.muwan.muwanchat.calling.CallControlEvents.declinedFromNotification.collect { declinedCallId ->
-            if (declinedCallId == callId) {
-                callState = CallState.ENDED
-                callManager.release()
-                navController.popBackStack()
+        CallControlEvents.answeredFromNotification.collect { answeredId ->
+            if (hasMicPermission &&
+                ActiveCall.info.value?.callId == answeredId &&
+                ActiveCall.phase.value == CallPhase.RINGING_INCOMING
+            ) {
+                ActiveCall.accept()
             }
         }
     }
 
-    // Ongoing call ka duration timer
-    LaunchedEffect(callState) {
-        if (callState == CallState.ONGOING) {
-            durationSeconds = 0
+    // Duration: connectedAt (ActiveCall) se nikalta hai, isliye screen dobara khulne par
+    // bhi timer sahi chalta hai.
+    LaunchedEffect(phase, connectedAt) {
+        if (phase == CallPhase.ONGOING && connectedAt > 0L) {
             while (true) {
-                delay(1000)
-                durationSeconds++
+                durationSeconds = ((SystemClock.elapsedRealtime() - connectedAt) / 1000).toInt()
+                delay(500)
             }
-        }
-    }
-
-    // Screen band ho (back button, ya kisi aur wajah se) toh cleanup zaroor ho
-    DisposableEffect(Unit) {
-        onDispose {
-            if (callState != CallState.ENDED) {
-                AppSocketManager.sendCallEnd(callId)
-            }
-            callManager.release()
-            ringtoneManager.stop()
         }
     }
 
     // Cache se turant dikhao (agar hai), phir background me API se fresh photo
     // laao -- pehle sirf cache padhte the isliye pehli-baar-call-karne pe
     // (jab profile pehle kabhi khola na ho) avatar kabhi load hi nahi hota tha.
-    LaunchedEffect(otherUid) {
-        val cached = db.cachedUserProfileDao().get(otherUid)
+    LaunchedEffect(shownUid) {
+        val cached = db.cachedUserProfileDao().get(shownUid)
         if (cached?.avatar != null) {
             avatarBase64 = cached.avatar
             isAvatarLoading = false
         }
         try {
             val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
-            val res = RetrofitClient.usersApi.getUserByUid("Bearer $token", otherUid)
+            val res = RetrofitClient.usersApi.getUserByUid("Bearer $token", shownUid)
             val fresh = res.body()?.user
             if (fresh != null) {
                 avatarBase64 = fresh.avatar
@@ -261,59 +201,12 @@ fun CallScreen(
         }
     }
 
-    fun endCall() {
-        AppSocketManager.sendCallEnd(callId)
-        callState = CallState.ENDED
-        callManager.release()
-        navController.popBackStack()
-    }
-
     fun acceptCall() {
-        val data = incomingData ?: return
-        callState = CallState.CONNECTING
-        callManager.createAnswer(data.sdp) { answerSdp ->
-            AppSocketManager.sendCallAnswer(callId, answerSdp)
-            callState = CallState.ONGOING
+        if (hasMicPermission) {
+            ActiveCall.accept()
+        } else {
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
-    }
-
-    // CALL_PUSH_PATCH: push dobara ring na kare jab tak ye screen khuli hai
-    DisposableEffect(Unit) {
-        if (isIncoming) com.muwan.muwanchat.calling.CallControlEvents.screenCallId = callId
-        onDispose {
-            if (com.muwan.muwanchat.calling.CallControlEvents.screenCallId == callId) {
-                com.muwan.muwanchat.calling.CallControlEvents.screenCallId = null
-            }
-        }
-    }
-
-    // CALL_PUSH_PATCH: notification se "Answer" dabaya -- dobara Accept dabane ki zaroorat nahi
-    LaunchedEffect(hasMicPermission) {
-        if (isIncoming && hasMicPermission &&
-            com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId == callId &&
-            callState == CallState.RINGING_INCOMING
-        ) {
-            delay(250) // callManager.init() poora hone do
-            if (callState == CallState.RINGING_INCOMING) {
-                com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId = null
-                acceptCall()
-            }
-        }
-    }
-    LaunchedEffect(Unit) {
-        com.muwan.muwanchat.calling.CallControlEvents.answeredFromNotification.collect { answeredId ->
-            if (answeredId == callId && hasMicPermission && callState == CallState.RINGING_INCOMING) {
-                com.muwan.muwanchat.calling.CallControlEvents.answerRequestedCallId = null
-                acceptCall()
-            }
-        }
-    }
-
-    fun declineCall() {
-        AppSocketManager.sendCallReject(callId)
-        callState = CallState.ENDED
-        callManager.release()
-        navController.popBackStack()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -322,7 +215,15 @@ fun CallScreen(
         Box(modifier = Modifier.fillMaxSize().background(Color(0x99000000)))
 
         IconButton(
-            onClick = { navController.popBackStack() },
+            onClick = {
+                // Incoming ringing mein back = decline (screen effect se band hogi);
+                // baaki sab mein sirf screen se bahar -- call chalti rehti hai.
+                if (phase == CallPhase.RINGING_INCOMING) {
+                    ActiveCall.decline()
+                } else {
+                    navController.popBackStack()
+                }
+            },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
@@ -338,7 +239,7 @@ fun CallScreen(
             Box(contentAlignment = Alignment.Center) {
                 AvatarView(
                     avatarBase64 = avatarBase64,
-                    fallbackText = otherUsername,
+                    fallbackText = shownName,
                     size = 120.dp,
                     fontSize = 42.sp
                 )
@@ -354,15 +255,15 @@ fun CallScreen(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Text(otherUsername, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(shownName, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             Text(
-                text = when (callState) {
-                    CallState.RINGING_OUTGOING -> "Ringing..."
-                    CallState.RINGING_INCOMING -> "Incoming voice call"
-                    CallState.CONNECTING -> "Connecting..."
-                    CallState.ONGOING -> formatDuration(durationSeconds)
-                    CallState.ENDED -> "Call ended"
+                text = when (phase) {
+                    CallPhase.IDLE -> if (sawActive) "Call ended" else "Connecting..."
+                    CallPhase.RINGING_OUTGOING -> "Ringing..."
+                    CallPhase.RINGING_INCOMING -> "Incoming voice call"
+                    CallPhase.CONNECTING -> "Connecting..."
+                    CallPhase.ONGOING -> formatDuration(durationSeconds)
                 },
                 color = Color(0xFFAAAAAA),
                 fontSize = 15.sp
@@ -370,7 +271,7 @@ fun CallScreen(
         }
 
         // Bottom controls -- incoming call ke liye Accept/Decline, baaki sab ke liye Mute/End/Speaker
-        if (callState == CallState.RINGING_INCOMING) {
+        if (phase == CallPhase.RINGING_INCOMING) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -383,7 +284,7 @@ fun CallScreen(
                     icon = Icons.Filled.CallEnd,
                     background = Color(0xFFFF3B30),
                     iconTint = Color.White,
-                    onClick = { declineCall() }
+                    onClick = { ActiveCall.decline() }
                 )
                 CallControlButton(
                     icon = Icons.Filled.Call,
@@ -405,10 +306,7 @@ fun CallScreen(
                     icon = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
                     background = Color(0xFF2A2A2A),
                     iconTint = Color.White,
-                    onClick = {
-                        isMuted = !isMuted
-                        callManager.setMuted(isMuted)
-                    }
+                    onClick = { ActiveCall.toggleMute() }
                 )
                 CallControlButton(
                     icon = Icons.Filled.CallEnd,
@@ -416,16 +314,13 @@ fun CallScreen(
                     iconTint = Color.White,
                     size = 64.dp,
                     iconSize = 30.dp,
-                    onClick = { endCall() }
+                    onClick = { ActiveCall.end() }
                 )
                 CallControlButton(
                     icon = if (isSpeakerOn) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
                     background = Color(0xFF2A2A2A),
                     iconTint = Color.White,
-                    onClick = {
-                        isSpeakerOn = !isSpeakerOn
-                        callManager.setSpeakerOn(isSpeakerOn)
-                    }
+                    onClick = { ActiveCall.toggleSpeaker() }
                 )
             }
         }
