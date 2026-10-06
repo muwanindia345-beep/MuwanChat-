@@ -1056,7 +1056,7 @@ Box(
             // ChatHeader.kt bilkul untouched — ye alag chhota composable hai.
             GroupChatHeader(
                 groupName = groupName,
-                groupAvatar = groupAvatar ?: conversationEntity?.avatar,
+                groupAvatar = groupAvatar ?: group?.avatar ?: conversationEntity?.avatar,
                 memberCount = memberCount,
                 typingUsernames = typingUids.mapNotNull { memberNames[it] },
                 onBack = { navController.popBackStack() },
