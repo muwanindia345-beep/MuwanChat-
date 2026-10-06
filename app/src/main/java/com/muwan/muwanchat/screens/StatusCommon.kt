@@ -16,8 +16,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.data.StatusFeed
+import com.muwan.muwanchat.data.StatusRepository
 
-// STATUS_V1 -- Status list, viewer, new-status aur chat list ke beech shared helpers.
+// STATUS_V2 -- Status list, viewer, new-status aur chat list ke beech shared helpers.
 
 val StatusBgColors = listOf("#D85A30", "#534AB7", "#0F6E56", "#185FA5", "#993556", "#854F0B")
 
@@ -28,6 +29,35 @@ fun parseStatusColor(hex: String?): Color {
         Color(android.graphics.Color.parseColor(hex ?: "#534AB7"))
     } catch (_: Exception) {
         Color(0xFF534AB7)
+    }
+}
+
+// Process-level memory cache: Status tab / chat list dobara khulte hi purana feed TURANT
+// dikhta hai (blank ya loading nahi). Phir cache DB aur network chup-chaap update karte hain.
+object StatusMemory {
+    @Volatile
+    var feed: StatusFeed? = null
+
+    @Volatile
+    var lastRefreshMs: Long = 0L
+
+    const val REFRESH_EVERY_MS = 60_000L
+}
+
+// 1) Room cache turant  2) network sirf tab jab pichla refresh 60 second se purana ho.
+// Offline ho to network step bina kuch kiye khatam (repo.refresh() offline par false deta hai).
+suspend fun StatusRepository.loadWithMemory(onUpdate: (StatusFeed) -> Unit) {
+    cachedFeed()?.let {
+        StatusMemory.feed = it
+        onUpdate(it)
+    }
+    val now = System.currentTimeMillis()
+    if (now - StatusMemory.lastRefreshMs >= StatusMemory.REFRESH_EVERY_MS && refresh()) {
+        StatusMemory.lastRefreshMs = System.currentTimeMillis()
+        cachedFeed()?.let {
+            StatusMemory.feed = it
+            onUpdate(it)
+        }
     }
 }
 

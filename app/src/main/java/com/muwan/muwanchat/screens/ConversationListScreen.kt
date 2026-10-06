@@ -83,11 +83,10 @@ fun ConversationListScreen(navController: NavController) {
     val typingUsers by AppSocketManager.typingUsers.collectAsState()
     // STATUS_V1 -- jinke status hain unke avatar par ring
     val statusRepo = remember { StatusRepository(context) }
-    var statusRings by remember { mutableStateOf<Map<String, List<Boolean>>>(emptyMap()) }
+    var statusRings by remember { mutableStateOf(StatusMemory.feed?.ringMap() ?: emptyMap<String, List<Boolean>>()) }  // STATUS_V2
     LaunchedEffect(Unit) {
         try {
-            statusRepo.cachedFeed()?.let { statusRings = it.ringMap() }
-            if (statusRepo.refresh()) statusRepo.cachedFeed()?.let { statusRings = it.ringMap() }
+            statusRepo.loadWithMemory { statusRings = it.ringMap() }
         } catch (_: Exception) {
         }
     }

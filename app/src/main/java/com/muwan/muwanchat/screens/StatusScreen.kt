@@ -46,15 +46,15 @@ import com.muwan.muwanchat.navigation.Screen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-// STATUS_V1 -- offline-first: pehle cache (turant), phir server se refresh.
+// STATUS_V2 -- offline-first: memory se turant, phir cache, phir (zaroorat par) server se refresh.
 @Composable
 fun StatusScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repo = remember { StatusRepository(context) }
 
-    var feed by remember { mutableStateOf<StatusFeed?>(null) }
-    var loaded by remember { mutableStateOf(false) }
+    var feed by remember { mutableStateOf<StatusFeed?>(StatusMemory.feed) }
+    var loaded by remember { mutableStateOf(StatusMemory.feed != null) }
     var myAvatar by remember { mutableStateOf<String?>(null) }
     var myName by remember { mutableStateOf("Me") }
 
@@ -70,15 +70,17 @@ fun StatusScreen(navController: NavController) {
         }
     }
 
-    // Screen jab bhi saamne aaye (viewer / new-status se lautne par bhi): cache turant, phir refresh
+    // Screen jab bhi saamne aaye (viewer / new-status se lautne par bhi): purana feed turant, phir chup-chaap update
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 scope.launch {
-                    feed = repo.cachedFeed()
-                    loaded = true
-                    if (repo.refresh()) feed = repo.cachedFeed()
+                    try {
+                        repo.loadWithMemory { feed = it }
+                    } finally {
+                        loaded = true
+                    }
                 }
             }
         }

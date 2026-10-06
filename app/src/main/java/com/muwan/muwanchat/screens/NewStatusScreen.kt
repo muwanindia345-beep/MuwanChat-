@@ -10,6 +10,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -39,7 +41,7 @@ import com.muwan.muwanchat.data.StatusRepository
 import com.muwan.muwanchat.network.CreateStatusBody
 import kotlinx.coroutines.launch
 
-// STATUS_V1 -- naya text status (colour background ke saath).
+// STATUS_V2 -- naya text status (colour background ke saath).
 @Composable
 fun NewStatusScreen(navController: NavController) {
     val context = LocalContext.current
@@ -148,6 +150,18 @@ fun NewStatusScreen(navController: NavController) {
                 )
             }
 
+            if (text.length >= STATUS_MAX_TEXT - 100) {
+                Text(
+                    "${text.length}/$STATUS_MAX_TEXT",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 16.dp, bottom = 2.dp)
+                )
+            }
+
             if (error.isNotEmpty()) {
                 Text(
                     error,
@@ -164,14 +178,17 @@ fun NewStatusScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     StatusBgColors.forEachIndexed { i, hex ->
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(22.dp)
                                 .clip(CircleShape)
                                 .background(parseStatusColor(hex))
                                 .border(2.dp, if (i == colorIdx) Color.White else Color.Transparent, CircleShape)
@@ -179,20 +196,39 @@ fun NewStatusScreen(navController: NavController) {
                         )
                     }
                 }
-                Box(
+                Spacer(modifier = Modifier.width(12.dp))
+                Row(
                     modifier = Modifier
-                        .height(40.dp)
+                        .height(44.dp)
                         .clip(RoundedCornerShape(22.dp))
-                        .background(DarkAccent)
-                        .clickable { post() }
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.Center
+                        .background(DarkAccent.copy(alpha = if (text.isBlank() || posting) 0.6f else 1f))
+                        .clickable(enabled = !posting) { post() }
+                        .padding(horizontal = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
+                    if (posting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Filled.Send,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        if (posting) "Posting..." else "Post status",
+                        if (posting) "Posting" else "Post",
                         color = Color.White,
                         fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
