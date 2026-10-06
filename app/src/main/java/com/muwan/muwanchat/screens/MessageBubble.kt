@@ -406,12 +406,14 @@ fun MessageBubble(
                             contentDescription = "Image",
                             placeholder = ColorPainter(Color(0xFF2A2A2A)),
                             error = ColorPainter(Color(0xFF2A2A2A)),
-                            modifier = Modifier
-                                .widthIn(min = 120.dp, max = 200.dp)
-                                .heightIn(min = 120.dp, max = 200.dp)
+                            modifier = (
+                                // CHANNEL_MEDIA_FULLWIDTH: channel mein image poori bubble width leti hai
+                                if (isChannel) Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 420.dp)
+                                else Modifier.widthIn(min = 120.dp, max = 200.dp).heightIn(min = 120.dp, max = 200.dp)
+                            )
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable { if (isSelectionMode) onTap() else onImageTap(url) },
-                            contentScale = ContentScale.Crop
+                            contentScale = if (isChannel) ContentScale.FillWidth else ContentScale.Crop
                         )
                         Spacer(Modifier.height(4.dp))
                     }
@@ -454,9 +456,11 @@ fun MessageBubble(
 
                     "video" -> message.mediaUrl?.let { url ->
                         Box(
-                            modifier = Modifier
-                                .width(200.dp)
-                                .height(140.dp)
+                            modifier = (
+                                // CHANNEL_MEDIA_FULLWIDTH: channel mein video thumbnail bhi full width
+                                if (isChannel) Modifier.fillMaxWidth().height(220.dp)
+                                else Modifier.width(200.dp).height(140.dp)
+                            )
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFF1A1A1A))
                                 .clickable { if (isSelectionMode) onTap() else onVideoTap(url) },
