@@ -41,6 +41,7 @@ import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.ChatRepository
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.SocketEvent
+import com.muwan.muwanchat.data.StatusRepository  // STATUS_V1
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.ConversationItem
 import com.muwan.muwanchat.network.RetrofitClient
@@ -80,6 +81,16 @@ fun ConversationListScreen(navController: NavController) {
     // isliye ChatScreen se wapas aane par turant sahi online/typing status dikhta hai
     val onlineUids by AppSocketManager.onlineUids.collectAsState()
     val typingUsers by AppSocketManager.typingUsers.collectAsState()
+    // STATUS_V1 -- jinke status hain unke avatar par ring
+    val statusRepo = remember { StatusRepository(context) }
+    var statusRings by remember { mutableStateOf<Map<String, List<Boolean>>>(emptyMap()) }
+    LaunchedEffect(Unit) {
+        try {
+            statusRepo.cachedFeed()?.let { statusRings = it.ringMap() }
+            if (statusRepo.refresh()) statusRepo.cachedFeed()?.let { statusRings = it.ringMap() }
+        } catch (_: Exception) {
+        }
+    }
 
     val conversations = remember(conversationEntities, onlineUids) {
         conversationEntities.map { e ->
@@ -558,6 +569,7 @@ fun ConversationListScreen(navController: NavController) {
                             isTyping = isTyping,
                             isSelectionMode = isSelectionMode,
                             isSelected = isSelected,
+                            statusSeen = if (conv.isGroup) emptyList() else (statusRings[conv.uid] ?: emptyList()),  // STATUS_V1
                             onClick = {
                                 if (isSelectionMode) {
                                     toggleSelection(conv.room_id)
@@ -602,7 +614,8 @@ fun ConversationRow(
     showOnlineStatus: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
-    onAvatarClick: (() -> Unit)? = null
+    onAvatarClick: (() -> Unit)? = null,
+    statusSeen: List<Boolean> = emptyList()  // STATUS_V1
 ) {
     val hasUnread = conv.unreadCount > 0
 
@@ -618,13 +631,25 @@ fun ConversationRow(
             modifier = Modifier.size(50.dp),
             contentAlignment = Alignment.Center
         ) {
-            AvatarView(
-                avatarBase64 = conv.avatar,
-                fallbackText = conv.username,
-                size = 50.dp,
-                fontSize = 20.sp,
-                onClick = if (!isSelectionMode) onAvatarClick else null
-            )
+            if (statusSeen.isNotEmpty()) {  // STATUS_V1
+                StatusRing(seen = statusSeen, diameter = 50.dp) {
+                    AvatarView(
+                        avatarBase64 = conv.avatar,
+                        fallbackText = conv.username,
+                        size = 42.dp,
+                        fontSize = 17.sp,
+                        onClick = if (!isSelectionMode) onAvatarClick else null
+                    )
+                }
+            } else {
+                AvatarView(
+                    avatarBase64 = conv.avatar,
+                    fallbackText = conv.username,
+                    size = 50.dp,
+                    fontSize = 20.sp,
+                    onClick = if (!isSelectionMode) onAvatarClick else null
+                )
+            }
             if (isSelectionMode) {
                 Box(
                     modifier = Modifier

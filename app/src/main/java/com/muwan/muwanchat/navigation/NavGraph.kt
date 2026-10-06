@@ -29,6 +29,10 @@ sealed class Screen(val route: String) {
     object ConversationList: Screen("conversations")
     object BroadcastChannels: Screen("broadcast_channels")
     object Status           : Screen("status")
+    object NewStatus        : Screen("new_status")  // STATUS_V1
+    object StatusViewer     : Screen("status_viewer/{uid}") {
+        fun createRoute(uid: String) = "status_viewer/" + android.net.Uri.encode(uid)
+    }
     object CallHistory      : Screen("call_history")
     object UserSearch      : Screen("user_search")
     object Requests        : Screen("requests")
@@ -233,6 +237,10 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
             MainTabScaffold(navController, Screen.CallHistory.route) {
                 CallHistoryScreen(navController)
             }
+        }
+        composable(Screen.NewStatus.route) { NewStatusScreen(navController) }  // STATUS_V1
+        composable(Screen.StatusViewer.route) { back ->
+            StatusViewerScreen(navController, back.arguments?.getString("uid") ?: "")
         }
         composable(Screen.UserSearch.route) { UserSearchScreen(navController) }
         composable(Screen.Requests.route) { RequestsScreen(navController) }
