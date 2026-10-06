@@ -560,6 +560,8 @@ fun ChatScreen(
         AppSocketManager.connect(token)
         AppSocketManager.joinRoom(roomId)
         AppSocketManager.checkPresence(receiverUid)
+        // Mark seen immediately, before the slow fetches below
+        ChatRepository.markRoomSeenAsync(db, token, roomId)
 
         // Wallpaper local na mile (reinstall ke baad) toh backend se apna preset restore karo
         // BG_PREFETCH_PATCH: alag coroutine mein -- messages ki fetch ko ab block nahi karta
@@ -588,10 +590,7 @@ fun ChatScreen(
             }
         } catch (_: Exception) {}
 
-        try {
-            RetrofitClient.chatApi.markSeen("Bearer $token", roomId)
-            ChatRepository.clearUnread(db, roomId)
-        } catch (_: Exception) {}
+        ChatRepository.markRoomSeen(db, token, roomId)
     }
 
     LaunchedEffect(myUid) {
@@ -618,10 +617,7 @@ fun ChatScreen(
                         )
                         if (event.senderUid != myUid) {
                             isReceiverTyping = false
-                            try {
-                                RetrofitClient.chatApi.markSeen("Bearer $myToken", roomId)
-                            } catch (_: Exception) {}
-                            ChatRepository.clearUnread(db, roomId)
+                            ChatRepository.markRoomSeenAsync(db, myToken, roomId)
                         }
                     }
                 }

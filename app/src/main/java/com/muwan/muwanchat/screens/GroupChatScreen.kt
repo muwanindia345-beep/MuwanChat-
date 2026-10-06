@@ -809,6 +809,8 @@ fun GroupChatScreen(
 
         AppSocketManager.connect(token)
         AppSocketManager.joinRoom(groupId)
+        // Mark seen immediately, before the slow fetches below
+        ChatRepository.markRoomSeenAsync(db, token, groupId)
 
         // Group info fetch — member names (typing display ke liye) + count
         try {
@@ -855,10 +857,7 @@ fun GroupChatScreen(
             }
         } catch (_: Exception) {}
 
-        try {
-            RetrofitClient.chatApi.markSeen("Bearer $token", groupId)
-            ChatRepository.clearUnread(db, groupId)
-        } catch (_: Exception) {}
+        ChatRepository.markRoomSeen(db, token, groupId)
     }
 
     LaunchedEffect(myUid) {
@@ -885,10 +884,7 @@ fun GroupChatScreen(
                             mentions = event.mentions
                         )
                         if (event.senderUid != myUid) {
-                            try {
-                                RetrofitClient.chatApi.markSeen("Bearer $myToken", groupId)
-                            } catch (_: Exception) {}
-                            ChatRepository.clearUnread(db, groupId)
+                            ChatRepository.markRoomSeenAsync(db, myToken, groupId)
                         }
                     }
                 }

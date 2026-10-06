@@ -86,6 +86,65 @@ object ChatRepository {
     }
     // ───────── /BG_PREFETCH_PATCH ─────────
 
+    // ───────── UNREAD_FIX_PATCH ─────────
+    // Problem: the local badge was cleared, but the server still had unread > 0
+    // (markSeen not sent yet, failed, or an HTTP error that does not throw), and
+    // the next chat list sync overwrote the local 0 with the stale server value.
+    // Fix: remember rooms cleared locally and ignore a server snapshot that
+    // still shows unread for them, until the server catches up or a genuinely
+    // newer message arrives. Pending rooms are retried on every list reload.
+    private class PendingSeen(val clearedAtLastTime: String, var attempts: Int)
+
+    private const val PENDING_SEEN_MAX_ATTEMPTS = 5
+    private val pendingSeen = ConcurrentHashMap<String, PendingSeen>()
+    private val seenScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Clears the badge locally right away, then tells the server.
+    suspend fun markRoomSeen(db: MuwanChatDb, token: String, roomId: String) {
+        val lastTime = db.conversationDao().getByRoomId(roomId)?.lastTime ?: ""
+        pendingSeen[roomId] = PendingSeen(lastTime, 0)
+        db.conversationDao().clearUnread(roomId)
+        if (token.isBlank()) return
+        try {
+            // Response is not checked on purpose: on failure the guard stays
+            // and the next list reload retries.
+            RetrofitClient.chatApi.markSeen("Bearer $token", roomId)
+        } catch (_: Exception) {
+        }
+    }
+
+    // App-level scope so leaving the screen quickly cannot cancel the request.
+    fun markRoomSeenAsync(db: MuwanChatDb, token: String, roomId: String) {
+        seenScope.launch { markRoomSeen(db, token, roomId) }
+    }
+
+    suspend fun retryPendingSeen(token: String) {
+        if (token.isBlank()) return
+        for ((roomId, pending) in pendingSeen.entries.toList()) {
+            if (pending.attempts >= PENDING_SEEN_MAX_ATTEMPTS) {
+                pendingSeen.remove(roomId)
+                continue
+            }
+            pending.attempts++
+            try {
+                RetrofitClient.chatApi.markSeen("Bearer $token", roomId)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun resolveUnread(roomId: String, serverLastTime: String, serverUnread: Int, localUnread: Int?): Int {
+        val pending = pendingSeen[roomId] ?: return serverUnread
+        // Server caught up, or a newer message arrived after we cleared: trust the server.
+        if (serverUnread == 0 || serverLastTime > pending.clearedAtLastTime) {
+            pendingSeen.remove(roomId)
+            return serverUnread
+        }
+        // Stale snapshot: keep what the user already saw.
+        return localUnread ?: 0
+    }
+    // ───────── /UNREAD_FIX_PATCH ─────────
+
     // FCM push se aaye message (app background / socket dead) ko Room mein save karne ke liye.
     // Mutex isliye ki push aur socket ek saath aayein to duplicate/double-unread na ho.
     private val pushStoreMutex = Mutex()
@@ -369,7 +428,7 @@ object ChatRepository {
                         lastMessage = it.lastMessage,
                         lastTime = it.lastTime,
                         lastSenderUid = it.lastSenderUid,
-                        unreadCount = it.unreadCount,
+                        unreadCount = resolveUnread(it.room_id, it.lastTime, it.unreadCount, local?.unreadCount),
                         isGroup = it.isGroup,
                         memberCount = it.memberCount,
                         onlineCount = it.onlineCount,
@@ -391,7 +450,7 @@ object ChatRepository {
                         lastMessage = it.lastMessage,
                         lastTime = it.lastTime,
                         lastSenderUid = it.lastSenderUid,
-                        unreadCount = it.unreadCount,
+                        unreadCount = resolveUnread(it.room_id, it.lastTime, it.unreadCount, local?.unreadCount),
                         isGroup = it.isGroup,
                         memberCount = it.memberCount,
                         onlineCount = it.onlineCount,

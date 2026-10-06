@@ -170,6 +170,7 @@ fun ConversationListScreen(navController: NavController) {
             if (res.isSuccessful) {
                 val serverItems = res.body()?.conversations ?: emptyList()
                 ChatRepository.syncConversations(db, serverItems)
+                ChatRepository.retryPendingSeen(token)
                 // BG_PREFETCH_PATCH: unread/naye chats ke messages background mein local kar lo
                 ChatRepository.prefetchMessagesInBackground(db, token, serverItems)
 
@@ -576,7 +577,7 @@ fun ConversationListScreen(navController: NavController) {
                                 if (isSelectionMode) {
                                     toggleSelection(conv.room_id)
                                 } else {
-                                    scope.launch { ChatRepository.clearUnread(db, conv.room_id) }
+                                    ChatRepository.markRoomSeenAsync(db, myToken, conv.room_id)
                                     if (conv.isGroup) {
                                         navController.navigate(
                                             Screen.GroupChat.createRoute(conv.room_id, conv.username)
