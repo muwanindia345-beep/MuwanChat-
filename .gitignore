@@ -2,3 +2,11 @@ google-services.json
 *.keystore
 keystore_base64.txt
 test_decode.keystore
+
+# one-off patch scripts
+patch_*.py
+patch_*.sh
+bugfix_*.py
+fix_*.py
+revert_*.py
+*.bak*
