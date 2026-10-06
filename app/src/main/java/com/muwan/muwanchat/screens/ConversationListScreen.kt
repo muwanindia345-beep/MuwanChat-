@@ -524,6 +524,9 @@ fun ConversationListScreen(navController: NavController) {
                 }
             }
 
+            // STEP3_CALL_BANNER: header aur search ke beech, sirf call chalte waqt dikhta hai
+            OngoingCallBanner(navController)
+
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
