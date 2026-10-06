@@ -36,7 +36,6 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.data.AuthDataStore
-import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.StatusFeed
 import com.muwan.muwanchat.data.StatusItem
 import com.muwan.muwanchat.data.StatusRepository
@@ -46,7 +45,7 @@ import com.muwan.muwanchat.navigation.Screen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-// STATUS_V2 -- offline-first: memory se turant, phir cache, phir (zaroorat par) server se refresh.
+// STATUS_V2 / STATUS_V3 -- offline-first: memory se turant, phir cache, phir (zaroorat par) server se refresh.
 @Composable
 fun StatusScreen(navController: NavController) {
     val context = LocalContext.current
@@ -55,13 +54,12 @@ fun StatusScreen(navController: NavController) {
 
     var feed by remember { mutableStateOf<StatusFeed?>(StatusMemory.feed) }
     var loaded by remember { mutableStateOf(StatusMemory.feed != null) }
-    var myAvatar by remember { mutableStateOf<String?>(null) }
+    var myAvatar by remember { mutableStateOf<String?>(StatusMemory.myAvatar) }
     var myName by remember { mutableStateOf("Me") }
 
     LaunchedEffect(Unit) {
         try {
-            val db = MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context))
-            myAvatar = db.myProfileDao().get()?.avatar
+            loadMyAvatar(context) { myAvatar = it }
         } catch (_: Exception) {
         }
         try {

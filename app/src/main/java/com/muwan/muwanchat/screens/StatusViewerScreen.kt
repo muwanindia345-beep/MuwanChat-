@@ -46,7 +46,6 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkSheet
 import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AuthDataStore
-import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.data.StatusItem
 import com.muwan.muwanchat.data.StatusRepository
 import com.muwan.muwanchat.data.StatusTime
@@ -56,7 +55,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-// STATUS_V1 -- full-screen viewer. uid == "me" -> apne status, warna friend ka uid.
+// STATUS_V3 -- full-screen viewer. uid == "me" -> apne status, warna friend ka uid.
 private const val STATUS_DURATION_MS = 5000f
 
 @Composable
@@ -88,10 +87,13 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
         val feed = repo.cachedFeed()
         if (isMine) {
             statuses = feed?.mine ?: emptyList()
-            try {
-                val db = MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context))
-                avatar = db.myProfileDao().get()?.avatar
-            } catch (_: Exception) {
+            avatar = StatusMemory.myAvatar
+            // alag coroutine: avatar ke network call se viewer start na ruke
+            scope.launch {
+                try {
+                    loadMyAvatar(context) { avatar = it }
+                } catch (_: Exception) {
+                }
             }
         } else {
             val u = feed?.users?.firstOrNull { it.uid == uid }

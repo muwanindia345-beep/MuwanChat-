@@ -1,5 +1,6 @@
 package com.muwan.muwanchat.screens
 
+import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,10 +16,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.muwan.muwanchat.DarkAccent
+import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.MuwanChatDb
+import com.muwan.muwanchat.data.MyProfileEntity
 import com.muwan.muwanchat.data.StatusFeed
 import com.muwan.muwanchat.data.StatusRepository
+import com.muwan.muwanchat.network.RetrofitClient
+import kotlinx.coroutines.flow.first
 
-// STATUS_V2 -- Status list, viewer, new-status aur chat list ke beech shared helpers.
+// STATUS_V2 / STATUS_V3 -- Status list, viewer, new-status aur chat list ke beech shared helpers.
 
 val StatusBgColors = listOf("#D85A30", "#534AB7", "#0F6E56", "#185FA5", "#993556", "#854F0B")
 
@@ -42,6 +48,52 @@ object StatusMemory {
     var lastRefreshMs: Long = 0L
 
     const val REFRESH_EVERY_MS = 60_000L
+
+    // Apna profile pic (base64). Memory mein rakha taaki "My status" par turant dikhe.
+    @Volatile
+    var myAvatar: String? = null
+
+    @Volatile
+    var profileFetched: Boolean = false
+}
+
+// Apna avatar: 1) Room cache (my_profile) turant  2) cache mein avatar na ho (Profile screen kabhi
+// khuli hi nahi) to ek baar server se laake wahi cache bhar do -- ProfileScreen jaisa hi.
+suspend fun loadMyAvatar(context: Context, onAvatar: (String?) -> Unit) {
+    val db = MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context))
+    val cached = try {
+        db.myProfileDao().get()
+    } catch (_: Exception) {
+        null
+    }
+    if (cached?.avatar != null) {
+        StatusMemory.myAvatar = cached.avatar
+        onAvatar(cached.avatar)
+        return
+    }
+    if (StatusMemory.profileFetched) return
+    try {
+        val token = AuthDataStore.getToken(context).first() ?: return
+        val res = RetrofitClient.authApi.me("Bearer $token")
+        val user = res.body()?.user
+        if (res.isSuccessful && user != null) {
+            StatusMemory.profileFetched = true
+            db.myProfileDao().upsert(
+                MyProfileEntity(
+                    name = user.name,
+                    bio = user.bio,
+                    city = user.city,
+                    country = user.country,
+                    gender = user.gender,
+                    avatar = user.avatar
+                )
+            )
+            StatusMemory.myAvatar = user.avatar
+            onAvatar(user.avatar)
+        }
+    } catch (_: Exception) {
+        // offline: initial letter dikhta rahega, agli baar dobara try
+    }
 }
 
 // 1) Room cache turant  2) network sirf tab jab pichla refresh 60 second se purana ho.
