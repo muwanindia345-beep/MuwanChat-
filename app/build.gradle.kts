@@ -15,12 +15,12 @@ ksp {
 
 android {
     namespace = "com.muwan.muwanchat"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.muwan.muwanchat"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 240
         versionName = "2.239.0"
     }
