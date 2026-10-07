@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
         // "Update Available" notification pe tap kiya hai to seedha
         // Check Updates screen khulni chahiye — is extra se pata chalta hai.
         handleCallAnswerIntent(intent) // CALL_PUSH_PATCH
+        handleOpenCallIntent(intent) // STEP4B_OPEN_CALL
         val openUpdateScreen = intent?.getBooleanExtra(UpdateManager.EXTRA_OPEN_UPDATE_SCREEN, false) ?: false
 
         setContent {
@@ -53,11 +54,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // STEP4B_OPEN_CALL: ongoing-call notification pe tap -- NavGraph chalti call ki screen khol dega
+    private fun handleOpenCallIntent(intent: android.content.Intent?) {
+        val i = intent ?: return
+        if (i.action != com.muwan.muwanchat.calling.CallForegroundService.ACTION_OPEN_CALL) return
+        // Action saaf: screen rotate / activity recreate par dobara call screen na khule
+        i.action = null
+        com.muwan.muwanchat.calling.CallControlEvents.openCallRequest.value = true
+    }
+
     // CALL_PUSH_PATCH: app already khuli thi to naya intent yahan aata hai
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleCallAnswerIntent(intent)
+        handleOpenCallIntent(intent) // STEP4B_OPEN_CALL
     }
 
     // Notification ke "Answer" se aaye to ring band karo, notification hatao, aur CallScreen ko auto-accept ka signal do

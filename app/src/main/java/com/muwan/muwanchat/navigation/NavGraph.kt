@@ -138,6 +138,31 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
     val navController = rememberNavController()
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    // STEP4B_OPEN_CALL: ongoing-call notification pe tap kiya -- chalti call ki screen kholo.
+    // Splash ke upar nahi; splash ke baad route badalne par khulti hai.
+    // Call nahi chal rahi ho to bas flag saaf ho jaata hai.
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.flow.combine(
+            com.muwan.muwanchat.calling.CallControlEvents.openCallRequest,
+            navController.currentBackStackEntryFlow
+        ) { requested, entry -> requested to entry.destination.route }.collect { (requested, route) ->
+            if (requested && route != null && route != Screen.Splash.route) {
+                com.muwan.muwanchat.calling.CallControlEvents.openCallRequest.value = false
+                val info = com.muwan.muwanchat.calling.ActiveCall.info.value
+                if (info != null && route != Screen.Call.route) {
+                    navController.navigate(
+                        Screen.Call.createRoute(
+                            uid = info.otherUid,
+                            username = info.otherUsername,
+                            callType = info.callType,
+                            isIncoming = info.isIncoming
+                        )
+                    )
+                }
+            }
+        }
+    }
+
     // STEP2_ACTIVE_CALL: incoming call ActiveCall ne pakdi (RINGING_INCOMING) to CallScreen kholo.
     // Splash ke upar nahi kholte -- splash khatam hone ke baad (route badalne par) khul jaata hai.
     // Ek callId ke liye sirf ek baar, taaki back dabane ke baad dobara na uchhal aaye.

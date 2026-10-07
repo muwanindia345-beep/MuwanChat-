@@ -42,4 +42,8 @@ object CallControlEvents {
 
     // Notification ka "Answer" seedha MainActivity kholta hai (Android 12+ service se activity start block karta hai)
     const val ACTION_ANSWER_FROM_NOTIFICATION = "com.muwan.muwanchat.calling.ANSWER_FROM_NOTIFICATION"
+
+    // STEP4B_OPEN_CALL: ongoing-call notification par tap -- MainActivity true karti hai,
+    // NavGraph call screen kholkar wapas false kar deta hai.
+    val openCallRequest = kotlinx.coroutines.flow.MutableStateFlow(false)
 }
