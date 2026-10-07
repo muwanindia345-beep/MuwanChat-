@@ -107,6 +107,7 @@ object ActiveCall {
         beginSession(ctx, info, CallPhase.RINGING_OUTGOING)
         val cm = callManager ?: return false
         cm.init()
+        showOngoing() // STEP4A_ONGOING_NOTIF
         cm.createOffer { sdp ->
             AppSocketManager.sendCallOffer(info.callId, otherUid, callType, sdp) { success, error ->
                 if (!success) {
@@ -172,7 +173,7 @@ object ActiveCall {
             CallControlEvents.answerRequestedCallId = null
         }
         setPhase(CallPhase.CONNECTING)
-        dismissServiceIfShown()
+        showOngoing() // STEP4A_ONGOING_NOTIF: incoming notification ki jagah ongoing notification
         cm.init()
         cm.createAnswer(sdp) { answerSdp ->
             mainHandler.post {
@@ -286,6 +287,7 @@ object ActiveCall {
         if (_phase.value == CallPhase.ONGOING) return
         _connectedAt.value = SystemClock.elapsedRealtime()
         setPhase(CallPhase.ONGOING)
+        refreshOngoing() // STEP4A_ONGOING_NOTIF: notification mein timer chalu
     }
 
     private fun handleConnectionFailed(callId: String) {
@@ -322,12 +324,31 @@ object ActiveCall {
         _phase.value = CallPhase.IDLE
     }
 
+    // STEP4A_ONGOING_NOTIF
+    private fun showOngoing() {
+        val ctx = appContext ?: return
+        serviceShown = true
+        try {
+            CallForegroundService.showOngoingCall(ctx)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun refreshOngoing() {
+        val ctx = appContext ?: return
+        if (!serviceShown) return
+        try {
+            CallForegroundService.updateOngoing(ctx)
+        } catch (_: Exception) {
+        }
+    }
+
     private fun dismissServiceIfShown() {
         if (!serviceShown) return
         serviceShown = false
         val ctx = appContext ?: return
         try {
-            CallForegroundService.dismiss(ctx)
+            CallForegroundService.dismiss(ctx, true)
         } catch (_: Exception) {
         }
     }

@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.app.Person
 import com.muwan.muwanchat.MainActivity
@@ -45,6 +46,15 @@ class CallForegroundService : Service() {
         private const val ACTION_ANSWER = "com.muwan.muwanchat.calling.ACTION_ANSWER"
         private const val ACTION_DECLINE = "com.muwan.muwanchat.calling.ACTION_DECLINE"
         private const val ACTION_DISMISS = "com.muwan.muwanchat.calling.ACTION_DISMISS"
+        // STEP4A_ONGOING_NOTIF
+        private const val ACTION_ONGOING = "com.muwan.muwanchat.calling.ACTION_ONGOING"
+        private const val ACTION_ONGOING_UPDATE = "com.muwan.muwanchat.calling.ACTION_ONGOING_UPDATE"
+        private const val ACTION_HANGUP = "com.muwan.muwanchat.calling.ACTION_HANGUP"
+        private const val EXTRA_FORCE = "force"
+        private const val CHANNEL_ONGOING = "muwan_calls_ongoing"
+
+        /** Ongoing-call notification par tap karne se MainActivity ko yeh action milta hai. */
+        const val ACTION_OPEN_CALL = "com.muwan.muwanchat.calling.OPEN_CALL"
 
         private const val EXTRA_CALL_ID = "callId"
         private const val EXTRA_FROM_USERNAME = "fromUsername"
@@ -65,12 +75,123 @@ class CallForegroundService : Service() {
             }
         }
 
-        /** Call kisi aur wajah se khatam ho gayi (caller ne hangup kar diya, busy, etc). */
-        fun dismiss(context: Context) {
+        // STEP4A_ONGOING_NOTIF: call chalte waqt (app open / background / band) ek hi notification:
+        // naam, chalta timer, Hang up button. Tap karne par app khulti hai.
+
+        /** Call shuru/accept hote hi (app foreground mein) service ko ongoing mode mein lao. */
+        fun showOngoingCall(context: Context) {
             val intent = Intent(context, CallForegroundService::class.java).apply {
-                action = ACTION_DISMISS
+                action = ACTION_ONGOING
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+
+        /** Call connect hui -- notification mein timer chalu karo (service pehle se chal rahi hai). */
+        fun updateOngoing(context: Context) {
+            val intent = Intent(context, CallForegroundService::class.java).apply {
+                action = ACTION_ONGOING_UPDATE
             }
             context.startService(intent)
+        }
+
+        /**
+         * Call kisi aur wajah se khatam ho gayi (caller ne hangup kar diya, busy, etc).
+         * force=true sirf ActiveCall deta hai; baaki jagah se aaya "stale" dismiss live call
+         * ke dauran ignore ho jaata hai.
+         */
+        fun dismiss(context: Context, force: Boolean = false) {
+            val intent = Intent(context, CallForegroundService::class.java).apply {
+                action = ACTION_DISMISS
+                putExtra(EXTRA_FORCE, force)
+            }
+            context.startService(intent)
+        }
+
+        private fun ensureOngoingChannel(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(
+                CHANNEL_ONGOING,
+                "Ongoing call",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Shown while a call is in progress"
+                setSound(null, null)
+                enableVibration(false)
+            }
+            manager.createNotificationChannel(channel)
+        }
+
+        // Notification ActiveCall ki state se hi banti hai (single source of truth)
+        private fun buildOngoingNotification(context: Context): Notification? {
+            val info = ActiveCall.info.value ?: return null
+            val phase = ActiveCall.phase.value
+            ensureOngoingChannel(context)
+
+            val hangUpIntent = Intent(context, CallForegroundService::class.java).apply {
+                action = ACTION_HANGUP
+            }
+            val hangUpPending = PendingIntent.getService(
+                context, 4, hangUpIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val openIntent = Intent(context, MainActivity::class.java).apply {
+                action = ACTION_OPEN_CALL
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            val openPending = PendingIntent.getActivity(
+                context, 5, openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val person = Person.Builder().setName(info.otherUsername).build()
+            val connectedAt = ActiveCall.connectedAt.value
+            val connected = phase == CallPhase.ONGOING && connectedAt > 0L
+            val text = when (phase) {
+                CallPhase.ONGOING -> "Ongoing call"
+                CallPhase.CONNECTING -> "Connecting..."
+                else -> "Calling..."
+            }
+
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                NotificationCompat.Builder(context, CHANNEL_ONGOING)
+                    .setStyle(NotificationCompat.CallStyle.forOngoingCall(person, hangUpPending))
+            } else {
+                NotificationCompat.Builder(context, CHANNEL_ONGOING)
+                    .setContentTitle(info.otherUsername)
+                    .addAction(0, "Hang up", hangUpPending)
+            }
+            builder
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentText(text)
+                .setContentIntent(openPending)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setAutoCancel(false)
+            if (connected) {
+                // Chronometer: connect hone ke waqt se chalta hai (app band ho tab bhi system chalata hai)
+                val startedAtWall = System.currentTimeMillis() - (SystemClock.elapsedRealtime() - connectedAt)
+                builder.setUsesChronometer(true).setShowWhen(true).setWhen(startedAtWall)
+            }
+            return builder.build()
+        }
+
+        // startForegroundService ke baad startForeground() zaroori hai, call pehle hi khatam ho
+        // chuki ho tab bhi -- isliye khali notification se contract poora karke turant band karte hain.
+        private fun placeholderNotification(context: Context): Notification {
+            ensureOngoingChannel(context)
+            return NotificationCompat.Builder(context, CHANNEL_ONGOING)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Call ended")
+                .build()
         }
     }
 
@@ -127,7 +248,80 @@ class CallForegroundService : Service() {
                     stopSelf()
                 }
             }
+            // STEP4A_ONGOING_NOTIF
+            ACTION_ONGOING -> {
+                val notification = buildOngoingNotification(this)
+                if (notification == null) {
+                    try {
+                        startForeground(NOTIFICATION_ID, placeholderNotification(this))
+                    } catch (_: Exception) {
+                    }
+                    stopForegroundCompat()
+                    return stopSelfImmediately(startId)
+                }
+                var started = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    try {
+                        startForeground(
+                            NOTIFICATION_ID, notification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or
+                                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                        )
+                        started = true
+                    } catch (_: Exception) {
+                    }
+                }
+                if (!started && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        startForeground(
+                            NOTIFICATION_ID, notification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                        )
+                        started = true
+                    } catch (_: Exception) {
+                    }
+                }
+                if (!started && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                    try {
+                        startForeground(NOTIFICATION_ID, notification)
+                        started = true
+                    } catch (_: Exception) {
+                    }
+                }
+                if (!started) {
+                    try {
+                        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                            .notify(NOTIFICATION_ID, notification)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            ACTION_ONGOING_UPDATE -> {
+                if (!ActiveCall.isActive) {
+                    stopSelf()
+                } else {
+                    val notification = buildOngoingNotification(this)
+                    if (notification != null) {
+                        try {
+                            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                                .notify(NOTIFICATION_ID, notification)
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+            }
+            ACTION_HANGUP -> {
+                // Notification ke "Hang up" se -- app khuli ho ya band, ActiveCall hi call khatam karta hai
+                if (ActiveCall.isActive) ActiveCall.end()
+                stopForegroundCompat()
+                stopSelf()
+            }
             ACTION_DISMISS -> {
+                // Live call ke dauran stale dismiss (jaise kisi pichli call ka late call_end) ignore
+                val force = intent.getBooleanExtra(EXTRA_FORCE, false)
+                if (!force && ActiveCall.isActive && ActiveCall.phase.value != CallPhase.RINGING_INCOMING) {
+                    return START_NOT_STICKY
+                }
                 PushRinger.stop() // CALL_PUSH_PATCH
                 stopForegroundCompat()
                 stopSelf()

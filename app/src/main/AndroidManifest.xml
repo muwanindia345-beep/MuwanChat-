@@ -9,6 +9,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" /> <!-- STEP4A_ONGOING_NOTIF -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- CALL_PUSH_PATCH --><uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -46,7 +47,7 @@
         <service
             android:name=".calling.CallForegroundService"
             android:exported="false"
-            android:foregroundServiceType="phoneCall" />
+            android:foregroundServiceType="phoneCall|microphone" />
 
         <service
             android:name=".MuwanFirebaseService"
