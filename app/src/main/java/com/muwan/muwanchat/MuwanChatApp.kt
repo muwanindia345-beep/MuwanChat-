@@ -17,6 +17,7 @@ class MuwanChatApp : Application(), ImageLoaderFactory {
         AuthDataStore.wipeLegacyPlaintextStore(applicationContext)
         com.muwan.muwanchat.data.LocalMedia.init(applicationContext)
         com.muwan.muwanchat.calling.ActiveCall.start(applicationContext) // STEP2_ACTIVE_CALL
+        com.muwan.muwanchat.calling.IceServerProvider.prefetch(applicationContext)
     }
 
     override fun newImageLoader(): ImageLoader {

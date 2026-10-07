@@ -59,20 +59,8 @@ class CallManager(
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     }
 
-    // TODO: Metered.ca "Open Relay Project" se free account banao aur yeh
-    // 2 values fill karo (20GB/month free, no credit card required).
-    private val TURN_USERNAME = "REPLACE_WITH_METERED_USERNAME"
-    private val TURN_CREDENTIAL = "REPLACE_WITH_METERED_CREDENTIAL"
-
     private val iceServers: List<PeerConnection.IceServer>
-        get() = listOf(
-            PeerConnection.IceServer.builder("stun:stun.relay.metered.ca:80").createIceServer(),
-            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-            PeerConnection.IceServer.builder("turn:global.relay.metered.ca:80")
-                .setUsername(TURN_USERNAME)
-                .setPassword(TURN_CREDENTIAL)
-                .createIceServer()
-        )
+        get() = IceServerProvider.servers()
 
     fun init() {
         val factory = WebRtcEngine.getFactory(context)

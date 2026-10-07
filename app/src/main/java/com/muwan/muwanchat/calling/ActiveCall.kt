@@ -249,6 +249,7 @@ object ActiveCall {
     }
 
     private fun beginSession(ctx: Context, info: ActiveCallInfo, phase: CallPhase) {
+        IceServerProvider.prefetch(ctx)
         _muted.value = false
         _speakerOn.value = false
         _connectedAt.value = 0L
