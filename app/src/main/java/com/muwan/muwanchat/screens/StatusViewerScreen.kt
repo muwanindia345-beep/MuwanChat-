@@ -3,6 +3,7 @@ package com.muwan.muwanchat.screens
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -366,7 +367,8 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
                         .imePadding()
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                         .clip(RoundedCornerShape(26.dp))
-                        .background(Color.White.copy(alpha = 0.18f))
+                        .background(Color.Black.copy(alpha = 0.55f))  // REPLY_BAR_V1
+                        .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(26.dp))
                         .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -386,7 +388,7 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
                                 if (replyText.isEmpty()) {
                                     Text(
                                         "Reply to status",
-                                        color = Color.White.copy(alpha = 0.7f),
+                                        color = Color.White.copy(alpha = 0.85f),
                                         fontSize = 15.sp
                                     )
                                 }
