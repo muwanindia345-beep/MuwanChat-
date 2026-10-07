@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import com.google.gson.Gson
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkSheet
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.GroupInfoCacheEntity
 import com.muwan.muwanchat.data.MuwanChatDb
@@ -30,19 +32,35 @@ import com.muwan.muwanchat.network.GroupData
 import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.flow.first
 
-// Broadcast channel ka basic read-only profile: avatar (tap -> full view),
-// naam, description. Edit abhi nahi (zaroorat padne par EditGroupScreen reuse
-// ho sakta hai). Data pehle local group_info_cache se (offline-first), phir
-// getGroup se fresh -- GroupInfoScreen jaisa hi pattern.
+// Broadcast channel ka profile: avatar (tap -> full view), naam, description.
+// Header ke end me 3-dot menu sirf owner/admin ko dikhta hai -> Edit Channel
+// (EditChannelScreen). Data pehle local group_info_cache se (offline-first),
+// phir getGroup se fresh -- GroupInfoScreen jaisa hi pattern.
 @Composable
 fun ChannelProfileScreen(navController: NavController, groupId: String) {
     val context = LocalContext.current
     val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
     val gson = remember { Gson() }
+    val myUid = remember { AuthDataStore.getUidBlocking(context) }
 
     var group by remember { mutableStateOf<GroupData?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf("") }
+    var showMenu by remember { mutableStateOf(false) }
+    var refreshKey by remember { mutableStateOf(0) }
+
+    // EditChannelScreen se wapas aane par fresh data fetch ho
+    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+    val editedFlow = remember(savedStateHandle) {
+        savedStateHandle?.getStateFlow("channel_edited", false)
+    }
+    val edited = editedFlow?.collectAsState()?.value == true
+    LaunchedEffect(edited) {
+        if (edited) {
+            savedStateHandle?.remove<Boolean>("channel_edited")
+            refreshKey++
+        }
+    }
 
     LaunchedEffect(groupId) {
         val cached = db.groupInfoCacheDao().get(groupId)
@@ -54,7 +72,7 @@ fun ChannelProfileScreen(navController: NavController, groupId: String) {
         }
     }
 
-    LaunchedEffect(groupId) {
+    LaunchedEffect(groupId, refreshKey) {
         try {
             val token = AuthDataStore.getToken(context).first()
             if (token != null) {
@@ -74,6 +92,8 @@ fun ChannelProfileScreen(navController: NavController, groupId: String) {
         }
         isLoading = false
     }
+
+    val canEdit = group?.let { it.owner == myUid || it.admins.contains(myUid) } == true
 
     Column(
         modifier = Modifier
@@ -95,8 +115,29 @@ fun ChannelProfileScreen(navController: NavController, groupId: String) {
                 "Channel Profile",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
+                fontSize = 18.sp,
+                modifier = Modifier.weight(1f)
             )
+            if (canEdit) {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More Options", tint = Color.White)
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier.background(DarkSheet)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit Channel", color = Color.White) },
+                            onClick = {
+                                showMenu = false
+                                navController.navigate(Screen.EditChannel.createRoute(groupId))
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         val g = group
