@@ -269,7 +269,9 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(start = 20.dp, end = 20.dp, bottom = 96.dp)
+                        .navigationBarsPadding()  // CAPTION_FIX_V1 -- reply bar ke upar rahe
+                        .imePadding()
+                        .padding(start = 20.dp, end = 20.dp, bottom = 88.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color.Black.copy(alpha = 0.5f))
                         .padding(horizontal = 14.dp, vertical = 8.dp)
