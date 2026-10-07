@@ -112,6 +112,14 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
             idx = if (firstUnseen < 0) 0 else firstUnseen
         }
         loaded = true
+        // STATUS_PRELOAD: saari photos pehle se cache mein kheench lo
+        statuses.forEach { st ->
+            if (st.type == "image" && st.mediaUrl != null) {
+                coil.Coil.imageLoader(context).enqueue(
+                    coil.request.ImageRequest.Builder(context).data(st.mediaUrl).build()
+                )
+            }
+        }
         if (statuses.isEmpty()) close()
     }
 
@@ -221,6 +229,12 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
                                 imageFailed = true
                             }
                         )
+                        if (!imageReady) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        }
                         if (imageFailed) {
                             Text("Photo load nahi ho payi", color = Color.White, fontSize = 16.sp)
                         }
