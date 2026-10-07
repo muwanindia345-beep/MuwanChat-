@@ -7,6 +7,10 @@ on:
         description: 'Type "release" to confirm this will publish the OFFICIAL signed APK'
         required: true
         default: ''
+      notes:
+        description: 'Kya naya aaya? Points | se alag karo (e.g. New wallpapers | Call fix)'
+        required: true
+        default: ''
 
 jobs:
   build-release:
@@ -78,11 +82,24 @@ jobs:
         if: always()
         run: rm -f release.keystore
 
+      - name: Prepare release notes
+        env:
+          NOTES: ${{ github.event.inputs.notes }}
+        run: |
+          {
+            echo "VERSION_CODE:${{ steps.ver.outputs.new_code }}"
+            echo "Official signed release."
+            echo ""
+            echo "What's new:"
+            echo "$NOTES" | tr '|' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | sed 's/^/- /'
+          } > release_notes.md
+          cat release_notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.ver.outputs.new_name }}
           name: MuwanChat v${{ steps.ver.outputs.new_name }}
           prerelease: false
-          body: "VERSION_CODE:${{ steps.ver.outputs.new_code }}\nOfficial signed release.\n${{ github.event.head_commit.message }}"
+          body_path: release_notes.md
           files: app/build/outputs/apk/production/release/app-production-release.apk
