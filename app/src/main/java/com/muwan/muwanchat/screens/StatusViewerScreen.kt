@@ -34,6 +34,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.muwan.muwanchat.DarkSheet
 import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.AuthDataStore
@@ -55,7 +57,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-// STATUS_V3 -- full-screen viewer. uid == "me" -> apne status, warna friend ka uid.
+// STATUS_V3 / STATUS_V5 -- full-screen viewer (text, photo, video). uid == "me" -> apne status, warna friend ka uid.
 private const val STATUS_DURATION_MS = 5000f
 
 @Composable
@@ -78,6 +80,11 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
     var replyFocused by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val marked = remember { mutableSetOf<String>() }
+    // Photo load hone tak timer ruka rehta hai (text/video par turant ready)
+    var imageReady by remember(idx, statuses.size) {
+        mutableStateOf(statuses.getOrNull(idx)?.type != "image")
+    }
+    var imageFailed by remember(idx, statuses.size) { mutableStateOf(false) }
 
     val close: () -> Unit = { navController.popBackStack() }
     BackHandler { close() }
@@ -111,9 +118,11 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
     LaunchedEffect(idx, statuses.size, loaded) {
         if (!loaded || statuses.isEmpty()) return@LaunchedEffect
         progress = 0f
+        // Video: StatusVideoPlayer apna progress aur khatam hona khud batata hai
+        if (statuses.getOrNull(idx)?.type == "video") return@LaunchedEffect
         while (progress < 1f) {
             delay(50)
-            if (!(paused || replyFocused || confirmDelete)) {
+            if (imageReady && !(paused || replyFocused || confirmDelete)) {
                 progress += 50f / STATUS_DURATION_MS
             }
         }
@@ -177,9 +186,49 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(parseStatusColor(current.bgColor))
+                .background(if (current.type == "image" || current.type == "video") Color.Black else parseStatusColor(current.bgColor))
         ) {
-            // Beech ka hissa: tap (left = pichla, right = agla), daba ke rakho = pause, neeche swipe = band
+            // Media layer: text / photo / video
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                when (current.type) {
+                    "video" -> {
+                        if (current.mediaUrl != null) {
+                            StatusVideoPlayer(
+                                url = current.mediaUrl,
+                                paused = paused || replyFocused || confirmDelete,
+                                onProgress = { progress = it },
+                                onEnded = {
+                                    if (idx + 1 < statuses.size) { idx += 1 } else { close() }
+                                }
+                            )
+                        } else {
+                            StatusContent(current)
+                        }
+                    }
+                    "image" -> {
+                        AsyncImage(
+                            model = current.mediaUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                            onSuccess = { imageReady = true },
+                            onError = {
+                                imageReady = true
+                                imageFailed = true
+                            }
+                        )
+                        if (imageFailed) {
+                            Text("Photo load nahi ho payi", color = Color.White, fontSize = 16.sp)
+                        }
+                    }
+                    else -> StatusContent(current)
+                }
+            }
+
+            // Gesture layer: tap (left = pichla, right = agla), daba ke rakho = pause, neeche swipe = band
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -208,9 +257,22 @@ fun StatusViewerScreen(navController: NavController, uid: String) {
                             onVerticalDrag = { _, dy -> total += dy }
                         )
                     },
-                contentAlignment = Alignment.Center
-            ) {
-                StatusContent(current)
+            )
+
+            // Caption (photo / video ke neeche)
+            if ((current.type == "image" || current.type == "video") && current.text.isNotBlank()) {
+                Text(
+                    current.text,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 20.dp, end = 20.dp, bottom = 96.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                )
             }
 
             // Upar: progress bars + header
