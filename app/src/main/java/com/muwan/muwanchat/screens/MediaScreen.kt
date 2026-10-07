@@ -180,7 +180,7 @@ private fun PhotosGrid(messages: List<MessageEntity>, onTap: (MessageEntity) -> 
     ) {
         items(messages, key = { it.id }) { msg ->
             AsyncImage(
-                model = msg.content,
+                model = com.muwan.muwanchat.data.LocalMedia.rememberModel(msg.content),
                 contentDescription = "Photo",
                 modifier = Modifier
                     .aspectRatio(1f)
@@ -209,7 +209,7 @@ private fun VideosList(messages: List<MessageEntity>, onTap: (MessageEntity) -> 
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = msg.content,
+                    model = com.muwan.muwanchat.data.LocalMedia.rememberModel(msg.content),
                     contentDescription = "Video thumbnail",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

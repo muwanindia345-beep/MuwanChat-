@@ -45,7 +45,9 @@ fun AudioMessagePlayer(url: String, sent: Boolean) {
             // setDataSource(url) 401 khata hai aur MediaPlayer chup-chaap fail ho jata hai.
             val token = AuthDataStore.getTokenBlocking(context)
             val headers = if (token.isNotEmpty()) mapOf("Authorization" to "Bearer $token") else emptyMap()
-            player.setDataSource(context, Uri.parse(url), headers)
+            val localAudio = com.muwan.muwanchat.data.LocalMedia.localFile(context, url)
+            if (localAudio != null) player.setDataSource(localAudio.absolutePath)
+            else player.setDataSource(context, Uri.parse(url), headers)
             player.setOnPreparedListener {
                 isPrepared = true
                 durationMs = it.duration

@@ -402,7 +402,7 @@ fun MessageBubble(
                 when (message.type) {
                     "image" -> message.mediaUrl?.let { url ->
                         AsyncImage(
-                            model = url,
+                            model = com.muwan.muwanchat.data.LocalMedia.rememberModel(url),
                             contentDescription = "Image",
                             placeholder = ColorPainter(Color(0xFF2A2A2A)),
                             error = ColorPainter(Color(0xFF2A2A2A)),
@@ -421,7 +421,7 @@ fun MessageBubble(
                     "gif" -> message.mediaUrl?.let { url ->
                         Column(horizontalAlignment = Alignment.End) {
                             AsyncImage(
-                                model = url,
+                                model = com.muwan.muwanchat.data.LocalMedia.rememberModel(url),
                                 contentDescription = "Sticker",
                                 placeholder = ColorPainter(Color(0xFF2A2A2A)),
                                 error = ColorPainter(Color(0xFF2A2A2A)),
@@ -467,7 +467,7 @@ fun MessageBubble(
                             contentAlignment = Alignment.Center
                         ) {
                             AsyncImage(
-                                model = url,
+                                model = com.muwan.muwanchat.data.LocalMedia.rememberModel(url),
                                 contentDescription = "Video thumbnail",
                                 placeholder = ColorPainter(Color(0xFF1A1A1A)),
                                 error = ColorPainter(Color(0xFF1A1A1A)),

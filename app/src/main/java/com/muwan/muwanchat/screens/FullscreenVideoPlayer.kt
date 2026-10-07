@@ -95,7 +95,10 @@ fun FullscreenVideoPlayer(
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 
         return ExoPlayer.Builder(ctx)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(cacheDataSourceFactory))
+            .setMediaSourceFactory(
+                if (com.muwan.muwanchat.data.LocalMedia.exists(ctx, url)) DefaultMediaSourceFactory(ctx)
+                else DefaultMediaSourceFactory(cacheDataSourceFactory)
+            )
             .build().apply {
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(state: Int) {
@@ -107,7 +110,7 @@ fun FullscreenVideoPlayer(
                     playbackError = "Video load nahi ho paya. Network check karke retry karo."
                 }
             })
-            setMediaItem(MediaItem.fromUri(url))
+            setMediaItem(MediaItem.fromUri(com.muwan.muwanchat.data.LocalMedia.uri(ctx, url)))
             prepare()
             playWhenReady = true
         }

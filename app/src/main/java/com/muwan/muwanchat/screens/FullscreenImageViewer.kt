@@ -139,7 +139,7 @@ fun FullscreenImageViewer(
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
-                model = model,
+                model = (model as? String)?.let { com.muwan.muwanchat.data.LocalMedia.rememberModel(it) } ?: model,
                 contentDescription = "Full image",
                 modifier = Modifier
                     .fillMaxWidth()

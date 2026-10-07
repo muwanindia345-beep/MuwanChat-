@@ -205,6 +205,7 @@ private suspend fun uploadGroupMediaMessage(
         )
         if (res.isSuccessful) {
             res.body()?.let { body ->
+                com.muwan.muwanchat.data.LocalMedia.saveSenderCopy(context, db, id, body.url)
                 db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendGroupMessage(id, roomId, body.url, displayType, body.file_name ?: filename, body.mime_type ?: mime) { success ->
@@ -271,6 +272,7 @@ private suspend fun uploadGroupVideoMessage(
         val res = RetrofitClient.chatApi.uploadVideo("Bearer $token", part, uploadId = id)
         if (res.isSuccessful) {
             res.body()?.let { body ->
+                com.muwan.muwanchat.data.LocalMedia.saveSenderCopy(context, db, id, body.url)
                 db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendGroupMessage(id, roomId, body.url, "video", body.file_name ?: filename, body.mime_type ?: mime) { success ->
@@ -338,6 +340,7 @@ private suspend fun uploadGroupAudioMessage(
         )
         if (res.isSuccessful) {
             res.body()?.let { body ->
+                com.muwan.muwanchat.data.LocalMedia.saveSenderCopy(context, db, id, body.url)
                 db.messageDao().updateMediaContent(id, body.url, "PENDING")
                 if (AppSocketManager.isConnected) {
                     AppSocketManager.sendGroupMessage(id, roomId, body.url, "audio", body.file_name ?: filename, body.mime_type ?: mime) { success ->

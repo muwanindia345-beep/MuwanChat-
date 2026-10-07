@@ -26,6 +26,14 @@ object DocumentOpener {
     ) {
         val success = withContext(Dispatchers.IO) {
             try {
+                val localDoc = LocalMedia.localFile(context, url)
+                if (localDoc != null) {
+                    val docsDir0 = File(context.cacheDir, "documents").apply { mkdirs() }
+                    val copy0 = File(docsDir0, fileName.ifBlank { "document" })
+                    localDoc.copyTo(copy0, overwrite = true)
+                    withContext(Dispatchers.Main) { openLocalFile(context, copy0, fileName, mimeType) }
+                    return@withContext true
+                }
                 val request = Request.Builder()
                     .url(url)
                     .addHeader("Authorization", "Bearer $token")

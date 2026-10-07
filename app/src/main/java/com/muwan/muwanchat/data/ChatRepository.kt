@@ -290,6 +290,8 @@ object ChatRepository {
             )
         )
 
+        LocalMedia.autoDownload(type, content, createdAt)
+
         // Broadcast channel kabhi Chats tab mein nahi dikhna chahiye -- message
         // save ho chuka, ab conversation row banane/rakhne ki jagah hata do.
         if (isChannelRoom(db, roomId)) {
@@ -504,6 +506,7 @@ object ChatRepository {
             )
         }
         db.messageDao().insertAll(entities)
+        LocalMedia.autoDownloadAll(entities)
     }
 
     // Jo messages backend pe "delete for everyone" ho chuke the jab hum offline the,

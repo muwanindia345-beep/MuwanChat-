@@ -79,6 +79,7 @@ object MediaSaver {
 
     private fun downloadBytes(context: Context, url: String): ByteArray? {
         return try {
+            LocalMedia.localFile(context, url)?.let { return it.readBytes() }
             val token = AuthDataStore.getTokenBlocking(context)
             val request = Request.Builder()
                 .url(url)
