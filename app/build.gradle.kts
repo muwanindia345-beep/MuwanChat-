@@ -63,7 +63,7 @@ android {
         // Official build — same applicationId as always, ships only confirmed features.
         create("production") {
             dimension = "channel"
-            buildConfigField("boolean", "ENABLE_NEW_NAV", "false")
+            buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
             signingConfig = signingConfigs.getByName("release")
         }
         // Pre-release/beta build — separate applicationId so it installs alongside
