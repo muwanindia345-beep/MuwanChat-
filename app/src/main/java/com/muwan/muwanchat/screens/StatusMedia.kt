@@ -9,7 +9,18 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import okhttp3.RequestBody.Companion.toRequestBody
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -217,7 +228,15 @@ suspend fun uploadStatusMedia(context: Context, token: String, media: PickedStat
                     )
                 )
             } else {
-                val body = StatusUriRequestBody(context, media.uri, media.mime, media.sizeBytes)
+                val bytes = context.contentResolver.openInputStream(media.uri)?.use { it.readBytes() }
+                    ?: return@withContext Result.failure<String>(Exception("Video khul nahi payi."))
+                if (bytes.isEmpty()) {
+                    return@withContext Result.failure<String>(Exception("Video khali hai."))
+                }
+                if (bytes.size > STATUS_VIDEO_MAX_BYTES) {
+                    return@withContext Result.failure<String>(Exception("Video 25 MB se badi hai."))
+                }
+                val body = bytes.toRequestBody(media.mime.toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("video", media.fileName, body)
                 RetrofitClient.chatApi.uploadVideo("Bearer $token", part)
             }
@@ -228,7 +247,8 @@ suspend fun uploadStatusMedia(context: Context, token: String, media: PickedStat
                 val msg = if (res.code() == 413) "File bahut badi hai." else "Upload nahi ho paya. Dobara try karo."
                 Result.failure<String>(Exception(msg))
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("StatusUpload", "status upload failed", e)
             Result.failure<String>(Exception("Upload nahi ho paya. Net check karo."))
         }
     }
@@ -342,6 +362,85 @@ fun StatusVideoPlayer(
                 fontSize = 16.sp,
                 modifier = Modifier.align(Alignment.Center)
             )
+        }
+    }
+}
+
+// Preview: video ka pehla frame + beech mein sirf ek play button. Koi controller nahi.
+// Tap: play / pause. Khatam hone par ya app background jaane par wapas play button.
+@Composable
+fun StatusVideoPreview(uri: Uri, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var playing by remember(uri) { mutableStateOf(false) }
+
+    val exo = remember(uri) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(uri))
+            playWhenReady = false
+            prepare()
+        }
+    }
+
+    DisposableEffect(exo) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED) {
+                    exo.seekTo(0L)
+                    exo.playWhenReady = false
+                    playing = false
+                }
+            }
+        }
+        exo.addListener(listener)
+        onDispose {
+            exo.removeListener(listener)
+            exo.release()
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) playing = false
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(exo, playing) { exo.playWhenReady = playing }
+
+    Box(
+        modifier = modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null
+        ) { playing = !playing }
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    useController = false
+                    this.player = exo
+                }
+            },
+            update = { it.player = exo },
+            modifier = Modifier.fillMaxSize()
+        )
+        if (!playing) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.45f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
         }
     }
 }

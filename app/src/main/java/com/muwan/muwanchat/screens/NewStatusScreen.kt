@@ -280,28 +280,18 @@ fun NewStatusScreen(navController: NavController) {
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    AsyncImage(
-                        model = m.uri,
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize()
-                    )
                     if (m.type == "video") {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.45f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Filled.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(40.dp)
-                            )
-                        }
+                        StatusVideoPreview(
+                            uri = m.uri,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        AsyncImage(
+                            model = m.uri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                     BasicTextField(
                         value = caption,
