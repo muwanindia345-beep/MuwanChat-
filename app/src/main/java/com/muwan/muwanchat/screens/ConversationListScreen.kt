@@ -120,6 +120,7 @@ fun ConversationListScreen(navController: NavController) {
     var myToken by remember { mutableStateOf("") }
     var showFabSheet by remember { mutableStateOf(false) }
     var showSecuritySheet by remember { mutableStateOf(false) }
+    var avatarSheetConv by remember { mutableStateOf<ConversationItem?>(null) }  // AVATAR_SHEET_V1
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
 
     // ── Multi-select "delete chat" state ──────────────────────────────────
@@ -373,6 +374,23 @@ fun ConversationListScreen(navController: NavController) {
         }
     }
 
+    // AVATAR_SHEET_V1 -- status ring wale avatar par tap
+    avatarSheetConv?.let { c ->
+        ModalBottomSheet(onDismissRequest = { avatarSheetConv = null }, containerColor = DarkSheet) {
+            Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                FabSheetOption(Icons.Filled.Visibility, "See Status") {
+                    avatarSheetConv = null
+                    navController.navigate(Screen.StatusViewer.createRoute(c.uid))
+                }
+                FabSheetOption(Icons.Filled.Person, "See Profile Pic") {
+                    avatarSheetConv = null
+                    AvatarViewerSelection.set(c.avatar, c.username)
+                    navController.navigate(Screen.ViewAvatar.route)
+                }
+            }
+        }
+    }
+
     if (showSecuritySheet) {
         ModalBottomSheet(onDismissRequest = { showSecuritySheet = false }, containerColor = DarkSheet) {
             Column(
@@ -596,8 +614,13 @@ fun ConversationListScreen(navController: NavController) {
                                 }
                             },
                             onAvatarClick = {
-                                AvatarViewerSelection.set(conv.avatar, conv.username)
-                                navController.navigate(Screen.ViewAvatar.route)
+                                val hasStatusRing = !conv.isGroup && (statusRings[conv.uid]?.isNotEmpty() == true)
+                                if (hasStatusRing) {
+                                    avatarSheetConv = conv
+                                } else {
+                                    AvatarViewerSelection.set(conv.avatar, conv.username)
+                                    navController.navigate(Screen.ViewAvatar.route)
+                                }
                             }
                         )
                         HorizontalDivider(color = Color(0xFF1E2040), thickness = 0.5.dp)
