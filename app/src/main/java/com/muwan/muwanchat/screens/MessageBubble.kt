@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -217,6 +218,8 @@ fun MessageBubble(
     val bubbleHPad = if (bubbleTheme.compact) 10.dp else 14.dp
     val bubbleVPad = if (bubbleTheme.compact) 7.dp else 10.dp
     val bubbleFontSize = if (bubbleTheme.compact) 14.sp else 15.sp
+    // GROUP_REACTION_AVATAR_FIX
+    var reactionRowHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -247,13 +250,21 @@ fun MessageBubble(
             verticalAlignment = Alignment.Bottom
         ) {
         if (!message.sent && senderName != null) {
-            AvatarView(
-                avatarBase64 = senderAvatar,
-                fallbackText = senderName,
-                size = 26.dp,
-                fontSize = 11.sp,
-                onClick = { onSenderTap(message.senderUid) }
-            )
+            Box(
+                modifier = Modifier.padding(
+                    bottom = if (message.reactions.isNotEmpty())
+                        with(androidx.compose.ui.platform.LocalDensity.current) { reactionRowHeightPx.toDp() } + 2.dp
+                    else 0.dp
+                )
+            ) {
+                AvatarView(
+                    avatarBase64 = senderAvatar,
+                    fallbackText = senderName,
+                    size = 26.dp,
+                    fontSize = 11.sp,
+                    onClick = { onSenderTap(message.senderUid) }
+                )
+            }
             Spacer(modifier = Modifier.width(6.dp))
         }
         Column(
@@ -655,6 +666,7 @@ fun MessageBubble(
                 Row(
                     modifier = Modifier
                         .align(if (message.sent) Alignment.End else Alignment.Start)
+                        .onSizeChanged { reactionRowHeightPx = it.height }
                         .offset(
                             x = if (message.sent) (-6).dp else 6.dp,
                             y = (-4).dp
