@@ -420,7 +420,7 @@ fun NewStatusScreen(navController: NavController) {
                 showPicker = false
                 imagePicker.launch("image/*")
             }
-            PickRow(Icons.Filled.Videocam, "Video", "Max 30 second, 25 MB") {
+            PickRow(Icons.Filled.Videocam, "Video", "Max 2 minutes, 25 MB") {
                 showPicker = false
                 videoPicker.launch("video/*")
             }

@@ -63,7 +63,7 @@ import java.io.ByteArrayOutputStream
 
 // STATUS_V5 -- photo / video status ke helpers: file check, image compress, upload, video player.
 
-const val STATUS_VIDEO_MAX_MS = 30_000L                       // video status max 30 second
+const val STATUS_VIDEO_MAX_MS = 120_000L                      // video status max 2 minutes
 const val STATUS_VIDEO_MAX_BYTES = 25L * 1024L * 1024L        // server (multer) bhi 25 MB par rokta hai
 const val STATUS_CAPTION_MAX = 300                            // backend caption limit
 private const val STATUS_IMAGE_MAX_BASE64 = 3_900_000         // server image limit 4,000,000 chars
@@ -82,7 +82,7 @@ fun formatStatusDuration(ms: Long): String {
     return "%d:%02d".format(s / 60L, s % 60L)
 }
 
-// Gallery se chuni file ki jaanch. Video: 30 second aur 25 MB se zyada nahi.
+// Gallery se chuni file ki jaanch. Video: 2 minute aur 25 MB se zyada nahi.
 // IO thread par chalao (MediaMetadataRetriever).
 fun readStatusMedia(context: Context, uri: Uri, isVideo: Boolean): Result<PickedStatusMedia> {
     val resolver = context.contentResolver
@@ -106,7 +106,7 @@ fun readStatusMedia(context: Context, uri: Uri, isVideo: Boolean): Result<Picked
     }
 
     if (size > STATUS_VIDEO_MAX_BYTES) {
-        return Result.failure(Exception("Video 25 MB se badi hai. Chhoti video chuno."))
+        return Result.failure(Exception("Video is larger than 25 MB. Please choose a smaller video."))
     }
     var duration = 0L
     val retriever = MediaMetadataRetriever()
@@ -122,10 +122,10 @@ fun readStatusMedia(context: Context, uri: Uri, isVideo: Boolean): Result<Picked
         }
     }
     if (duration <= 0L) {
-        return Result.failure(Exception("Yeh video khul nahi payi."))
+        return Result.failure(Exception("This video could not be opened."))
     }
     if (duration > STATUS_VIDEO_MAX_MS + 500L) {
-        return Result.failure(Exception("Video 30 second se zyada nahi ho sakti."))
+        return Result.failure(Exception("Video cannot be longer than 2 minutes."))
     }
     return Result.success(PickedStatusMedia(uri, "video", duration, name, mime, size))
 }
@@ -231,10 +231,10 @@ suspend fun uploadStatusMedia(context: Context, token: String, media: PickedStat
                 val bytes = context.contentResolver.openInputStream(media.uri)?.use { it.readBytes() }
                     ?: return@withContext Result.failure<String>(Exception("Video khul nahi payi."))
                 if (bytes.isEmpty()) {
-                    return@withContext Result.failure<String>(Exception("Video khali hai."))
+                    return@withContext Result.failure<String>(Exception("Video is empty."))
                 }
                 if (bytes.size > STATUS_VIDEO_MAX_BYTES) {
-                    return@withContext Result.failure<String>(Exception("Video 25 MB se badi hai."))
+                    return@withContext Result.failure<String>(Exception("Video is larger than 25 MB."))
                 }
                 val body = bytes.toRequestBody(media.mime.toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("video", media.fileName, body)
@@ -253,7 +253,7 @@ suspend fun uploadStatusMedia(context: Context, token: String, media: PickedStat
         }
     }
 
-// Viewer ka video: khud chalta hai, progress bar video ki length (max 30 sec) ke hisaab se, khatam hote hi onEnded.
+// Viewer ka video: khud chalta hai, progress bar video ki length (max 2 min) ke hisaab se, khatam hote hi onEnded.
 @Composable
 fun StatusVideoPlayer(
     url: String,
