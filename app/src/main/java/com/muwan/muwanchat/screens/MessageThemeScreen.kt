@@ -176,7 +176,7 @@ private fun ThemeOptionCard(theme: BubbleTheme, isSelected: Boolean, onClick: ()
                         .background(DarkBubbleReceived)
                         .padding(horizontal = hPad, vertical = vPad)
                 ) {
-                    Text("Kya haal hai?", color = Color.White, fontSize = fSize)
+                    Text("How are you?", color = Color.White, fontSize = fSize)
                 }
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -192,7 +192,7 @@ private fun ThemeOptionCard(theme: BubbleTheme, isSelected: Boolean, onClick: ()
                         .background(theme.sentColor)
                         .padding(horizontal = hPad, vertical = vPad)
                 ) {
-                    Text("Sab badhiya bhai 😄", color = Color.White, fontSize = fSize)
+                    Text("All good, bro 😄", color = Color.White, fontSize = fSize)
                 }
             }
         }
