@@ -357,6 +357,8 @@ class CallManager(
     fun createOffer(onSdpReady: (String) -> Unit) {
         createPeerConnection()
         val constraints = MediaConstraints()
+        // VIDEO_P2: even without our own camera we still want to see the other person
+        if (withVideo) constraints.mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
         synchronized(stateLock) {
             peerConnection?.createOffer(object : SdpObserver {
                 override fun onCreateSuccess(desc: SessionDescription) {

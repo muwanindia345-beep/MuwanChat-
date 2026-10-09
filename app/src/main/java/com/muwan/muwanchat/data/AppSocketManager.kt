@@ -129,6 +129,9 @@ sealed class SocketEvent {
 
     data class CallBusyReceived(val callId: String) : SocketEvent()
 
+    // VIDEO_P2: the other person turned their camera on/off
+    data class CallMediaStateReceived(val callId: String, val camera: Boolean) : SocketEvent()
+
     // CALL_BUBBLE_PATCH: call bubble ka naya status (ringing -> missed/declined/ended + duration)
     data class CallMessageUpdate(
         val id: String,
@@ -426,6 +429,17 @@ object AppSocketManager {
                 )
             }
 
+            // VIDEO_P2
+            s.on("call_media_state") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.CallMediaStateReceived(
+                        callId = json.optString("callId"),
+                        camera = json.optBoolean("camera", true)
+                    )
+                )
+            }
+
             s.on("call_busy") { args ->
                 val json = args.getOrNull(0) as? JSONObject ?: return@on
                 _events.tryEmit(SocketEvent.CallBusyReceived(callId = json.optString("callId")))
@@ -610,6 +624,15 @@ object AppSocketManager {
 
     fun sendCallEnd(callId: String) {
         socket?.emit("call_end", JSONObject().apply { put("callId", callId) })
+    }
+
+    // VIDEO_P2: tell the other side our camera is on/off (server only relays it during an ongoing call)
+    fun sendCallMediaState(callId: String, camera: Boolean) {
+        val json = JSONObject().apply {
+            put("callId", callId)
+            put("camera", camera)
+        }
+        socket?.emit("call_media_state", json)
     }
 
     fun sendIceCandidate(callId: String, sdpMid: String?, sdpMLineIndex: Int, candidate: String) {

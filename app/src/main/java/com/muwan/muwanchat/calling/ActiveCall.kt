@@ -8,6 +8,7 @@ import android.os.SystemClock
 import android.widget.Toast
 import com.muwan.muwanchat.data.AppSocketManager
 import com.muwan.muwanchat.data.SocketEvent
+import org.webrtc.VideoSink
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,6 +61,24 @@ object ActiveCall {
 
     private val _speakerOn = MutableStateFlow(false)
     val speakerOn: StateFlow<Boolean> = _speakerOn.asStateFlow()
+
+    // ───────── VIDEO_P2 state ─────────
+    private val _cameraOn = MutableStateFlow(true)
+    val cameraOn: StateFlow<Boolean> = _cameraOn.asStateFlow()
+
+    private val _frontCamera = MutableStateFlow(true)
+    val frontCamera: StateFlow<Boolean> = _frontCamera.asStateFlow()
+
+    private val _remoteVideoAvailable = MutableStateFlow(false)
+    val remoteVideoAvailable: StateFlow<Boolean> = _remoteVideoAvailable.asStateFlow()
+
+    private val _remoteCameraOn = MutableStateFlow(true)
+    val remoteCameraOn: StateFlow<Boolean> = _remoteCameraOn.asStateFlow()
+
+    // Renderers handed over by the UI. Kept here so a fresh CallManager gets them too.
+    private var remoteVideoSink: VideoSink? = null
+    private var localVideoSink: VideoSink? = null
+    // ───────── /VIDEO_P2 state ─────────
 
     // SystemClock.elapsedRealtime() jab call connect hui (0 = abhi nahi).
     // Timer isi se nikalta hai: screen ho ya banner, dono hamesha sync.
@@ -215,6 +234,36 @@ object ActiveCall {
         callManager?.setSpeakerOn(s)
     }
 
+    // ───────── VIDEO_P2 actions ─────────
+    val isVideoCall: Boolean get() = _info.value?.callType == "video"
+
+    /** UI passes the renderer that shows the other person. Pass null when the UI goes away. */
+    fun setRemoteVideoSink(sink: VideoSink?) {
+        remoteVideoSink = sink
+        callManager?.setRemoteVideoSink(sink)
+    }
+
+    /** UI passes the renderer for our own preview. Pass null when the UI goes away. */
+    fun setLocalVideoSink(sink: VideoSink?) {
+        localVideoSink = sink
+        callManager?.setLocalVideoSink(sink)
+    }
+
+    fun toggleCamera() {
+        val info = _info.value ?: return
+        if (info.callType != "video") return
+        val on = !_cameraOn.value
+        _cameraOn.value = on
+        callManager?.setCameraEnabled(on)
+        if (_phase.value == CallPhase.ONGOING) AppSocketManager.sendCallMediaState(info.callId, on)
+    }
+
+    fun switchCamera() {
+        if (!isVideoCall) return
+        callManager?.switchCamera { isFront -> _frontCamera.value = isFront }
+    }
+    // ───────── /VIDEO_P2 actions ─────────
+
     // ─────────────────────────── Internals ───────────────────────────
 
     private fun handleSocketEvent(e: SocketEvent) {
@@ -244,6 +293,9 @@ object ActiveCall {
                     finish()
                 }
             }
+            is SocketEvent.CallMediaStateReceived -> { // VIDEO_P2
+                if (e.callId == cur.callId) _remoteCameraOn.value = e.camera
+            }
             else -> {}
         }
     }
@@ -252,6 +304,10 @@ object ActiveCall {
         IceServerProvider.prefetch(ctx)
         _muted.value = false
         _speakerOn.value = false
+        _cameraOn.value = true // VIDEO_P2
+        _frontCamera.value = true
+        _remoteVideoAvailable.value = false
+        _remoteCameraOn.value = true
         _connectedAt.value = 0L
         _info.value = info
         callManager = CallManager(
@@ -262,8 +318,14 @@ object ActiveCall {
             onRemoteAudioTrackAdded = { },
             onConnectionFailed = {
                 mainHandler.post { handleConnectionFailed(info.callId) }
+            },
+            withVideo = info.callType == "video", // VIDEO_P2
+            onRemoteVideoChanged = { available ->
+                if (_info.value?.callId == info.callId) _remoteVideoAvailable.value = available
             }
         )
+        callManager?.setRemoteVideoSink(remoteVideoSink)
+        callManager?.setLocalVideoSink(localVideoSink)
         ringtone = CallRingtoneManager(ctx)
         setPhase(phase)
     }
@@ -289,6 +351,13 @@ object ActiveCall {
         _connectedAt.value = SystemClock.elapsedRealtime()
         setPhase(CallPhase.ONGOING)
         refreshOngoing() // STEP4A_ONGOING_NOTIF: notification mein timer chalu
+        if (isVideoCall) { // VIDEO_P2
+            // Video calls start on the speaker (the phone is held away from the ear)
+            if (!_speakerOn.value) toggleSpeaker()
+            // Camera was turned off while ringing: tell the other side now
+            val ci = _info.value
+            if (ci != null && !_cameraOn.value) AppSocketManager.sendCallMediaState(ci.callId, false)
+        }
     }
 
     private fun handleConnectionFailed(callId: String) {
@@ -321,6 +390,10 @@ object ActiveCall {
         _connectedAt.value = 0L
         _muted.value = false
         _speakerOn.value = false
+        _cameraOn.value = true // VIDEO_P2
+        _frontCamera.value = true
+        _remoteVideoAvailable.value = false
+        _remoteCameraOn.value = true
         _info.value = null
         _phase.value = CallPhase.IDLE
     }
