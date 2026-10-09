@@ -27,7 +27,8 @@ object WebRtcEngine {
     @Volatile
     private var factory: PeerConnectionFactory? = null
 
-    private val eglBase: EglBase by lazy { EglBase.create() }
+    // VIDEO_P1: public so video renderers share the same EGL context as the codecs
+    val eglBase: EglBase by lazy { EglBase.create() }
 
     @Synchronized
     fun getFactory(context: Context): PeerConnectionFactory {
