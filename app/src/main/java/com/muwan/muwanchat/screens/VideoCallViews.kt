@@ -95,8 +95,8 @@ fun DraggableSelfPreview(
     val widthPx = with(density) { widthDp.dp.toPx() }
     val heightPx = with(density) { heightDp.dp.toPx() }
     val marginPx = with(density) { 12.dp.toPx() }
-    val minY = topInsetPx + with(density) { 56.dp.toPx() } // below the back / flip buttons
-    val maxY = (boundsHeight - bottomInsetPx - heightPx - with(density) { 140.dp.toPx() }).coerceAtLeast(minY)
+    val minY = topInsetPx + with(density) { 8.dp.toPx() } // VIDEO_P5: just below the top bar
+    val maxY = (boundsHeight - bottomInsetPx - heightPx - with(density) { 8.dp.toPx() }).coerceAtLeast(minY) // VIDEO_P5
     val maxX = (boundsWidth - widthPx - marginPx).coerceAtLeast(marginPx)
 
     // Starts at the top right corner

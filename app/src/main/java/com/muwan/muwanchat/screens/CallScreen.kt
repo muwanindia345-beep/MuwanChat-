@@ -41,6 +41,8 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.calling.ActiveCall
 import com.muwan.muwanchat.calling.CallControlEvents
 import com.muwan.muwanchat.calling.CallPhase
+import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkSheet
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.MuwanChatDb
 import com.muwan.muwanchat.network.RetrofitClient
@@ -270,14 +272,31 @@ fun CallScreen(
         // ───────── VIDEO_P3 layers ─────────
         // The wallpaper above is drawn first, so the video surface punches through it.
         if (showRemoteVideo) {
+            // VIDEO_P5: the video is drawn only between a solid top bar and a solid bottom bar
+            val topBarH = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
+            val bottomBarH = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
             CallVideoView(
                 isLocal = false,
                 mirror = false,
                 overlay = false,
                 roundedCornersDp = 0,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().padding(top = topBarH, bottom = bottomBarH)
             )
-            // Small name + timer on top of the video (the big avatar is hidden now)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(topBarH)
+                    .background(DarkHeader)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(bottomBarH)
+                    .background(DarkSheet)
+            )
+            // Name + timer inside the top bar
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -294,8 +313,10 @@ fun CallScreen(
             }
         }
         if (showSelfPreview && rootSize.width > 0) {
-            val insets = WindowInsets.statusBars.getTop(androidx.compose.ui.platform.LocalDensity.current).toFloat()
-            val navInsets = WindowInsets.navigationBars.getBottom(androidx.compose.ui.platform.LocalDensity.current).toFloat()
+            // VIDEO_P5: space taken by the top bar (status bar + 64dp) and bottom bar (nav bar + 112dp)
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            val insets = WindowInsets.statusBars.getTop(d).toFloat() + with(d) { 64.dp.toPx() }
+            val navInsets = WindowInsets.navigationBars.getBottom(d).toFloat() + with(d) { 112.dp.toPx() }
             DraggableSelfPreview(
                 mirror = frontCamera,
                 boundsWidth = rootSize.width.toFloat(),
@@ -401,7 +422,7 @@ fun CallScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 48.dp),
+                    .padding(bottom = if (showRemoteVideo) 24.dp else 48.dp), // VIDEO_P5
                 horizontalArrangement = Arrangement.spacedBy(if (isVideoCall) 20.dp else 36.dp), // VIDEO_P3
                 verticalAlignment = Alignment.CenterVertically
             ) {
