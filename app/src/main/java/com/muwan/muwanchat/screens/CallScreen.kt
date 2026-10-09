@@ -20,13 +20,18 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -67,6 +72,15 @@ fun CallScreen(
     val shownUid = info?.otherUid ?: otherUid
     val shownName = info?.otherUsername ?: otherUsername
 
+    // ───────── VIDEO_P3 state ─────────
+    val isVideoCall = (info?.callType ?: callType) == "video"
+    val cameraOn by ActiveCall.cameraOn.collectAsState()
+    val frontCamera by ActiveCall.frontCamera.collectAsState()
+    val remoteVideoAvailable by ActiveCall.remoteVideoAvailable.collectAsState()
+    val remoteCameraOn by ActiveCall.remoteCameraOn.collectAsState()
+    var rootSize by remember { mutableStateOf(IntSize.Zero) }
+    // ───────── /VIDEO_P3 state ─────────
+
     var avatarBase64 by remember { mutableStateOf<String?>(null) }
     var isAvatarLoading by remember { mutableStateOf(true) }
     var durationSeconds by remember { mutableStateOf(0) }
@@ -95,10 +109,38 @@ fun CallScreen(
         if (!hasMicPermission) micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    // ───────── VIDEO_P3 camera permission ─────────
+    // Asked after the microphone. Denied = the call continues audio-only.
+    var hasCam by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var camRequested by remember { mutableStateOf(false) }
+    var camAnswered by remember { mutableStateOf(false) }
+    // true when we may go ahead with the call: voice call, camera granted, or the user already answered
+    val camDecided = !isVideoCall || hasCam || camAnswered
+    val camPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCam = granted
+        camAnswered = true
+        if (!granted) {
+            Toast.makeText(context, "Camera permission denied, continuing audio only", Toast.LENGTH_SHORT).show()
+        }
+    }
+    LaunchedEffect(hasMicPermission, isVideoCall) {
+        if (isVideoCall && hasMicPermission && !hasCam && !camRequested) {
+            camRequested = true
+            camPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+    // ───────── /VIDEO_P3 camera permission ─────────
+
     // Outgoing: permission milte hi call shuru. Pehle se call chal rahi ho (banner/chat se
     // wapas aaye) to nayi call mat banao -- bas screen usi call se jud jaati hai.
-    LaunchedEffect(hasMicPermission) {
-        if (!isIncoming && hasMicPermission) {
+    LaunchedEffect(hasMicPermission, camDecided) { // VIDEO_P3
+        if (!isIncoming && hasMicPermission && camDecided) {
             val cur = ActiveCall.info.value
             if (cur == null) {
                 if (!ActiveCall.startOutgoing(otherUid, otherUsername, callType)) {
@@ -135,9 +177,9 @@ fun CallScreen(
     }
 
     // Notification se "Answer" dabaya -- dobara Accept dabane ki zaroorat nahi
-    LaunchedEffect(hasMicPermission, phase) {
+    LaunchedEffect(hasMicPermission, camDecided, phase) { // VIDEO_P3
         val id = info?.callId
-        if (isIncoming && hasMicPermission && phase == CallPhase.RINGING_INCOMING &&
+        if (isIncoming && hasMicPermission && camDecided && phase == CallPhase.RINGING_INCOMING &&
             id != null && CallControlEvents.answerRequestedCallId == id
         ) {
             ActiveCall.accept()
@@ -145,7 +187,7 @@ fun CallScreen(
     }
     LaunchedEffect(Unit) {
         CallControlEvents.answeredFromNotification.collect { answeredId ->
-            if (hasMicPermission &&
+            if (hasMicPermission && camDecided && // VIDEO_P3
                 ActiveCall.info.value?.callId == answeredId &&
                 ActiveCall.phase.value == CallPhase.RINGING_INCOMING
             ) {
@@ -202,17 +244,78 @@ fun CallScreen(
     }
 
     fun acceptCall() {
-        if (hasMicPermission) {
-            ActiveCall.accept()
-        } else {
+        // VIDEO_P3: microphone first, then camera (video calls only), then accept
+        if (!hasMicPermission) {
             micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        } else if (!camDecided) {
+            camPermissionLauncher.launch(Manifest.permission.CAMERA)
+        } else {
+            ActiveCall.accept()
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // VIDEO_P3: derived flags for the layers below
+    val showRemoteVideo = isVideoCall && remoteVideoAvailable && remoteCameraOn &&
+        phase != CallPhase.RINGING_INCOMING && phase != CallPhase.IDLE
+    val showSelfPreview = isVideoCall && hasCam && cameraOn &&
+        phase != CallPhase.RINGING_INCOMING && phase != CallPhase.IDLE
+    val showCameraControls = isVideoCall && hasCam &&
+        phase != CallPhase.RINGING_INCOMING && phase != CallPhase.IDLE
+
+    Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { rootSize = it.size }) { // VIDEO_P3
         // Background: chat/group ka default space wallpaper, consistency ke liye
         WallpaperPreviewBackground(entity = null)
         Box(modifier = Modifier.fillMaxSize().background(Color(0x99000000)))
+
+        // ───────── VIDEO_P3 layers ─────────
+        // The wallpaper above is drawn first, so the video surface punches through it.
+        if (showRemoteVideo) {
+            CallVideoView(
+                isLocal = false,
+                mirror = false,
+                overlay = false,
+                roundedCornersDp = 0,
+                modifier = Modifier.fillMaxSize()
+            )
+            // Small name + timer on top of the video (the big avatar is hidden now)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(shownName, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (phase == CallPhase.ONGOING) formatDuration(durationSeconds) else "Connecting...",
+                    color = Color(0xFFDDDDDD),
+                    fontSize = 13.sp
+                )
+            }
+        }
+        if (showSelfPreview && rootSize.width > 0) {
+            val insets = WindowInsets.statusBars.getTop(androidx.compose.ui.platform.LocalDensity.current).toFloat()
+            val navInsets = WindowInsets.navigationBars.getBottom(androidx.compose.ui.platform.LocalDensity.current).toFloat()
+            DraggableSelfPreview(
+                mirror = frontCamera,
+                boundsWidth = rootSize.width.toFloat(),
+                boundsHeight = rootSize.height.toFloat(),
+                topInsetPx = insets,
+                bottomInsetPx = navInsets
+            )
+        }
+        if (showCameraControls) {
+            IconButton(
+                onClick = { ActiveCall.switchCamera() },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(8.dp)
+            ) {
+                Icon(Icons.Filled.FlipCameraAndroid, contentDescription = "Flip camera", tint = Color.White)
+            }
+        }
+        // ───────── /VIDEO_P3 layers ─────────
 
         IconButton(
             onClick = {
@@ -232,7 +335,7 @@ fun CallScreen(
             Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
         }
 
-        Column(
+        if (!showRemoteVideo) Column( // VIDEO_P3
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -261,7 +364,7 @@ fun CallScreen(
                 text = when (phase) {
                     CallPhase.IDLE -> if (sawActive) "Call ended" else "Connecting..."
                     CallPhase.RINGING_OUTGOING -> "Ringing..."
-                    CallPhase.RINGING_INCOMING -> "Incoming voice call"
+                    CallPhase.RINGING_INCOMING -> if (isVideoCall) "Incoming video call" else "Incoming voice call"
                     CallPhase.CONNECTING -> "Connecting..."
                     CallPhase.ONGOING -> formatDuration(durationSeconds)
                 },
@@ -299,7 +402,7 @@ fun CallScreen(
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = 48.dp),
-                horizontalArrangement = Arrangement.spacedBy(36.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (isVideoCall) 20.dp else 36.dp), // VIDEO_P3
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 CallControlButton(
@@ -308,6 +411,14 @@ fun CallScreen(
                     iconTint = Color.White,
                     onClick = { ActiveCall.toggleMute() }
                 )
+                if (showCameraControls) { // VIDEO_P3
+                    CallControlButton(
+                        icon = if (cameraOn) Icons.Filled.Videocam else Icons.Filled.VideocamOff,
+                        background = Color(0xFF2A2A2A),
+                        iconTint = Color.White,
+                        onClick = { ActiveCall.toggleCamera() }
+                    )
+                }
                 CallControlButton(
                     icon = Icons.Filled.CallEnd,
                     background = Color(0xFFFF3B30),
