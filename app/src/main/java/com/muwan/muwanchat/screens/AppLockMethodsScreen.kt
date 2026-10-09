@@ -26,10 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.muwan.muwanchat.data.AppLockStore
+import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
@@ -80,7 +84,13 @@ private val lockMethods = listOf(
 
 @Composable
 fun AppLockMethodsScreen(navController: NavController) {
+    val context = LocalContext.current
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
+    var showPatternOptions by remember { mutableStateOf(false) }
+
+    // Re-read when we come back from the set-pattern screen.
+    val backEntry by navController.currentBackStackEntryAsState()
+    var patternEnabled by remember(backEntry) { mutableStateOf(AppLockStore.isPatternEnabled(context)) }
 
     Column(
         modifier = Modifier
@@ -116,14 +126,55 @@ fun AppLockMethodsScreen(navController: NavController) {
             )
 
             lockMethods.forEach { method ->
+                val isPattern = method.title == "Pattern"
                 LockMethodCard(
                     method = method,
-                    onClick = { comingSoonFeature = method.title }
+                    active = isPattern && patternEnabled,
+                    onClick = {
+                        if (isPattern) {
+                            if (patternEnabled) showPatternOptions = true
+                            else navController.navigate(Screen.SetPattern.route)
+                        } else {
+                            comingSoonFeature = method.title
+                        }
+                    }
                 )
             }
 
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (showPatternOptions) {
+        AlertDialog(
+            onDismissRequest = { showPatternOptions = false },
+            containerColor = DarkSheet,
+            title = { Text("Pattern lock is on", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Change your pattern or turn the lock off.",
+                    color = Color(0xFF888888),
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPatternOptions = false
+                        navController.navigate(Screen.SetPattern.route)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Change pattern", color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    AppLockStore.reset(context)
+                    patternEnabled = false
+                    showPatternOptions = false
+                }) { Text("Turn off", color = Color(0xFFFF3B30)) }
+            }
+        )
     }
 
     comingSoonFeature?.let { feature ->
@@ -132,7 +183,7 @@ fun AppLockMethodsScreen(navController: NavController) {
 }
 
 @Composable
-private fun LockMethodCard(method: LockMethodInfo, onClick: () -> Unit) {
+private fun LockMethodCard(method: LockMethodInfo, active: Boolean = false, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -159,6 +210,15 @@ private fun LockMethodCard(method: LockMethodInfo, onClick: () -> Unit) {
                 fontSize = 16.sp,
                 modifier = Modifier.weight(1f)
             )
+            if (active) {
+                Text(
+                    "Active",
+                    color = DarkAccent,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
             Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color(0xFF888888))
         }
         Spacer(Modifier.height(10.dp))

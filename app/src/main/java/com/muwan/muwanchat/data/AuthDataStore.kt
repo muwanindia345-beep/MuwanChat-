@@ -99,6 +99,10 @@ object AuthDataStore {
 
     suspend fun clearAuth(context: Context) {
         prefs(context).edit().clear().apply()
+        // App lock belongs to the signed-in session: logging out (manual, delete
+        // account, or too many failed unlock attempts) removes it. Local chat
+        // data (Room) is NOT touched.
+        AppLockStore.reset(context)
     }
 
     // SharedPreferences reads already synchronous/in-memory-cached hain,
