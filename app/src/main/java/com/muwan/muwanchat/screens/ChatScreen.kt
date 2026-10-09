@@ -794,7 +794,16 @@ fun ChatScreen(
                 isTyping = isReceiverTyping,
                 avatarBase64 = conversationEntity?.avatar,
                 onBack = { navController.popBackStack() },
-                onVideoCall = { comingSoonFeature = "📹 Video Call" },
+                onVideoCall = { // VIDEO_P4
+                    navController.navigate(
+                        com.muwan.muwanchat.navigation.Screen.Call.createRoute(
+                            uid = receiverUid,
+                            username = receiverUsername,
+                            callType = "video",
+                            isIncoming = false
+                        )
+                    )
+                },
                 onVoiceCall = {
                     navController.navigate(
                         com.muwan.muwanchat.navigation.Screen.Call.createRoute(

@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -260,7 +261,21 @@ class CallForegroundService : Service() {
                     return stopSelfImmediately(startId)
                 }
                 var started = false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // VIDEO_P4: on a video call also declare the camera type, otherwise Android 14+
+                // stops the camera when the app goes to the background. Refused -> old path below.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && wantsCameraType()) {
+                    try {
+                        startForeground(
+                            NOTIFICATION_ID, notification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or
+                                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                                ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                        )
+                        started = true
+                    } catch (_: Exception) {
+                    }
+                }
+                if (!started && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     try {
                         startForeground(
                             NOTIFICATION_ID, notification,
@@ -359,6 +374,11 @@ class CallForegroundService : Service() {
             }
         }
     }
+
+    // VIDEO_P4: true on a video call when the camera permission is granted
+    private fun wantsCameraType(): Boolean =
+        ActiveCall.info.value?.callType == "video" &&
+            checkSelfPermission(android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
     private fun stopSelfImmediately(startId: Int): Int {
         stopSelf(startId)
