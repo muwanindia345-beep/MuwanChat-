@@ -65,10 +65,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val locked by AppLockState.locked.collectAsState()
+            val callUiVisible by AppLockState.callUiVisible.collectAsState()
             Box(modifier = Modifier.fillMaxSize()) {
                 NavGraph(openUpdateScreen = openUpdateScreen)
-                if (locked) {
-                    // Opaque gate drawn above the whole app until unlocked.
+                if (locked && !callUiVisible) {
+                    // Opaque gate drawn above the whole app until unlocked
+                    // (it steps aside only while a call screen is showing).
                     PatternUnlockScreen(
                         onUnlocked = { AppLockState.unlock() },
                         onLogoutRequired = { forceLogout() }

@@ -25,6 +25,17 @@ object AppLockState {
     private val _locked = MutableStateFlow(false)
     val locked: StateFlow<Boolean> = _locked.asStateFlow()
 
+    // True while the in-progress call screen is the visible destination. The unlock
+    // gate steps aside then, so a locked app can still answer / run a call. It does
+    // NOT unlock the app: `locked` stays true and the gate returns the moment the
+    // user leaves the call screen (back / call ended).
+    private val _callUiVisible = MutableStateFlow(false)
+    val callUiVisible: StateFlow<Boolean> = _callUiVisible.asStateFlow()
+
+    fun setCallUiVisible(visible: Boolean) {
+        _callUiVisible.value = visible
+    }
+
     private var initialised = false
     private var stoppedAt = 0L
 

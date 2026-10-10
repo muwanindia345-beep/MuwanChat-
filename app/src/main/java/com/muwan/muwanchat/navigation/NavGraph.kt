@@ -197,6 +197,22 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         }
     }
 
+    // APP_LOCK: let the unlock gate step aside only while a live call screen is the
+    // current destination (incoming / ongoing call). Leaving it brings the gate back.
+    LaunchedEffect(navController) {
+        try {
+            kotlinx.coroutines.flow.combine(
+                com.muwan.muwanchat.calling.ActiveCall.phase,
+                navController.currentBackStackEntryFlow
+            ) { phase, entry ->
+                phase != com.muwan.muwanchat.calling.CallPhase.IDLE &&
+                    entry.destination.route == Screen.Call.route
+            }.collect { com.muwan.muwanchat.data.AppLockState.setCallUiVisible(it) }
+        } finally {
+            com.muwan.muwanchat.data.AppLockState.setCallUiVisible(false)
+        }
+    }
+
     // Global incoming-call listener -- app kahin bhi ho (koi bhi screen khuli
     // ho), call_offer aate hi CallScreen "incoming" mode mein khul jaayega.
     // SDP yahan PendingIncomingCall mein rakh dete hain (URL args mein itna
