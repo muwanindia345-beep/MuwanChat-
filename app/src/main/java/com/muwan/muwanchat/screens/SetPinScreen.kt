@@ -3,6 +3,8 @@ package com.muwan.muwanchat.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,6 +56,13 @@ fun SetPinScreen(navController: NavController) {
         step = 1
     }
 
+    fun goToConfirm() {
+        firstPin = entered
+        entered = ""
+        error = null
+        step = 2
+    }
+
     BackHandler(enabled = step == 2) { startOver() }
 
     Column(
@@ -90,7 +99,8 @@ fun SetPinScreen(navController: NavController) {
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -126,7 +136,32 @@ fun SetPinScreen(navController: NavController) {
                 else firstPin.length
                 PinDots(filled = entered.length, total = totalDots, isError = wrongFlash)
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(16.dp))
+
+                // Action slot kept above the keypad so it is always visible.
+                Box(
+                    modifier = Modifier.height(48.dp).widthIn(max = 300.dp).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (step == 1) {
+                        Button(
+                            onClick = { goToConfirm() },
+                            enabled = entered.length >= AppLockStore.MIN_PIN,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DarkAccent,
+                                disabledContainerColor = DarkAccent.copy(alpha = 0.3f)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) { Text("Continue", color = Color.White) }
+                    } else {
+                        TextButton(onClick = { startOver() }) {
+                            Text("Start over", color = DarkAccent)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
 
                 PinPad(
                     enabled = !wrongFlash,
@@ -135,6 +170,8 @@ fun SetPinScreen(navController: NavController) {
                             if (entered.length < AppLockStore.MAX_PIN) {
                                 error = null
                                 entered += d
+                                // 6 digits is the maximum: move on automatically.
+                                if (entered.length == AppLockStore.MAX_PIN) goToConfirm()
                             }
                         } else if (entered.length < firstPin.length) {
                             if (entered.isEmpty()) error = null
@@ -161,29 +198,7 @@ fun SetPinScreen(navController: NavController) {
                     }
                 )
 
-                Spacer(Modifier.height(16.dp))
-                if (step == 1) {
-                    Button(
-                        onClick = {
-                            firstPin = entered
-                            entered = ""
-                            error = null
-                            step = 2
-                        },
-                        enabled = entered.length >= AppLockStore.MIN_PIN,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkAccent,
-                            disabledContainerColor = DarkAccent.copy(alpha = 0.3f)
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.widthIn(max = 300.dp).fillMaxWidth()
-                    ) { Text("Continue", color = Color.White) }
-                } else {
-                    TextButton(onClick = { startOver() }) {
-                        Text("Start over", color = DarkAccent)
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(12.dp))
                 Text("Step $step of 2", color = Color(0xFF888888), fontSize = 12.sp)
             }
         }
