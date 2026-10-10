@@ -86,11 +86,18 @@ private val lockMethods = listOf(
 fun AppLockMethodsScreen(navController: NavController) {
     val context = LocalContext.current
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
-    var showPatternOptions by remember { mutableStateOf(false) }
+    // Method (METHOD_PATTERN / METHOD_PIN) whose "Change / Turn off" dialog is open.
+    var optionsFor by remember { mutableStateOf<String?>(null) }
+    // New method the user tapped while a different one is active (replace confirmation).
+    var replaceWith by remember { mutableStateOf<String?>(null) }
 
-    // Re-read when we come back from the set-pattern screen.
+    // Re-read when we come back from a set-pattern / set-pin screen.
     val backEntry by navController.currentBackStackEntryAsState()
-    var patternEnabled by remember(backEntry) { mutableStateOf(AppLockStore.isPatternEnabled(context)) }
+    var lockMethod by remember(backEntry) { mutableStateOf(AppLockStore.currentMethod(context)) }
+
+    fun methodName(m: String?) = if (m == AppLockStore.METHOD_PIN) "PIN" else "Pattern"
+    fun setupRoute(m: String) =
+        if (m == AppLockStore.METHOD_PIN) Screen.SetPin.route else Screen.SetPattern.route
 
     Column(
         modifier = Modifier
@@ -126,16 +133,21 @@ fun AppLockMethodsScreen(navController: NavController) {
             )
 
             lockMethods.forEach { method ->
-                val isPattern = method.title == "Pattern"
+                // Which store method (if any) this card represents.
+                val methodKey = when (method.title) {
+                    "Pattern" -> AppLockStore.METHOD_PATTERN
+                    "PIN" -> AppLockStore.METHOD_PIN
+                    else -> null
+                }
                 LockMethodCard(
                     method = method,
-                    active = isPattern && patternEnabled,
+                    active = methodKey != null && lockMethod == methodKey,
                     onClick = {
-                        if (isPattern) {
-                            if (patternEnabled) showPatternOptions = true
-                            else navController.navigate(Screen.SetPattern.route)
-                        } else {
-                            comingSoonFeature = method.title
+                        when {
+                            methodKey == null -> comingSoonFeature = method.title
+                            lockMethod == methodKey -> optionsFor = methodKey
+                            lockMethod != null -> replaceWith = methodKey
+                            else -> navController.navigate(setupRoute(methodKey))
                         }
                     }
                 )
@@ -145,14 +157,15 @@ fun AppLockMethodsScreen(navController: NavController) {
         }
     }
 
-    if (showPatternOptions) {
+    optionsFor?.let { m ->
+        val name = methodName(m)
         AlertDialog(
-            onDismissRequest = { showPatternOptions = false },
+            onDismissRequest = { optionsFor = null },
             containerColor = DarkSheet,
-            title = { Text("Pattern lock is on", color = Color.White, fontWeight = FontWeight.Bold) },
+            title = { Text("$name lock is on", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "Change your pattern or turn the lock off.",
+                    "Change your $name or turn the lock off.",
                     color = Color(0xFF888888),
                     fontSize = 14.sp
                 )
@@ -160,19 +173,52 @@ fun AppLockMethodsScreen(navController: NavController) {
             confirmButton = {
                 Button(
                     onClick = {
-                        showPatternOptions = false
-                        navController.navigate(Screen.SetPattern.route)
+                        optionsFor = null
+                        navController.navigate(setupRoute(m))
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Change pattern", color = Color.White) }
+                ) { Text("Change $name", color = Color.White) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     AppLockStore.reset(context)
-                    patternEnabled = false
-                    showPatternOptions = false
+                    lockMethod = null
+                    optionsFor = null
                 }) { Text("Turn off", color = Color(0xFFFF3B30)) }
+            }
+        )
+    }
+
+    replaceWith?.let { newMethod ->
+        val oldName = methodName(lockMethod)
+        val newName = methodName(newMethod)
+        AlertDialog(
+            onDismissRequest = { replaceWith = null },
+            containerColor = DarkSheet,
+            title = { Text("Switch to $newName?", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Your $oldName lock stays on until you finish setting up the new $newName. " +
+                        "Only one lock method can be active at a time.",
+                    color = Color(0xFF888888),
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        replaceWith = null
+                        navController.navigate(setupRoute(newMethod))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Continue", color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = { replaceWith = null }) {
+                    Text("Cancel", color = Color(0xFF888888))
+                }
             }
         )
     }

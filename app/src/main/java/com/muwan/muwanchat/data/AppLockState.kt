@@ -40,7 +40,7 @@ object AppLockState {
     private var stoppedAt = 0L
 
     private fun shouldLock(context: Context): Boolean =
-        AppLockStore.isPatternEnabled(context) &&
+        AppLockStore.isLockEnabled(context) &&
             AuthDataStore.getTokenBlocking(context).isNotEmpty()
 
     /** Call from MainActivity.onCreate. Only the first call per process locks. */

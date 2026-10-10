@@ -12,9 +12,10 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
 /**
- * Pattern lock storage + brute-force protection.
+ * Pattern / PIN lock storage + brute-force protection.
  *
- * - The pattern itself is NEVER stored: only a salted PBKDF2 hash.
+ * - The pattern / PIN itself is NEVER stored: only a salted PBKDF2 hash.
+ * - Only ONE method is active at a time; saving a new one replaces the old.
  * - Lives in its own encrypted prefs file ("app_lock_secure"), separate from
  *   AuthDataStore, so lock state and login state can be reset independently.
  * - Failed attempts / lockout survive app restarts and process death.
@@ -27,6 +28,8 @@ import javax.crypto.spec.PBEKeySpec
 object AppLockStore {
 
     const val MIN_DOTS = 4
+    const val MIN_PIN = 4
+    const val MAX_PIN = 6
     const val MAX_ATTEMPTS = 5
 
     // Lockout length after failure round 1 and round 2. Round 3 => logout.
@@ -36,13 +39,15 @@ object AppLockStore {
     private const val KEY_METHOD = "method"
     private const val KEY_SALT = "salt"
     private const val KEY_HASH = "hash"
+    private const val KEY_PIN_LEN = "pin_len"
     private const val KEY_ATTEMPTS = "attempts"
     private const val KEY_ROUNDS = "failed_rounds"
     private const val KEY_LOCK_DURATION = "lock_duration"
     private const val KEY_LOCK_START_ELAPSED = "lock_start_elapsed"
     private const val KEY_LOCK_UNTIL_WALL = "lock_until_wall"
 
-    private const val METHOD_PATTERN = "pattern"
+    const val METHOD_PATTERN = "pattern"
+    const val METHOD_PIN = "pin"
     private const val PBKDF2_ITERATIONS = 10_000
 
     sealed class VerifyResult {
@@ -75,11 +80,23 @@ object AppLockStore {
 
     // ── State ───────────────────────────────────────────────────────────
 
-    fun isPatternEnabled(context: Context): Boolean {
+    /** METHOD_PATTERN, METHOD_PIN, or null when no lock is set. */
+    fun currentMethod(context: Context): String? {
         val p = prefs(context)
-        return p.getString(KEY_METHOD, null) == METHOD_PATTERN &&
-            !p.getString(KEY_HASH, null).isNullOrEmpty()
+        if (p.getString(KEY_HASH, null).isNullOrEmpty()) return null
+        return p.getString(KEY_METHOD, null)
     }
+
+    fun isPatternEnabled(context: Context): Boolean = currentMethod(context) == METHOD_PATTERN
+
+    fun isPinEnabled(context: Context): Boolean = currentMethod(context) == METHOD_PIN
+
+    /** True if any lock method is set. */
+    fun isLockEnabled(context: Context): Boolean = currentMethod(context) != null
+
+    /** Length of the saved PIN (so the unlock screen can auto-submit). */
+    fun pinLength(context: Context): Int =
+        prefs(context).getInt(KEY_PIN_LEN, MIN_PIN).coerceIn(MIN_PIN, MAX_PIN)
 
     /** Number of fully-failed rounds so far (used to show the logout warning). */
     fun failedRounds(context: Context): Int = prefs(context).getInt(KEY_ROUNDS, 0)
@@ -93,7 +110,21 @@ object AppLockStore {
             .clear()
             .putString(KEY_METHOD, METHOD_PATTERN)
             .putString(KEY_SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
-            .putString(KEY_HASH, hash(pattern, salt))
+            .putString(KEY_HASH, hash(pattern.joinToString("-"), salt))
+            .apply()
+    }
+
+    /** Saves a 4-6 digit PIN (replaces any pattern/PIN lock and resets attempts). */
+    @Synchronized
+    fun savePin(context: Context, pin: String) {
+        require(pin.length in MIN_PIN..MAX_PIN && pin.all { it in '0'..'9' }) { "Invalid PIN" }
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        prefs(context).edit()
+            .clear()
+            .putString(KEY_METHOD, METHOD_PIN)
+            .putString(KEY_SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
+            .putString(KEY_HASH, hash(pin, salt))
+            .putInt(KEY_PIN_LEN, pin.length)
             .apply()
     }
 
@@ -121,8 +152,13 @@ object AppLockStore {
         return remaining.coerceIn(0L, duration)
     }
 
+    fun verifyPattern(context: Context, pattern: List<Int>): VerifyResult =
+        verify(context, pattern.joinToString("-"))
+
+    fun verifyPin(context: Context, pin: String): VerifyResult = verify(context, pin)
+
     @Synchronized
-    fun verifyPattern(context: Context, pattern: List<Int>): VerifyResult {
+    private fun verify(context: Context, secret: String): VerifyResult {
         val p = prefs(context)
 
         val locked = remainingLockMs(context)
@@ -136,7 +172,7 @@ object AppLockStore {
         }
 
         val salt = Base64.decode(saltB64, Base64.NO_WRAP)
-        val candidate = hash(pattern, salt)
+        val candidate = hash(secret, salt)
         val match = MessageDigest.isEqual(candidate.toByteArray(), savedHash.toByteArray())
 
         if (match) {
@@ -174,9 +210,9 @@ object AppLockStore {
 
     // ── Hashing ─────────────────────────────────────────────────────────
 
-    private fun hash(pattern: List<Int>, salt: ByteArray): String {
+    private fun hash(secret: String, salt: ByteArray): String {
         val spec = PBEKeySpec(
-            pattern.joinToString("-").toCharArray(),
+            secret.toCharArray(),
             salt,
             PBKDF2_ITERATIONS,
             256

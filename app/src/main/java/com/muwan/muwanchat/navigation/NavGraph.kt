@@ -24,6 +24,7 @@ sealed class Screen(val route: String) {
     object ApplicationRules : Screen("application_rules")
     object AppLock          : Screen("app_lock")
     object SetPattern       : Screen("set_pattern")
+    object SetPin           : Screen("set_pin")
     object PhoneOTP        : Screen("phone_otp/{phone}") {
         fun createRoute(phone: String) = "phone_otp/$phone"
     }
@@ -279,6 +280,7 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.ApplicationRules.route) { ApplicationRulesScreen(navController) }
         composable(Screen.AppLock.route) { AppLockMethodsScreen(navController) }
         composable(Screen.SetPattern.route) { SetPatternScreen(navController) }
+        composable(Screen.SetPin.route) { SetPinScreen(navController) }
         composable(Screen.PhoneOTP.route) { back ->
             PhoneOTPScreen(navController, back.arguments?.getString("phone") ?: "")
         }
