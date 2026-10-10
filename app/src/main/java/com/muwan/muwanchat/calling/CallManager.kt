@@ -54,7 +54,9 @@ class CallManager(
     private val onConnectionFailed: () -> Unit,
     // VIDEO_P1: video is opt-in per call; defaults keep existing callers audio-only
     private val withVideo: Boolean = false,
-    private val onRemoteVideoChanged: (Boolean) -> Unit = {}
+    private val onRemoteVideoChanged: (Boolean) -> Unit = {},
+    // GROUP_CALL_V1_ANDROID: fires (on the main thread) when the peer connection is really connected
+    private val onPeerConnected: () -> Unit = {}
 ) {
     private val stateLock = Any()
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -125,6 +127,8 @@ class CallManager(
                         lastConnectionState = newState.name
                         android.util.Log.d("CallManager", "connection state: $newState")
                         when (newState) {
+                            PeerConnection.PeerConnectionState.CONNECTED ->
+                                mainHandler.post { onPeerConnected() } // GROUP_CALL_V1_ANDROID
                             PeerConnection.PeerConnectionState.FAILED ->
                                 mainHandler.post { onConnectionFailed() }
                             // DISCONNECTED aksar temporary hota hai (network blip) --
@@ -440,6 +444,32 @@ class CallManager(
             } else {
                 peerConnection?.addIceCandidate(ice)
             }
+        }
+    }
+
+    /**
+     * GROUP_CALL_V1_ANDROID: audio levels (0..1) from WebRTC stats, used for the "speaking" ring
+     * in group calls. local = our microphone, remote = what we receive from this peer.
+     * The result is posted on the main thread.
+     */
+    fun pollAudioLevels(onResult: (local: Float, remote: Float) -> Unit) {
+        synchronized(stateLock) {
+            val pc = peerConnection ?: return
+            pc.getStats(object : org.webrtc.RTCStatsCollectorCallback {
+                override fun onStatsDelivered(report: org.webrtc.RTCStatsReport) {
+                    var local = 0f
+                    var remote = 0f
+                    for (stats in report.statsMap.values) {
+                        if (stats.members["kind"] as? String != "audio") continue
+                        val level = (stats.members["audioLevel"] as? Number)?.toFloat() ?: continue
+                        when (stats.type) {
+                            "media-source" -> local = maxOf(local, level)
+                            "inbound-rtp" -> remote = maxOf(remote, level)
+                        }
+                    }
+                    mainHandler.post { onResult(local, remote) }
+                }
+            })
         }
     }
 

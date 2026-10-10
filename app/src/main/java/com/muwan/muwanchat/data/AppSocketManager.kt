@@ -142,6 +142,39 @@ sealed class SocketEvent {
         val createdAt: String
     ) : SocketEvent()
 
+    // GROUP_CALL_V1_ANDROID: group call signaling events (mesh)
+    data class GroupCallStarted(
+        val callId: String,
+        val roomId: String,
+        val groupName: String,
+        val callType: String, // "voice" | "video"
+        val fromUid: String,
+        val fromUsername: String
+    ) : SocketEvent()
+
+    data class GroupCallPeerJoined(val callId: String, val uid: String, val username: String) : SocketEvent()
+
+    data class GroupCallPeerLeft(val callId: String, val uid: String, val reason: String) : SocketEvent()
+
+    data class GroupCallSignal(
+        val callId: String,
+        val fromUid: String,
+        val kind: String, // "offer" | "answer" | "ice"
+        val sdp: String?,
+        val sdpMid: String?,
+        val sdpMLineIndex: Int,
+        val candidate: String?
+    ) : SocketEvent()
+
+    data class GroupCallPeerState(
+        val callId: String,
+        val uid: String,
+        val muted: Boolean,
+        val camera: Boolean
+    ) : SocketEvent()
+
+    data class GroupCallEnded(val callId: String, val roomId: String, val reason: String) : SocketEvent()
+
     data class IceCandidateReceived(
         val callId: String,
         val sdpMid: String?,
@@ -149,6 +182,25 @@ sealed class SocketEvent {
         val candidate: String
     ) : SocketEvent()
 }
+
+// GROUP_CALL_V1_ANDROID
+data class GroupCallPeerInfo(
+    val uid: String,
+    val username: String,
+    val muted: Boolean,
+    val camera: Boolean
+)
+
+// Snapshot of a running group call, answer of the "gcall_get" request
+data class GroupCallLive(
+    val callId: String,
+    val roomId: String,
+    val callType: String,
+    val groupName: String,
+    val startedBy: String,
+    val participants: List<GroupCallPeerInfo>,
+    val max: Int
+)
 
 object AppSocketManager {
 
@@ -472,6 +524,83 @@ object AppSocketManager {
                 )
             }
 
+            // ───────────── Group call signaling (GROUP_CALL_V1_ANDROID) ────────────────────
+            s.on("gcall_started") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.GroupCallStarted(
+                        callId = json.optString("callId"),
+                        roomId = json.optString("roomId"),
+                        groupName = json.optString("groupName"),
+                        callType = json.optString("type"),
+                        fromUid = json.optString("from"),
+                        fromUsername = json.optString("fromUsername")
+                    )
+                )
+            }
+
+            s.on("gcall_peer_joined") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.GroupCallPeerJoined(
+                        callId = json.optString("callId"),
+                        uid = json.optString("uid"),
+                        username = json.optString("username")
+                    )
+                )
+            }
+
+            s.on("gcall_peer_left") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.GroupCallPeerLeft(
+                        callId = json.optString("callId"),
+                        uid = json.optString("uid"),
+                        reason = json.optString("reason")
+                    )
+                )
+            }
+
+            s.on("gcall_signal") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                val cand = json.optJSONObject("candidate")
+                val midRaw = if (cand != null && !cand.isNull("sdpMid")) cand.optString("sdpMid") else null
+                _events.tryEmit(
+                    SocketEvent.GroupCallSignal(
+                        callId = json.optString("callId"),
+                        fromUid = json.optString("from"),
+                        kind = json.optString("kind"),
+                        sdp = json.optString("sdp").takeIf { it.isNotBlank() },
+                        sdpMid = midRaw?.takeIf { it.isNotBlank() },
+                        sdpMLineIndex = cand?.optInt("sdpMLineIndex") ?: 0,
+                        candidate = cand?.optString("candidate")?.takeIf { it.isNotBlank() }
+                    )
+                )
+            }
+
+            s.on("gcall_peer_state") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.GroupCallPeerState(
+                        callId = json.optString("callId"),
+                        uid = json.optString("uid"),
+                        muted = json.optBoolean("muted", false),
+                        camera = json.optBoolean("camera", false)
+                    )
+                )
+            }
+
+            s.on("gcall_ended") { args ->
+                val json = args.getOrNull(0) as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.GroupCallEnded(
+                        callId = json.optString("callId"),
+                        roomId = json.optString("roomId"),
+                        reason = json.optString("reason")
+                    )
+                )
+            }
+
             s.connect()
             socket = s
         } catch (_: Exception) {}
@@ -645,6 +774,137 @@ object AppSocketManager {
             })
         }
         socket?.emit("ice_candidate", json)
+    }
+
+    // ─────────────────────── Group call signaling (GROUP_CALL_V1_ANDROID) ───────────────────────
+    // NOTE: ack callbacks run on the socket thread, callers must hop to the main thread themselves.
+
+    private fun parsePeers(arr: org.json.JSONArray?): List<GroupCallPeerInfo> {
+        if (arr == null) return emptyList()
+        val out = ArrayList<GroupCallPeerInfo>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            out.add(
+                GroupCallPeerInfo(
+                    uid = o.optString("uid"),
+                    username = o.optString("username"),
+                    muted = o.optBoolean("muted", false),
+                    camera = o.optBoolean("camera", false)
+                )
+            )
+        }
+        return out
+    }
+
+    fun sendGroupCallStart(
+        callId: String,
+        roomId: String,
+        callType: String, // "voice" | "video"
+        onAck: (success: Boolean, error: String?, existingCallId: String?) -> Unit
+    ) {
+        val s = socket
+        if (s == null || !s.connected()) {
+            onAck(false, "Not connected", null)
+            return
+        }
+        val json = JSONObject().apply {
+            put("callId", callId)
+            put("roomId", roomId)
+            put("type", callType)
+        }
+        s.emit("gcall_start", arrayOf(json), Ack { args ->
+            val res = args.getOrNull(0) as? JSONObject
+            onAck(
+                res?.optBoolean("success", false) ?: false,
+                res?.optString("error")?.takeIf { it.isNotBlank() },
+                res?.optString("callId")?.takeIf { it.isNotBlank() }
+            )
+        })
+    }
+
+    /** onAck(success, error, peersAlreadyInTheCall) - the joiner must offer to every peer in the list. */
+    fun sendGroupCallJoin(
+        callId: String,
+        onAck: (success: Boolean, error: String?, peers: List<GroupCallPeerInfo>) -> Unit
+    ) {
+        val s = socket
+        if (s == null || !s.connected()) {
+            onAck(false, "Not connected", emptyList())
+            return
+        }
+        val json = JSONObject().apply { put("callId", callId) }
+        s.emit("gcall_join", arrayOf(json), Ack { args ->
+            val res = args.getOrNull(0) as? JSONObject
+            onAck(
+                res?.optBoolean("success", false) ?: false,
+                res?.optString("error")?.takeIf { it.isNotBlank() },
+                parsePeers(res?.optJSONArray("participants"))
+            )
+        })
+    }
+
+    fun sendGroupCallSignal(callId: String, toUid: String, kind: String, sdp: String) {
+        val json = JSONObject().apply {
+            put("callId", callId)
+            put("to", toUid)
+            put("kind", kind) // "offer" | "answer"
+            put("sdp", sdp)
+        }
+        socket?.emit("gcall_signal", json)
+    }
+
+    fun sendGroupCallIce(callId: String, toUid: String, sdpMid: String?, sdpMLineIndex: Int, candidate: String) {
+        val json = JSONObject().apply {
+            put("callId", callId)
+            put("to", toUid)
+            put("kind", "ice")
+            put("candidate", JSONObject().apply {
+                put("sdpMid", sdpMid)
+                put("sdpMLineIndex", sdpMLineIndex)
+                put("candidate", candidate)
+            })
+        }
+        socket?.emit("gcall_signal", json)
+    }
+
+    fun sendGroupCallState(callId: String, muted: Boolean) {
+        val json = JSONObject().apply {
+            put("callId", callId)
+            put("muted", muted)
+        }
+        socket?.emit("gcall_state", json)
+    }
+
+    fun sendGroupCallLeave(callId: String) {
+        socket?.emit("gcall_leave", JSONObject().apply { put("callId", callId) })
+    }
+
+    /** Is a call running in this group? Result is null when none (or on error). */
+    fun getGroupCall(roomId: String, onResult: (GroupCallLive?) -> Unit) {
+        val s = socket
+        if (s == null || !s.connected()) {
+            onResult(null)
+            return
+        }
+        val json = JSONObject().apply { put("roomId", roomId) }
+        s.emit("gcall_get", arrayOf(json), Ack { args ->
+            val res = args.getOrNull(0) as? JSONObject
+            if (res == null || !res.optBoolean("success", false) || !res.optBoolean("active", false)) {
+                onResult(null)
+            } else {
+                onResult(
+                    GroupCallLive(
+                        callId = res.optString("callId"),
+                        roomId = roomId,
+                        callType = res.optString("type"),
+                        groupName = res.optString("groupName"),
+                        startedBy = res.optString("startedBy"),
+                        participants = parsePeers(res.optJSONArray("participants")),
+                        max = res.optInt("max", 0)
+                    )
+                )
+            }
+        })
     }
 
     fun disconnect() {

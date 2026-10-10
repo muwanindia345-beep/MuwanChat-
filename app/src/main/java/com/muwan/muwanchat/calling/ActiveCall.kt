@@ -114,7 +114,7 @@ object ActiveCall {
     /** Outgoing call. Mic permission pehle se mil chuki honi chahiye. */
     fun startOutgoing(otherUid: String, otherUsername: String, callType: String): Boolean {
         val ctx = appContext ?: return false
-        if (_info.value != null) return false
+        if (_info.value != null || ActiveGroupCall.inCall) return false // GROUP_CALL_V1_ANDROID
 
         val info = ActiveCallInfo(
             callId = UUID.randomUUID().toString(),
@@ -153,6 +153,11 @@ object ActiveCall {
         val ctx = appContext ?: return false
         // Notification se decline ho chuki call ka offer replay aaye to ignore
         if (CallControlEvents.declinedCallIds.contains(callId)) return false
+        // GROUP_CALL_V1_ANDROID: we are in a group call, so a 1:1 call cannot ring
+        if (ActiveGroupCall.inCall) {
+            AppSocketManager.sendCallReject(callId)
+            return false
+        }
         val cur = _info.value
         if (cur != null) {
             // Same offer dobara aaya to ignore, warna hum already kisi call mein hain
