@@ -64,6 +64,7 @@ android {
         create("production") {
             dimension = "channel"
             buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
+            buildConfigField("String", "BACKEND_URL", "\"https://muwan-chat-backend-production-2e0c.up.railway.app\"")
             signingConfig = signingConfigs.getByName("release")
         }
         // Pre-release/beta build — separate applicationId so it installs alongside
@@ -74,6 +75,7 @@ android {
             versionNameSuffix = "-beta"
             resValue("string", "app_name", "TalkWave Beta")
             buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
+            buildConfigField("String", "BACKEND_URL", "\"https://talkwave-50046836316.development.catalystappsail.in\"")
             signingConfig = signingConfigs.getByName("betaRelease")
         }
     }

@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    private const val CHAT_BACKEND_URL = "https://muwan-chat-backend-production-2e0c.up.railway.app/"
+    private val CHAT_BACKEND_URL: String = com.muwan.muwanchat.BuildConfig.BACKEND_URL.trimEnd('/') + "/"
 
     // Video upload slow network pe time le sakta hai, isliye lambe timeouts
     private val okHttpClient = OkHttpClient.Builder()

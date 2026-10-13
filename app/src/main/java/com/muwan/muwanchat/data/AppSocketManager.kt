@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import org.json.JSONObject
 
-private const val CHAT_BACKEND_URL = "https://muwan-chat-backend-production-2e0c.up.railway.app"
+private val CHAT_BACKEND_URL: String = com.muwan.muwanchat.BuildConfig.BACKEND_URL.trimEnd('/')
 
 sealed class SocketEvent {
     data class NewMessage(
