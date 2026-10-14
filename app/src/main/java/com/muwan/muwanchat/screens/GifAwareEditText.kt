@@ -43,3 +43,26 @@ class GifAwareEditText @JvmOverloads constructor(
         }
     }
 }
+
+
+// Gboard suggestion strip se aayi image: screenshot/photo ya asli GIF/sticker/meme?
+// true  = normal photo ki tarah bhejo (gallery jaisa "image", compression ke saath)
+// false = GIF/sticker ki tarah bhejo (purana behaviour, koi badlaw nahi)
+// Rule: image/gif hamesha GIF; jpeg hamesha photo; png/webp tab photo jab badi ho
+// (screenshot/camera). Chhoti png/webp (sticker, emoji kitchen) sticker hi rehti hain.
+private const val PHOTO_MIN_SIDE_PX = 900
+
+internal fun shouldSendAsPhoto(context: Context, uri: Uri, mime: String): Boolean {
+    val m = mime.lowercase()
+    if (m == "image/gif") return false
+    if (m == "image/jpeg" || m == "image/jpg") return true
+    return try {
+        val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(uri)?.use {
+            android.graphics.BitmapFactory.decodeStream(it, null, opts)
+        }
+        maxOf(opts.outWidth, opts.outHeight) >= PHOTO_MIN_SIDE_PX
+    } catch (e: Exception) {
+        false
+    }
+}

@@ -1080,7 +1080,11 @@ fun ChatScreen(
                     // koi re-compress nahi (routes/chat.js check kiya). Isliye "image" ki jagah
                     // "gif" bhejo: MessageBubble ka already-built borderless sticker-style bubble
                     // (no orange/green background, poora Fit render) turant unlock ho jaata hai.
-                    uploadMediaMessage(context, uri, "gif", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, mimeOverride = kbMime, setUploading = {})
+                    if (shouldSendAsPhoto(context, uri, kbMime)) {
+                        uploadMediaMessage(context, uri, "image", myToken, roomId, myUid, receiverUid, receiverUsername, db) {}
+                    } else {
+                        uploadMediaMessage(context, uri, "gif", myToken, roomId, myUid, receiverUid, receiverUsername, db, skipCompression = true, mimeOverride = kbMime, setUploading = {})
+                    }
                     release()
                 }
             },
