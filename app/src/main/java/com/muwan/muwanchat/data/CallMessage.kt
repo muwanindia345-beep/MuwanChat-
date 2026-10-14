@@ -30,8 +30,8 @@ fun parseCallInfo(raw: String?): CallInfo {
 fun callPreviewText(raw: String?): String {
     val info = parseCallInfo(raw)
     return when (info.status) {
-        "missed" -> "📞 Missed call"
-        "declined" -> "📞 Call declined"
+        "missed" -> if (info.kind == "video") "📹 Missed video call" else "📞 Missed call" // VIDEO_CALL_UI
+        "declined" -> if (info.kind == "video") "📹 Call declined" else "📞 Call declined"
         else -> if (info.kind == "video") "📹 Video call" else "📞 Voice call"
     }
 }

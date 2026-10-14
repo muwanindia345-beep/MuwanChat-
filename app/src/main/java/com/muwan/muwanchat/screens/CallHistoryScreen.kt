@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Videocam // VIDEO_CALL_UI
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +54,7 @@ private data class CallContact(
     val username: String,
     val avatar: String?,
     val lastStatus: String,   // CALL_HISTORY_LIVE
+    val lastKind: String,     // VIDEO_CALL_UI: "voice" | "video"
     val lastCreatedAt: String
 )
 
@@ -84,6 +86,7 @@ fun CallHistoryScreen(navController: NavController) {
                     username = conv.username,
                     avatar = conv.avatar,
                     lastStatus = parseCallInfo(m.content).status,
+                    lastKind = parseCallInfo(m.content).kind,
                     lastCreatedAt = m.createdAt
                 )
             }
@@ -124,7 +127,7 @@ fun CallHistoryScreen(navController: NavController) {
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Your voice calls will show up here.",
+                            "Your calls will show up here.",
                             color = Color(0xFF888888),
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center
@@ -150,7 +153,7 @@ fun CallHistoryScreen(navController: NavController) {
                                     Screen.Call.createRoute(
                                         uid = c.uid,
                                         username = c.username,
-                                        callType = "voice",
+                                        callType = if (c.lastKind == "video") "video" else "voice", // VIDEO_CALL_UI
                                         isIncoming = false
                                     )
                                 )
@@ -214,14 +217,23 @@ private fun CallContactRow(
                     Text("Ongoing call", color = Color(0xFF25D366), fontSize = 13.sp)
                 }
                 contact.lastStatus == "missed" ->
-                    Text("Missed call \u00B7 $dateTime", color = Color(0xFFFF5252), fontSize = 13.sp, maxLines = 1)
+                    Text(
+                        (if (contact.lastKind == "video") "Missed video call" else "Missed call") + " \u00B7 $dateTime",
+                        color = Color(0xFFFF5252), fontSize = 13.sp, maxLines = 2 // VIDEO_CALL_UI: 2 lines so the time is not cut
+                    )
                 else ->
                     Text(dateTime, color = Color(0xFF888888), fontSize = 13.sp, maxLines = 1)
             }
         }
         Spacer(modifier = Modifier.width(8.dp))
         IconButton(onClick = onCall) {
-            Icon(Icons.Filled.Call, contentDescription = "Call", tint = DarkAccent)
+            // VIDEO_CALL_UI: icon follows the type of the last call
+            val isVideo = contact.lastKind == "video"
+            Icon(
+                if (isVideo) Icons.Filled.Videocam else Icons.Filled.Call,
+                contentDescription = if (isVideo) "Video call" else "Call",
+                tint = DarkAccent
+            )
         }
     }
 }

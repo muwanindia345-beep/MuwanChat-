@@ -957,12 +957,12 @@ fun ChatScreen(
                         isSelected = selectedMessageIds.contains(msg.id),
                         onTap = { toggleMessageSelection(msg.id) },
                         onSwipeReply = { replyTo = it },
-                        onCallTap = { // CALL_BUBBLE_PATCH
+                        onCallTap = { tapped -> // CALL_BUBBLE_PATCH, VIDEO_CALL_UI: call back with the same type
                             navController.navigate(
                                 com.muwan.muwanchat.navigation.Screen.Call.createRoute(
                                     uid = receiverUid,
                                     username = receiverUsername,
-                                    callType = "voice",
+                                    callType = if (com.muwan.muwanchat.data.parseCallInfo(tapped.callInfo).kind == "video") "video" else "voice",
                                     isIncoming = false
                                 )
                             )

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Call // CALL_BUBBLE_PATCH
+import androidx.compose.material.icons.filled.Videocam // VIDEO_CALL_UI
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DoneAll
@@ -794,7 +795,7 @@ private fun CallBubble(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Filled.Call,
+                        if (info.kind == "video") Icons.Filled.Videocam else Icons.Filled.Call, // VIDEO_CALL_UI
                         contentDescription = "Call",
                         tint = Color.White,
                         modifier = Modifier.size(19.dp)
