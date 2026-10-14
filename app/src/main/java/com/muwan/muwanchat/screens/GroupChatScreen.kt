@@ -1246,7 +1246,7 @@ Box(
                         isSelectionMode = isSelectionMode,
                         isSelected = selectedMessageIds.contains(msg.id),
                         onTap = { toggleMessageSelection(msg.id) },
-                        onSwipeReply = { replyTo = it },
+                        onSwipeReply = { if (group?.isChannel != true) replyTo = it },
                         onImageTap = { _ -> fullscreenImage = msg },
                         onVideoTap = { _ -> fullscreenVideo = msg },
                         onDocumentTap = { url, fileName, mimeType ->

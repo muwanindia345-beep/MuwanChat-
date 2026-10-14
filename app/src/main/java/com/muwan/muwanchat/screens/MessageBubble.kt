@@ -292,11 +292,11 @@ fun MessageBubble(
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
-                            if (!isSelectionMode && !message.isDeleted && offsetX > 80f) onSwipeReply(message)
+                            if (!isChannel && !isSelectionMode && !message.isDeleted && offsetX > 80f) onSwipeReply(message)
                             offsetX = 0f
                         },
                         onHorizontalDrag = { _, dragAmount ->
-                            if (!isSelectionMode && !message.isDeleted && dragAmount > 0) offsetX = (offsetX + dragAmount).coerceIn(0f, 100f)
+                            if (!isChannel && !isSelectionMode && !message.isDeleted && dragAmount > 0) offsetX = (offsetX + dragAmount).coerceIn(0f, 100f)
                         }
                     )
                 }
