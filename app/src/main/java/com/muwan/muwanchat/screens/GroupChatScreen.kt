@@ -1067,7 +1067,7 @@ Box(
                     }
                 },
                 onVideoCall = { comingSoonFeature = "📹 Group Video Call" },
-                onVoiceCall = { comingSoonFeature = "📞 Group Voice Call" },
+                onVoiceCall = { navController.navigate(Screen.GroupCall.createRoute(groupId, groupName, false)) }, // GROUP_CALL_V1_ANDROID_B
                 onMenuClick = { showMenuSheet = true },
                 showMenu = showMenuSheet,
                 onMenuDismiss = { showMenuSheet = false },

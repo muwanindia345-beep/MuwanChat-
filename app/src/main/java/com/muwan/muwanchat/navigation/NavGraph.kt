@@ -61,6 +61,11 @@ sealed class Screen(val route: String) {
         fun createRoute(uid: String, username: String, callType: String, isIncoming: Boolean) =
             "call/$uid/${android.net.Uri.encode(username)}/$callType/${if (isIncoming) "incoming" else "outgoing"}"
     }
+    // GROUP_CALL_V1_ANDROID_B
+    object GroupCall        : Screen("group_call/{roomId}/{groupName}/{mode}") {
+        fun createRoute(roomId: String, groupName: String, isIncoming: Boolean) =
+            "group_call/${android.net.Uri.encode(roomId)}/${android.net.Uri.encode(groupName)}/${if (isIncoming) "incoming" else "outgoing"}"
+    }
     object Wallpaper       : Screen("wallpaper/{roomId}") {
         fun createRoute(roomId: String) = "wallpaper/$roomId"
     }
@@ -268,6 +273,29 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         }
     }
 
+    // GROUP_CALL_V1_ANDROID_B: incoming group call rings -> open the group call screen.
+    // Once per call id, never over the splash or the app lock screen (opens right after they close).
+    LaunchedEffect(Unit) {
+        var lastOpenedGroupCallId: String? = null
+        kotlinx.coroutines.flow.combine(
+            com.muwan.muwanchat.calling.ActiveGroupCall.phase,
+            navController.currentBackStackEntryFlow
+        ) { p, entry -> p to entry.destination.route }.collect { (p, route) ->
+            val s = com.muwan.muwanchat.calling.ActiveGroupCall.session.value
+            if (p == com.muwan.muwanchat.calling.GroupCallPhase.RINGING_INCOMING &&
+                s != null &&
+                s.callId != lastOpenedGroupCallId &&
+                route != null &&
+                route != Screen.GroupCall.route &&
+                route != Screen.Splash.route &&
+                route != Screen.AppLock.route
+            ) {
+                lastOpenedGroupCallId = s.callId
+                navController.navigate(Screen.GroupCall.createRoute(s.roomId, s.groupName, true))
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
@@ -359,6 +387,15 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
                 otherUsername = back.arguments?.getString("username") ?: "",
                 callType = back.arguments?.getString("callType") ?: "voice",
                 isIncoming = back.arguments?.getString("mode") == "incoming"
+            )
+        }
+        // GROUP_CALL_V1_ANDROID_B
+        composable(Screen.GroupCall.route) { back ->
+            GroupCallScreen(
+                navController = navController,
+                roomId = back.arguments?.getString("roomId") ?: "",
+                groupName = back.arguments?.getString("groupName") ?: "",
+                isIncomingRoute = back.arguments?.getString("mode") == "incoming"
             )
         }
         composable(Screen.Wallpaper.route) { back ->
