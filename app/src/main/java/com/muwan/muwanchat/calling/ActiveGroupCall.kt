@@ -129,11 +129,16 @@ object ActiveGroupCall {
             if (_session.value?.callId != callId) return@launch
             _session.value = _session.value?.copy(startedByUid = myUid, startedByUsername = myUsername)
             _participants.value = listOf(selfParticipant())
-            AppSocketManager.sendGroupCallStart(callId, roomId, "voice") { ok, error, _ ->
+            AppSocketManager.sendGroupCallStart(callId, roomId, "voice") { ok, error, existingCallId ->
                 mainHandler.post {
                     if (_session.value?.callId == callId) {
                         if (ok) {
                             markOngoing()
+                        } else if (error == "call_in_progress" && !existingCallId.isNullOrBlank()) {
+                            // GROUP_CALL_V1_ANDROID_C: a call already runs in this group -> join it instead of failing
+                            _session.value = _session.value?.copy(callId = existingCallId, isIncoming = true)
+                            _participants.value = emptyList()
+                            doJoin(ctx, existingCallId)
                         } else {
                             toast(errorText(error))
                             finish()

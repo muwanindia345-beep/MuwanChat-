@@ -1117,6 +1117,11 @@ Box(
             )
         }
 
+        // GROUP_CALL_V1_ANDROID_C: "Group call in progress - Join" strip (not for channels)
+        if (group?.isChannel != true) {
+            GroupCallStrip(roomId = groupId, groupName = groupName, navController = navController)
+        }
+
         if (pinnedMessages.isNotEmpty()) {
             val latestPinned = pinnedMessages.last()
             fun pinnedPreviewText(id: String): String {

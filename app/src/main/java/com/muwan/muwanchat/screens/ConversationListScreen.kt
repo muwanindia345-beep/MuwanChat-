@@ -545,6 +545,7 @@ fun ConversationListScreen(navController: NavController) {
 
             // STEP3_CALL_BANNER: header aur search ke beech, sirf call chalte waqt dikhta hai
             OngoingCallBanner(navController)
+            OngoingGroupCallBanner(navController) // GROUP_CALL_V1_ANDROID_C
 
             OutlinedTextField(
                 value = searchQuery,
