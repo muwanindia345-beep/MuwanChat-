@@ -212,7 +212,7 @@ class StatusUriRequestBody(
 
 // Maujooda chat upload endpoints hi use hote hain (image: /chat/upload, video: /chat/upload-video).
 // Success par media ka URL milta hai.
-suspend fun uploadStatusMedia(context: Context, token: String, media: PickedStatusMedia): Result<String> =
+suspend fun uploadStatusMedia(context: Context, token: String, media: PickedStatusMedia, uploadId: String? = null): Result<String> =
     withContext(Dispatchers.IO) {
         try {
             val res = if (media.type == "image") {
@@ -226,6 +226,7 @@ suspend fun uploadStatusMedia(context: Context, token: String, media: PickedStat
                         data = packed.first,
                         category = "image"
                     )
+                , uploadId = uploadId
                 )
             } else {
                 val bytes = context.contentResolver.openInputStream(media.uri)?.use { it.readBytes() }
@@ -238,7 +239,7 @@ suspend fun uploadStatusMedia(context: Context, token: String, media: PickedStat
                 }
                 val body = bytes.toRequestBody(media.mime.toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("video", media.fileName, body)
-                RetrofitClient.chatApi.uploadVideo("Bearer $token", part)
+                RetrofitClient.chatApi.uploadVideo("Bearer $token", part, uploadId = uploadId)
             }
             val url = res.body()?.url
             if (res.isSuccessful && !url.isNullOrBlank()) {

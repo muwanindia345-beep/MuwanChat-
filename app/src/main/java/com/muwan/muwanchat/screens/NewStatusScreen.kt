@@ -56,6 +56,7 @@ import com.muwan.muwanchat.util.isNetworkAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.muwan.muwanchat.data.UploadProgressTracker
 import kotlinx.coroutines.withContext
 
 // STATUS_V2 / STATUS_V4 / STATUS_V5 -- naya status: text (colour background) ya photo / video (30 sec, 25 MB).
@@ -71,6 +72,7 @@ fun NewStatusScreen(navController: NavController) {
     var colorIdx by remember { mutableStateOf(1) }
     var error by remember { mutableStateOf("") }
     var posting by remember { mutableStateOf(false) }
+    var uploadTrackId by remember { mutableStateOf<String?>(null) }
     var media by remember { mutableStateOf<PickedStatusMedia?>(null) }
     var caption by remember { mutableStateOf("") }
     var showPicker by remember { mutableStateOf(false) }
@@ -143,7 +145,15 @@ fun NewStatusScreen(navController: NavController) {
                     posting = false
                     return@launch
                 }
-                val up = uploadStatusMedia(context, token, m)
+                val trackId = "status_" + System.currentTimeMillis()
+                uploadTrackId = trackId
+                UploadProgressTracker.start(trackId)
+                val up = try {
+                    uploadStatusMedia(context, token, m, trackId)
+                } finally {
+                    UploadProgressTracker.clear(trackId)
+                    uploadTrackId = null
+                }
                 val url = up.getOrNull()
                 if (url == null) {
                     error = up.exceptionOrNull()?.message ?: "Upload nahi ho paya"
@@ -400,7 +410,12 @@ fun NewStatusScreen(navController: NavController) {
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    if (posting) "Posting" else "Post",
+                    if (posting) {
+                        val pct = uploadTrackId?.let { UploadProgressTracker.progress[it] }
+                        if (pct == null) "Posting"
+                        else if (pct >= 100) "Finishing…"
+                        else "Posting $pct%"
+                    } else "Post",
                     color = Color.White,
                     fontWeight = FontWeight.Medium,
                     fontSize = 15.sp,
