@@ -9,6 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -29,7 +33,12 @@ import kotlinx.coroutines.delay
 // progress bar. Bubble ka hi color theme use karta hai (sent = white on
 // orange, received = accent on navy) taaki UI bilkul consistent lage.
 @Composable
-fun AudioMessagePlayer(url: String, sent: Boolean) {
+fun AudioMessagePlayer(
+    url: String,
+    sent: Boolean,
+    uploading: Boolean = false, // AUDIO_RING_FIX
+    uploadPercent: Int? = null
+) {
     var isPlaying by remember(url) { mutableStateOf(false) }
     var isPrepared by remember(url) { mutableStateOf(false) }
     var durationMs by remember(url) { mutableStateOf(0) }
@@ -92,7 +101,7 @@ fun AudioMessagePlayer(url: String, sent: Boolean) {
                 .size(38.dp)
                 .clip(CircleShape)
                 .background(accent.copy(alpha = 0.18f))
-                .clickable(enabled = isPrepared) {
+                .clickable(enabled = isPrepared && !uploading) {
                     if (isPlaying) {
                         player.pause()
                         isPlaying = false
@@ -103,12 +112,35 @@ fun AudioMessagePlayer(url: String, sent: Boolean) {
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                contentDescription = if (isPlaying) "Pause" else "Play",
-                tint = accent,
-                modifier = Modifier.size(20.dp)
-            )
+            // AUDIO_RING_FIX: upload ke dauran play icon ki jagah ring + %
+            if (uploading) {
+                val pct = (uploadPercent ?: 0).coerceIn(0, 100)
+                val animatedPct by animateFloatAsState(
+                    targetValue = pct / 100f,
+                    animationSpec = tween(durationMillis = 150),
+                    label = "audioUploadRing"
+                )
+                CircularProgressIndicator(
+                    progress = { animatedPct },
+                    modifier = Modifier.fillMaxSize().padding(2.dp),
+                    color = Color(0xFFFF7A1A),
+                    strokeWidth = 3.dp,
+                    trackColor = Color(0x40FFFFFF)
+                )
+                Text(
+                    "$pct%",
+                    color = accent,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            } else {
+                Icon(
+                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    tint = accent,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         Spacer(Modifier.width(8.dp))

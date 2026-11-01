@@ -522,7 +522,12 @@ fun MessageBubble(
                     }
 
                     "audio", "music" -> message.mediaUrl?.let { url ->
-                        AudioMessagePlayer(url = url, sent = message.sent)
+                        AudioMessagePlayer(
+                            url = url,
+                            sent = message.sent,
+                            uploading = message.status == "UPLOADING",
+                            uploadPercent = UploadProgressTracker.progress[message.id]
+                        )
                     }
 
                     "document" -> message.mediaUrl?.let { url ->
@@ -537,7 +542,14 @@ fun MessageBubble(
                                 .padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Filled.Description, contentDescription = "Document", tint = Color.White)
+                            // DOC_RING_FIX: upload ke dauran file icon ki jagah ring + %
+                            if (message.status == "UPLOADING") {
+                                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                    UploadProgressRingSmall(UploadProgressTracker.progress[message.id])
+                                }
+                            } else {
+                                Icon(Icons.Filled.Description, contentDescription = "Document", tint = Color.White)
+                            }
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 message.fileName ?: "Document",
@@ -652,7 +664,8 @@ fun MessageBubble(
                 // Real-time upload % layer — jab tak upload chal raha hai tabhi dikhta hai,
                 // complete hote hi (status UPLOADING se hat jaate hi) automatically gayab
                 if (message.status == "UPLOADING" &&
-                    !((message.type == "image" || message.type == "video") && message.mediaUrl != null)
+                    !((message.type == "image" || message.type == "video" || message.type == "document" ||
+                        message.type == "audio" || message.type == "music") && message.mediaUrl != null)
                 ) {
                     val pct = UploadProgressTracker.progress[message.id]
                     Row(

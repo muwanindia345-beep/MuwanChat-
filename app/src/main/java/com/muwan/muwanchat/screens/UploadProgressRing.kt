@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -47,6 +48,40 @@ fun UploadProgressRing(percent: Int?, modifier: Modifier = Modifier) {
             "$pct%",
             color = Color.White,
             fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+// DOC_RING_FIX: document row ke liye chhoti ring. Parent slot 24dp hi rehta hai
+// (wrapContentSize unbounded) taaki bubble ki height/width upload ke dauran jump na kare.
+@Composable
+fun UploadProgressRingSmall(percent: Int?, modifier: Modifier = Modifier) {
+    val pct = (percent ?: 0).coerceIn(0, 100)
+    val animated by animateFloatAsState(
+        targetValue = pct / 100f,
+        animationSpec = tween(durationMillis = 150),
+        label = "uploadRingSmall"
+    )
+    Box(
+        modifier = modifier
+            .wrapContentSize(unbounded = true)
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(Color(0x99000000)),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            progress = { animated },
+            modifier = Modifier.fillMaxSize().padding(2.dp),
+            color = Color(0xFFFF7A1A),
+            strokeWidth = 3.dp,
+            trackColor = Color(0x40FFFFFF)
+        )
+        Text(
+            "$pct%",
+            color = Color.White,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Bold
         )
     }
