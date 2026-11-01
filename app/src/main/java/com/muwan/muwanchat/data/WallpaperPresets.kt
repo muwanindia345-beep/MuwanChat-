@@ -7,6 +7,7 @@ package com.muwan.muwanchat.data
 data class ColorPreset(val id: String, val hex: String)
 data class GradientPreset(val id: String, val hexFrom: String, val hexTo: String)
 data class PatternPreset(val id: String, val baseHex: String, val dotHex: String)
+data class AnimatedPreset(val id: String, val name: String)
 
 object WallpaperPresets {
 
@@ -35,6 +36,17 @@ object WallpaperPresets {
         PatternPreset("pattern_2", "#16213e", "#ffffff14"), // faint white dots
         PatternPreset("pattern_3", "#0f3460", "#ff6b3518"), // faint accent lines
         PatternPreset("pattern_4", "#1e1e2f", "#ffffff10")  // very subtle grid
+    )
+
+    // Animated wallpapers, drawn by screens/AnimatedWallpapers.kt.
+    // Stored as ChatWallpaperEntity(type = "animated", value = id).
+    val animated = listOf(
+        AnimatedPreset("anim_code_rain", "Code Rain"),
+        AnimatedPreset("anim_aurora", "Aurora"),
+        AnimatedPreset("anim_fireflies", "Firefly Night"),
+        AnimatedPreset("anim_synthwave", "Synthwave"),
+        AnimatedPreset("anim_sakura", "Sakura"),
+        AnimatedPreset("anim_deep_space", "Deep Space")
     )
 
     fun colorById(id: String) = colors.find { it.id == id }

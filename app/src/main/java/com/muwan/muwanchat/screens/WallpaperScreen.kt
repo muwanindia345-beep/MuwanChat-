@@ -229,6 +229,17 @@ fun WallpaperScreen(navController: NavController, roomId: String) {
                 }
             }
 
+            Text("Animated", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                modifier = Modifier.padding(top = 20.dp, bottom = 10.dp))
+            PresetGrid(columns = 4) {
+                WallpaperPresets.animated.forEach { preset ->
+                    val selected = current?.type == "animated" && current?.value == preset.id
+                    PresetSwatch(selected = selected, onClick = { applyPreset("animated", preset.id) }) {
+                        AnimatedWallpaperThumb(preset, running = selected)
+                    }
+                }
+            }
+
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -298,6 +309,9 @@ fun WallpaperPreviewBackground(entity: ChatWallpaperEntity?) {
         "pattern" -> {
             val preset = WallpaperPresets.patternById(entity.value)
             if (preset != null) PatternThumbnail(preset) else Box(Modifier.fillMaxSize().background(DarkBg))
+        }
+        "animated" -> {
+            AnimatedWallpaper(id = entity.value)
         }
         "image" -> {
             AsyncImage(
