@@ -1394,7 +1394,7 @@ private suspend fun uploadMediaMessage(
             }
         } else {
             val errBody = try { res.errorBody()?.string() } catch (_: Exception) { null }
-            android.util.Log.e("MuwanUpload", "uploadMedia http failed id=$id code=${res.code()} category=$category sizeKb=$payloadKb body=$errBody")
+            android.util.Log.e("MuwanUpload", "uploadMedia http failed id=$id code=${res.code()} category=$category sizeKb=$payloadKb") // SEC_FIX_V1: server error body log nahi
             db.messageDao().updateStatus(id, "FAILED")
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "$displayType upload fail (HTTP ${res.code()}, $payloadKb KB)", Toast.LENGTH_SHORT).show()

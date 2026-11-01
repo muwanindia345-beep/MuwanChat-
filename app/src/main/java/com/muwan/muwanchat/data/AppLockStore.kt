@@ -48,7 +48,11 @@ object AppLockStore {
 
     const val METHOD_PATTERN = "pattern"
     const val METHOD_PIN = "pin"
+    // SEC_FIX_V1: purane saved locks (jinke saath iters key nahi hoti) 10k pe verify hote rahenge;
+    // naya PIN/pattern 100k iterations ke saath save hota hai.
     private const val PBKDF2_ITERATIONS = 10_000
+    private const val PBKDF2_ITERATIONS_NEW = 100_000
+    private const val KEY_ITERS = "iters"
 
     sealed class VerifyResult {
         object Success : VerifyResult()
@@ -64,16 +68,25 @@ object AppLockStore {
         return synchronized(this) {
             cached ?: run {
                 val appCtx = context.applicationContext
-                val masterKey = MasterKey.Builder(appCtx)
-                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                    .build()
-                EncryptedSharedPreferences.create(
-                    appCtx,
-                    PREFS_NAME,
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                )
+                fun build(): SharedPreferences {
+                    val masterKey = MasterKey.Builder(appCtx)
+                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                        .build()
+                    return EncryptedSharedPreferences.create(
+                        appCtx,
+                        PREFS_NAME,
+                        masterKey,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    )
+                }
+                // SEC_FIX_V1: Keystore/prefs kharab ho to crash-loop ki jagah lock reset
+                try {
+                    build()
+                } catch (e: Exception) {
+                    appCtx.deleteSharedPreferences(PREFS_NAME)
+                    build()
+                }
             }.also { cached = it }
         }
     }
@@ -110,7 +123,8 @@ object AppLockStore {
             .clear()
             .putString(KEY_METHOD, METHOD_PATTERN)
             .putString(KEY_SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
-            .putString(KEY_HASH, hash(pattern.joinToString("-"), salt))
+            .putInt(KEY_ITERS, PBKDF2_ITERATIONS_NEW)
+            .putString(KEY_HASH, hash(pattern.joinToString("-"), salt, PBKDF2_ITERATIONS_NEW))
             .apply()
     }
 
@@ -123,7 +137,8 @@ object AppLockStore {
             .clear()
             .putString(KEY_METHOD, METHOD_PIN)
             .putString(KEY_SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
-            .putString(KEY_HASH, hash(pin, salt))
+            .putInt(KEY_ITERS, PBKDF2_ITERATIONS_NEW)
+            .putString(KEY_HASH, hash(pin, salt, PBKDF2_ITERATIONS_NEW))
             .putInt(KEY_PIN_LEN, pin.length)
             .apply()
     }
@@ -172,7 +187,7 @@ object AppLockStore {
         }
 
         val salt = Base64.decode(saltB64, Base64.NO_WRAP)
-        val candidate = hash(secret, salt)
+        val candidate = hash(secret, salt, p.getInt(KEY_ITERS, PBKDF2_ITERATIONS))
         val match = MessageDigest.isEqual(candidate.toByteArray(), savedHash.toByteArray())
 
         if (match) {
@@ -210,11 +225,11 @@ object AppLockStore {
 
     // ── Hashing ─────────────────────────────────────────────────────────
 
-    private fun hash(secret: String, salt: ByteArray): String {
+    private fun hash(secret: String, salt: ByteArray, iterations: Int): String {
         val spec = PBEKeySpec(
             secret.toCharArray(),
             salt,
-            PBKDF2_ITERATIONS,
+            iterations,
             256
         )
         val bytes = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")

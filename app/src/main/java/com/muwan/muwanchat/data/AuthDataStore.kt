@@ -31,12 +31,34 @@ private const val NOTIFICATIONS_ENABLED_KEY = "notifications_enabled"
 
 object AuthDataStore {
 
+    // SEC_FIX_V1: pehle har call pe naya EncryptedSharedPreferences ban raha tha (Keystore ka
+    // mehnga kaam -- Coil ki har image request pe) -- ab ek baar banta hai aur cache hota hai.
+    @Volatile private var cachedPrefs: SharedPreferences? = null
+
     private fun prefs(context: Context): SharedPreferences {
-        val masterKey = MasterKey.Builder(context)
+        cachedPrefs?.let { return it }
+        return synchronized(this) {
+            cachedPrefs ?: createPrefs(context.applicationContext).also { cachedPrefs = it }
+        }
+    }
+
+    private fun createPrefs(appCtx: Context): SharedPreferences {
+        return try {
+            buildPrefs(appCtx)
+        } catch (e: Exception) {
+            // Keystore key/prefs file kharab ho gayi (OS restore, OEM bug) -- har start pe crash
+            // hone se behtar hai ki ye store reset ho jaye; user ko bas dobara login karna padega.
+            appCtx.deleteSharedPreferences(PREFS_NAME)
+            buildPrefs(appCtx)
+        }
+    }
+
+    private fun buildPrefs(appCtx: Context): SharedPreferences {
+        val masterKey = MasterKey.Builder(appCtx)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
         return EncryptedSharedPreferences.create(
-            context,
+            appCtx,
             PREFS_NAME,
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,

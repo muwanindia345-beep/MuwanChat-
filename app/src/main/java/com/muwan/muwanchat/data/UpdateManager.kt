@@ -6,6 +6,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.content.pm.Signature
 import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -17,10 +20,12 @@ import com.muwan.muwanchat.network.AppVersionInfo
 import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 class InsufficientStorageException(message: String) : Exception(message)
@@ -97,6 +102,11 @@ object UpdateManager {
         apkUrl: String,
         onProgress: (Int) -> Unit
     ) = withContext(Dispatchers.IO) {
+        // SEC_FIX_V1: sirf https se APK download
+        val parsedUrl = apkUrl.toHttpUrlOrNull()
+        if (parsedUrl == null || !parsedUrl.isHttps) {
+            throw Exception("Update link secure (https) nahi hai — update roka gaya.")
+        }
         val response = downloadClient.newCall(Request.Builder().url(apkUrl).addHeader("Accept-Encoding", "identity").build()).execute()
         if (!response.isSuccessful) throw Exception("Download failed: ${response.code}")
 
@@ -137,10 +147,70 @@ object UpdateManager {
             }
         }
 
+        val verifyError = verifyApk(context, apkFile)
+        if (verifyError != null) {
+            apkFile.delete()
+            throw Exception(verifyError)
+        }
+
         withContext(Dispatchers.Main) {
             onProgress(100)
             installApk(context, apkFile)
         }
+    }
+
+    // SEC_FIX_V1: download hui APK hamare hi app ki honi chahiye -- same package + same signing key.
+    // (Android install ke waqt bhi signature check karta hai; ye uske pehle hi galat file rok deta hai.)
+    private fun verifyApk(context: Context, apkFile: File): String? {
+        return try {
+            val pm = context.packageManager
+            val archive = archiveInfo(pm, apkFile.absolutePath)
+                ?: return "Download hui update file kharab hai — dobara try karo."
+            if (archive.packageName != context.packageName) {
+                return "Update file is app ki nahi hai — update roka gaya."
+            }
+            val installed = signerHashes(installedInfo(pm, context.packageName))
+            val incoming = signerHashes(archive)
+            // Dono jagah signer padh paaye aur ek bhi match nahi -> galat key se bani APK
+            if (installed.isNotEmpty() && incoming.isNotEmpty() && installed.intersect(incoming).isEmpty()) {
+                return "Update ka signature match nahi hua — update roka gaya."
+            }
+            null
+        } catch (e: Exception) {
+            "Update verify nahi ho paya — dobara try karo."
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun archiveInfo(pm: PackageManager, path: String): PackageInfo? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            pm.getPackageArchiveInfo(path, PackageManager.GET_SIGNING_CERTIFICATES)
+        else
+            pm.getPackageArchiveInfo(path, PackageManager.GET_SIGNATURES)
+
+    @Suppress("DEPRECATION")
+    private fun installedInfo(pm: PackageManager, pkg: String): PackageInfo =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            pm.getPackageInfo(pkg, PackageManager.GET_SIGNING_CERTIFICATES)
+        else
+            pm.getPackageInfo(pkg, PackageManager.GET_SIGNATURES)
+
+    @Suppress("DEPRECATION")
+    private fun signerHashes(info: PackageInfo): Set<String> {
+        val sigs: Array<Signature>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val si = info.signingInfo
+            when {
+                si == null -> null
+                si.hasMultipleSigners() -> si.apkContentsSigners
+                else -> si.signingCertificateHistory
+            }
+        } else {
+            info.signatures
+        }
+        return sigs?.map { sig ->
+            MessageDigest.getInstance("SHA-256").digest(sig.toByteArray())
+                .joinToString("") { "%02x".format(it) }
+        }?.toSet() ?: emptySet()
     }
 
     private fun installApk(context: Context, apkFile: File) {

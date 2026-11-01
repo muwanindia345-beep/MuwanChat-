@@ -80,6 +80,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // SEC_FIX_V1: app lock ON ho to recents (app switcher) preview mein chats na dikhein.
+    // Flag sirf background jaate waqt lagta hai aur wapas aate hi hat jaata hai, isliye
+    // app ke andar screenshot / screen recording pehle jaise chalte hain.
+    override fun onPause() {
+        super.onPause()
+        try {
+            if (com.muwan.muwanchat.data.AppLockStore.isLockEnabled(applicationContext)) {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
+        } catch (_: Exception) {}
+    }
+
+    override fun onResume() {
+        super.onResume()
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+    }
+
     override fun onStart() {
         super.onStart()
         AppLockState.onActivityStarted(applicationContext)

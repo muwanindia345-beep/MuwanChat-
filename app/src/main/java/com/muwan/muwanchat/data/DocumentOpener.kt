@@ -1,11 +1,13 @@
 package com.muwan.muwanchat.data
 
+// SEC_FIX_V1
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.muwan.muwanchat.network.BackendHost
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -17,6 +19,28 @@ object DocumentOpener {
 
     private val client = OkHttpClient()
 
+    // fileName message se aata hai (sender ka diya hua). "../../databases/x" jaisa naam
+    // app ki apni files overwrite kar sakta tha -- isliye sirf aakhri naam rakhte hain.
+    private fun safeFileName(raw: String?): String {
+        val base = (raw ?: "")
+            .substringAfterLast('/')
+            .substringAfterLast('\\')
+            .filter { it >= ' ' && it != '\u007f' }
+            .trim()
+            .trimStart('.')
+            .take(120)
+        return base.ifBlank { "document" }
+    }
+
+    private fun docFile(context: Context, fileName: String): File {
+        val dir = File(context.cacheDir, "documents").apply { mkdirs() }
+        val f = File(dir, safeFileName(fileName))
+        if (!f.canonicalPath.startsWith(dir.canonicalPath + File.separator)) {
+            throw SecurityException("Invalid document name")
+        }
+        return f
+    }
+
     suspend fun openDocument(
         context: Context,
         url: String,
@@ -26,32 +50,32 @@ object DocumentOpener {
     ) {
         val success = withContext(Dispatchers.IO) {
             try {
+                val shownName = safeFileName(fileName)
                 val localDoc = LocalMedia.localFile(context, url)
                 if (localDoc != null) {
-                    val docsDir0 = File(context.cacheDir, "documents").apply { mkdirs() }
-                    val copy0 = File(docsDir0, fileName.ifBlank { "document" })
+                    val copy0 = docFile(context, fileName)
                     localDoc.copyTo(copy0, overwrite = true)
-                    withContext(Dispatchers.Main) { openLocalFile(context, copy0, fileName, mimeType) }
+                    withContext(Dispatchers.Main) { openLocalFile(context, copy0, shownName, mimeType) }
                     return@withContext true
                 }
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("Authorization", "Bearer $token")
-                    .build()
+                val builder = Request.Builder().url(url)
+                // Token sirf apne backend ko -- URL sender ka diya hua ho sakta hai
+                if (token.isNotEmpty() && BackendHost.isBackend(url)) {
+                    builder.addHeader("Authorization", "Bearer $token")
+                }
+                val request = builder.build()
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext false
                     val body = response.body ?: return@withContext false
 
-                    val docsDir = File(context.cacheDir, "documents").apply { mkdirs() }
-                    val safeName = fileName.ifBlank { "document" }
-                    val file = File(docsDir, safeName)
+                    val file = docFile(context, fileName)
 
                     body.byteStream().use { input ->
                         FileOutputStream(file).use { output -> input.copyTo(output) }
                     }
 
-                    withContext(Dispatchers.Main) { openLocalFile(context, file, fileName, mimeType) }
+                    withContext(Dispatchers.Main) { openLocalFile(context, file, shownName, mimeType) }
                     true
                 }
             } catch (_: Exception) {

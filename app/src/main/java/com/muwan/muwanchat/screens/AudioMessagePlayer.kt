@@ -44,7 +44,7 @@ fun AudioMessagePlayer(url: String, sent: Boolean) {
             // isliye Coil jaisa hi Bearer token header bhejna zaroori hai — plain
             // setDataSource(url) 401 khata hai aur MediaPlayer chup-chaap fail ho jata hai.
             val token = AuthDataStore.getTokenBlocking(context)
-            val headers = if (token.isNotEmpty()) mapOf("Authorization" to "Bearer $token") else emptyMap()
+            val headers = if (token.isNotEmpty() && com.muwan.muwanchat.network.BackendHost.isBackend(url)) mapOf("Authorization" to "Bearer $token") else emptyMap() // SEC_FIX_V1
             val localAudio = com.muwan.muwanchat.data.LocalMedia.localFile(context, url)
             if (localAudio != null) player.setDataSource(localAudio.absolutePath)
             else player.setDataSource(context, Uri.parse(url), headers)
@@ -57,14 +57,14 @@ fun AudioMessagePlayer(url: String, sent: Boolean) {
                 positionMs = 0
             }
             player.setOnErrorListener { _, what, extra ->
-                Log.e("AudioMessagePlayer", "MediaPlayer error what=$what extra=$extra url=$url")
+                Log.e("AudioMessagePlayer", "MediaPlayer error what=$what extra=$extra")
                 isPlaying = false
                 isPrepared = false
                 true
             }
             player.prepareAsync()
         } catch (e: Exception) {
-            Log.e("AudioMessagePlayer", "setDataSource failed for $url", e)
+            Log.e("AudioMessagePlayer", "setDataSource failed", e)
         }
         onDispose {
             try { player.release() } catch (_: Exception) {}

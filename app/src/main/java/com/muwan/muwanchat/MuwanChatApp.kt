@@ -25,7 +25,9 @@ class MuwanChatApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader {
         val okHttpClient = OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val token = AuthDataStore.getTokenBlocking(applicationContext)
+                // SEC_FIX_V1: token sirf apne backend ke URL par
+                val token = if (com.muwan.muwanchat.network.BackendHost.isBackend(chain.request().url))
+                    AuthDataStore.getTokenBlocking(applicationContext) else ""
                 val request = if (token.isNotEmpty()) {
                     chain.request().newBuilder()
                         .addHeader("Authorization", "Bearer $token")

@@ -131,7 +131,7 @@ object LocalMedia {
         return try {
             val b = Request.Builder().url(url)
             // Token sirf apne server ke media ko; Cloudinary jaise third party ko nahi
-            if (url.contains("/chat/media/")) {
+            if (url.contains("/chat/media/") && com.muwan.muwanchat.network.BackendHost.isBackend(url)) { // SEC_FIX_V1
                 val token = AuthDataStore.getTokenBlocking(context)
                 if (token.isNotEmpty()) b.addHeader("Authorization", "Bearer $token")
             }
