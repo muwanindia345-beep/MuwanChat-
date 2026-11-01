@@ -4,7 +4,10 @@ import androidx.compose.ui.graphics.Color
 import com.muwan.muwanchat.DarkBubbleSent
 
 // Animated effect type. NONE = purane static themes (koi change nahi).
-enum class BubbleFx { NONE, FIRE, RAINBOW, NEON, GOLD }
+enum class BubbleFx {
+    NONE, FIRE, RAINBOW, NEON, GOLD,
+    AURORA, GALAXY, ELECTRIC, LAVA, MATRIX, SAKURA, CYBER, HOLO
+}
 
 // Ek "Message Theme" sirf SENT bubble ka color aur size control karta hai.
 // Received bubble ka color hamesha same (DarkBubbleReceived) rehta hai —
@@ -58,8 +61,45 @@ object BubbleThemePresets {
         compact = false, fx = BubbleFx.GOLD
     )
 
+    // ---- Naye animated themes (compact = false => size/position bilkul purane animated jaisa) ----
+    val AURORA = BubbleTheme(
+        id = "aurora", label = "Aurora", sentColor = Color(0xFF0B1F2A),
+        compact = false, fx = BubbleFx.AURORA
+    )
+    val GALAXY = BubbleTheme(
+        id = "galaxy", label = "Galaxy", sentColor = Color(0xFF14093D),
+        compact = false, fx = BubbleFx.GALAXY
+    )
+    val ELECTRIC = BubbleTheme(
+        id = "electric", label = "Electric", sentColor = Color(0xFF0E1236),
+        compact = false, fx = BubbleFx.ELECTRIC
+    )
+    val LAVA = BubbleTheme(
+        id = "lava", label = "Lava", sentColor = Color(0xFF2B0505),
+        compact = false, fx = BubbleFx.LAVA
+    )
+    val MATRIX = BubbleTheme(
+        id = "matrix", label = "Matrix", sentColor = Color(0xFF03140A),
+        compact = false, fx = BubbleFx.MATRIX
+    )
+    val SAKURA = BubbleTheme(
+        id = "sakura", label = "Sakura", sentColor = Color(0xFF3A0F24),
+        compact = false, fx = BubbleFx.SAKURA
+    )
+    val CYBER = BubbleTheme(
+        id = "cyber", label = "Cyber", sentColor = Color(0xFF12002A),
+        compact = false, fx = BubbleFx.CYBER
+    )
+    val HOLO = BubbleTheme(
+        id = "holo", label = "Holo", sentColor = Color(0xFF1A1233),
+        compact = false, fx = BubbleFx.HOLO
+    )
+
     val CLASSIC = listOf(ORIGINAL, EMERALD, FOREST)
-    val ANIMATED = listOf(FIRE, RAINBOW, NEON, GOLD)
+    val ANIMATED = listOf(
+        FIRE, RAINBOW, NEON, GOLD,
+        AURORA, GALAXY, ELECTRIC, LAVA, MATRIX, SAKURA, CYBER, HOLO
+    )
     val ALL = CLASSIC + ANIMATED
 
     // Unknown id (e.g. app downgrade) => ORIGINAL, crash nahi.
