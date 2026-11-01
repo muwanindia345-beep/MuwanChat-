@@ -428,6 +428,8 @@ fun MessageBubble(
 
                 when (message.type) {
                     "image" -> message.mediaUrl?.let { url ->
+                        // UPLOAD_RING_FIX: upload ke waqt progress ring image ke center mein
+                        Box(contentAlignment = Alignment.Center) {
                         AsyncImage(
                             model = com.muwan.muwanchat.data.LocalMedia.rememberModel(url),
                             contentDescription = "Image",
@@ -442,6 +444,10 @@ fun MessageBubble(
                                 .clickable { if (isSelectionMode) onTap() else onImageTap(url) },
                             contentScale = if (isChannel) ContentScale.FillWidth else ContentScale.Crop
                         )
+                        if (message.status == "UPLOADING") {
+                            UploadProgressRing(UploadProgressTracker.progress[message.id])
+                        }
+                        }
                         Spacer(Modifier.height(4.dp))
                     }
 
@@ -501,12 +507,16 @@ fun MessageBubble(
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
-                            Icon(
-                                Icons.Filled.PlayCircle,
-                                contentDescription = "Play video",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp)
-                            )
+                            if (message.status == "UPLOADING") {
+                                UploadProgressRing(UploadProgressTracker.progress[message.id])
+                            } else {
+                                Icon(
+                                    Icons.Filled.PlayCircle,
+                                    contentDescription = "Play video",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
                         }
                         Spacer(Modifier.height(4.dp))
                     }
@@ -641,7 +651,9 @@ fun MessageBubble(
 
                 // Real-time upload % layer — jab tak upload chal raha hai tabhi dikhta hai,
                 // complete hote hi (status UPLOADING se hat jaate hi) automatically gayab
-                if (message.status == "UPLOADING") {
+                if (message.status == "UPLOADING" &&
+                    !((message.type == "image" || message.type == "video") && message.mediaUrl != null)
+                ) {
                     val pct = UploadProgressTracker.progress[message.id]
                     Row(
                         modifier = Modifier
