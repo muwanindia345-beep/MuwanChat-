@@ -1086,6 +1086,7 @@ Box(
                     navController.navigate(com.muwan.muwanchat.navigation.Screen.MessageTheme.createRoute(groupId))
                 },
                 isChannel = group?.isChannel ?: false,
+                canChangeMessageTheme = isAdmin || group?.owner == myUid, // CHANNEL_THEME_PERM_FIX
                 onSendInviteInApp = {
                     val code = group?.inviteCode
                     if (code == null) {
@@ -1804,6 +1805,7 @@ private fun GroupChatHeader(
     onSetWallpaper: () -> Unit = {},
     onMessageTheme: () -> Unit = {},
     isChannel: Boolean = false,
+    canChangeMessageTheme: Boolean = true, // CHANNEL_THEME_PERM_FIX
     onShareLink: () -> Unit = {},
     onSendInviteInApp: () -> Unit = {},
     onProfile: () -> Unit = {},
@@ -1903,7 +1905,8 @@ private fun GroupChatHeader(
                             }
                         )
                         // [channel-message-theme]
-                        DropdownMenuItem(
+                        // CHANNEL_THEME_PERM_FIX: normal member ko sirf Profile / Share / Leave
+                        if (canChangeMessageTheme) DropdownMenuItem(
                             text = { Text("Message Theme", color = Color.White) },
                             leadingIcon = {
                                 Icon(Icons.Filled.Palette, contentDescription = null, tint = DarkAccent)
