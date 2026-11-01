@@ -126,7 +126,8 @@ class MuwanFirebaseService : FirebaseMessagingService() {
                 mimeType = data["mime_type"],
                 replyToId = data["reply_to_id"],
                 isForwarded = data["is_forwarded"] == "1",
-                mentions = data["mentions"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+                mentions = data["mentions"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
+                bubbleFx = data["bubble_fx"]
             )
         } catch (_: Exception) {
         }

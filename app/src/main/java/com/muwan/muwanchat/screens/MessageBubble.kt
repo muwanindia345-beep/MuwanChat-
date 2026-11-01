@@ -220,11 +220,17 @@ fun MessageBubble(
     val bubbleVPad = if (bubbleTheme.compact) 7.dp else 10.dp
     val bubbleFontSize = if (bubbleTheme.compact) 14.sp else 15.sp
     // BUBBLE_FX: sirf sent bubble pe animated effect (draw-only, layout unchanged)
-    val bubbleFxOn = message.sent && !isSticker && !message.isDeleted
-    val bubbleFxTime = rememberFxTime(bubbleFxOn && bubbleTheme.animated)
+    // RECEIVED_FX: sender ne animated theme lagayi ho to receiver ko bhi wahi bubble dikhe
+    // (sirf fire/rainbow/neon/gold -- unknown id => normal bubble). Layout/size same rehta hai.
+    val receivedFxTheme = if (!message.sent && message.bubbleFx != null)
+        BubbleThemePresets.ANIMATED.find { it.id == message.bubbleFx } else null
+    val fxTheme = receivedFxTheme ?: bubbleTheme
+    val bubbleFxOn = (message.sent || receivedFxTheme != null) && !isSticker && !message.isDeleted
+    val bubbleFxTime = rememberFxTime(bubbleFxOn && fxTheme.animated)
     val bubbleFxShape = RoundedCornerShape(
         topStart = bubbleCornerBig, topEnd = bubbleCornerBig,
-        bottomEnd = bubbleCornerTail, bottomStart = bubbleCornerBig
+        bottomEnd = if (message.sent) bubbleCornerTail else bubbleCornerBig,
+        bottomStart = if (message.sent) bubbleCornerBig else bubbleCornerTail
     )
     // GROUP_REACTION_AVATAR_FIX
     var reactionRowHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -336,7 +342,7 @@ fun MessageBubble(
                     )
                 }
                 .then(if (isChannel && !isSticker) Modifier.fillMaxWidth() else Modifier.widthIn(max = 280.dp))
-                .bubbleGlow(bubbleFxShape, bubbleTheme, bubbleFxOn, bubbleFxTime)
+                .bubbleGlow(bubbleFxShape, fxTheme, bubbleFxOn, bubbleFxTime)
                 .clip(
                     RoundedCornerShape(
                         topStart = bubbleCornerBig, topEnd = bubbleCornerBig,
@@ -344,8 +350,8 @@ fun MessageBubble(
                         bottomStart = if (message.sent) bubbleCornerBig else bubbleCornerTail
                     )
                 )
-                .background(if (isSticker) Color.Transparent else if (message.sent) bubbleTheme.sentColor else if (isMentioningMe) Color(0xFF3D3418) else DarkBubbleReceived)
-                .bubbleFill(bubbleFxShape, bubbleTheme, bubbleFxOn, bubbleFxTime)
+                .background(if (isSticker) Color.Transparent else if (message.sent) bubbleTheme.sentColor else if (receivedFxTheme != null) receivedFxTheme.sentColor else if (isMentioningMe) Color(0xFF3D3418) else DarkBubbleReceived)
+                .bubbleFill(bubbleFxShape, fxTheme, bubbleFxOn, bubbleFxTime)
                 .padding(
                     horizontal = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else bubbleHPad,
                     vertical = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else bubbleVPad

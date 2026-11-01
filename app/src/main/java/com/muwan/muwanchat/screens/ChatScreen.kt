@@ -148,6 +148,10 @@ fun ChatScreen(
     val currentWallpaper by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
     val currentBubbleThemeEntity by db.chatBubbleThemeDao().observeByRoomId(roomId).collectAsState(initial = null)
     val bubbleTheme = com.muwan.muwanchat.data.BubbleThemePresets.fromId(currentBubbleThemeEntity?.themeId)
+    // BUBBLE_FX: sirf animated theme receiver ko bheji jaati hai (classic => null)
+    androidx.compose.runtime.SideEffect {
+        AppSocketManager.setBubbleFx(receiverUid, if (bubbleTheme.animated) bubbleTheme.id else null)
+    }
 
     val messageEntities by db.messageDao().observeMessages(roomId).collectAsState(initial = emptyList())
     val conversationEntity by db.conversationDao().observeByRoomId(roomId).collectAsState(initial = null)
@@ -613,7 +617,8 @@ fun ChatScreen(
                             fileName = event.fileName,
                             mimeType = event.mimeType,
                             replyToId = event.replyToId,
-                            isForwarded = event.isForwarded
+                            isForwarded = event.isForwarded,
+                            bubbleFx = event.bubbleFx
                         )
                         if (event.senderUid != myUid) {
                             isReceiverTyping = false

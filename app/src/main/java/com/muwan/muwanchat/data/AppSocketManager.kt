@@ -25,7 +25,8 @@ sealed class SocketEvent {
         val mimeType: String? = null,
         val replyToId: String? = null,
         val isForwarded: Boolean = false,
-        val mentions: List<String> = emptyList()
+        val mentions: List<String> = emptyList(),
+        val bubbleFx: String? = null
     ) : SocketEvent()
 
     data class UserOnline(val uid: String) : SocketEvent()
@@ -254,7 +255,8 @@ object AppSocketManager {
                         mimeType = if (json.isNull("mime_type")) null else json.optString("mime_type"),
                         replyToId = if (json.isNull("reply_to_id")) null else json.optString("reply_to_id"),
                         isForwarded = json.optBoolean("is_forwarded", false),
-                        mentions = mentionsList
+                        mentions = mentionsList,
+                        bubbleFx = if (json.isNull("bubble_fx")) null else json.optString("bubble_fx").ifBlank { null }
                     )
                 )
             }
@@ -618,6 +620,17 @@ object AppSocketManager {
         socket?.emit("check_presence", uid)
     }
 
+    // BUBBLE_FX: chat khula hone par screen yahan us chat ki ANIMATED theme id set karti hai
+    // (classic theme => null). Key: 1-1 chat mein receiverUid, group mein roomId.
+    // sendMessage / sendGroupMessage / REST fallback isse apne aap `bubble_fx` jodte hain.
+    private val bubbleFxByTarget = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    fun setBubbleFx(target: String, fxId: String?) {
+        if (fxId.isNullOrBlank()) bubbleFxByTarget.remove(target) else bubbleFxByTarget[target] = fxId
+    }
+
+    fun bubbleFxFor(target: String): String? = bubbleFxByTarget[target]
+
     fun sendMessage(
         id: String,
         receiverUid: String,
@@ -643,6 +656,7 @@ object AppSocketManager {
             put("mime_type", mimeType)
             put("reply_to_id", replyToId)
             put("is_forwarded", isForwarded)
+            bubbleFxFor(receiverUid)?.let { put("bubble_fx", it) }
         }
         s.emit("send_message", arrayOf(json), Ack { args ->
             val res = args.getOrNull(0) as? JSONObject
@@ -694,6 +708,7 @@ object AppSocketManager {
             if (mentions.isNotEmpty()) {
                 put("mentions", org.json.JSONArray(mentions))
             }
+            bubbleFxFor(roomId)?.let { put("bubble_fx", it) }
         }
         s.emit("send_message", arrayOf(json), Ack { args ->
             val res = args.getOrNull(0) as? JSONObject

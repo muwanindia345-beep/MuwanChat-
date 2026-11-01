@@ -268,7 +268,8 @@ fun ConversationListScreen(navController: NavController) {
                             fileName = event.fileName,
                             mimeType = event.mimeType,
                             replyToId = event.replyToId,
-                            isForwarded = event.isForwarded
+                            isForwarded = event.isForwarded,
+                            bubbleFx = event.bubbleFx
                         )
                     }
                 }

@@ -42,7 +42,8 @@ data class ChatMessage(
     val previewUrl: String? = null,
     val isForwarded: Boolean = false,
     val mentions: List<String> = emptyList(),
-    val callInfo: String? = null // CALL_BUBBLE_PATCH: type == "call" ka raw JSON
+    val callInfo: String? = null, // CALL_BUBBLE_PATCH: type == "call" ka raw JSON
+    val bubbleFx: String? = null  // received message pe sender ki animated theme id
 )
 
 fun formatMessageTime(raw: String): String {
@@ -84,7 +85,8 @@ fun MessageItem.toChatMessage(myUid: String) = ChatMessage(
     previewUrl = link_preview?.url,
     isForwarded = is_forwarded,
     mentions = mentions ?: emptyList(),
-    callInfo = if (type == "call") content else null
+    callInfo = if (type == "call") content else null,
+    bubbleFx = bubble_fx
 )
 
 fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
@@ -112,7 +114,8 @@ fun MessageEntity.toChatMessage(myUid: String) = ChatMessage(
     previewUrl = previewUrl,
     isForwarded = isForwarded,
     mentions = mentions?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
-    callInfo = if (type == "call") content else null
+    callInfo = if (type == "call") content else null,
+    bubbleFx = bubbleFx
 )
 
 fun nowTime(): String {

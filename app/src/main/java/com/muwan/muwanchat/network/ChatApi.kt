@@ -70,7 +70,8 @@ data class MessageItem(
     // Group messages ke liye: kaun-kaun se members ne yeh dekh liya hai.
     // Tick green tabhi jab isme SABHI group members ka uid ho.
     val seen_by: List<String>? = null,
-    val mentions: List<String>? = null
+    val mentions: List<String>? = null,
+    val bubble_fx: String? = null
 )
 
 data class SendMessageRequest(
@@ -80,7 +81,9 @@ data class SendMessageRequest(
     val file_name: String? = null,
     val mime_type: String? = null,
     val reply_to_id: String? = null,
-    val is_forwarded: Boolean = false
+    val is_forwarded: Boolean = false,
+    // default registry se aata hai => koi call-site change nahi; classic theme => null
+    val bubble_fx: String? = com.muwan.muwanchat.data.AppSocketManager.bubbleFxFor(receiver_uid)
 )
 
 data class SendMessageResponse(

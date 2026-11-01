@@ -162,7 +162,8 @@ object ChatRepository {
         mimeType: String?,
         replyToId: String?,
         isForwarded: Boolean,
-        mentions: List<String>
+        mentions: List<String>,
+        bubbleFx: String? = null
     ) {
         pushStoreMutex.withLock {
             // Socket se ya sync se pehle hi aa chuka hai -- dobara kuch mat karo
@@ -184,7 +185,8 @@ object ChatRepository {
                 mimeType = mimeType,
                 replyToId = replyToId,
                 isForwarded = isForwarded,
-                mentions = mentions
+                mentions = mentions,
+                bubbleFx = bubbleFx
             )
         }
     }
@@ -261,7 +263,8 @@ object ChatRepository {
         mimeType: String? = null,
         replyToId: String? = null,
         isForwarded: Boolean = false,
-        mentions: List<String> = emptyList()
+        mentions: List<String> = emptyList(),
+        bubbleFx: String? = null
     ) {
         if (type == "system") {
             // Doosri jagah se (socket ya kahin bhi) aane wala real system message
@@ -286,7 +289,8 @@ object ChatRepository {
                 mimeType = mimeType,
                 replyToId = replyToId,
                 isForwarded = isForwarded,
-                mentions = if (mentions.isNotEmpty()) mentions.joinToString(",") else null
+                mentions = if (mentions.isNotEmpty()) mentions.joinToString(",") else null,
+                bubbleFx = bubbleFx
             )
         )
 
@@ -502,7 +506,8 @@ object ChatRepository {
                 previewDescription = it.link_preview?.description,
                 previewImage = it.link_preview?.image,
                 previewUrl = it.link_preview?.url,
-                isForwarded = it.is_forwarded
+                isForwarded = it.is_forwarded,
+                bubbleFx = it.bubble_fx
             )
         }
         db.messageDao().insertAll(entities)

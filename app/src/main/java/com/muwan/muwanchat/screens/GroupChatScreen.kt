@@ -378,6 +378,10 @@ fun GroupChatScreen(
     val currentWallpaper by db.chatWallpaperDao().observeByRoomId(groupId).collectAsState(initial = null)
     val currentBubbleThemeEntity by db.chatBubbleThemeDao().observeByRoomId(groupId).collectAsState(initial = null)
     val bubbleTheme = com.muwan.muwanchat.data.BubbleThemePresets.fromId(currentBubbleThemeEntity?.themeId)
+    // BUBBLE_FX: sirf animated theme group ko bheji jaati hai (classic => null)
+    androidx.compose.runtime.SideEffect {
+        AppSocketManager.setBubbleFx(groupId, if (bubbleTheme.animated) bubbleTheme.id else null)
+    }
 
     val messageEntities by db.messageDao().observeMessages(groupId).collectAsState(initial = emptyList())
     val conversationEntity by db.conversationDao().observeByRoomId(groupId).collectAsState(initial = null)
@@ -884,7 +888,8 @@ fun GroupChatScreen(
                             mimeType = event.mimeType,
                             replyToId = event.replyToId,
                             isForwarded = event.isForwarded,
-                            mentions = event.mentions
+                            mentions = event.mentions,
+                            bubbleFx = event.bubbleFx
                         )
                         if (event.senderUid != myUid) {
                             ChatRepository.markRoomSeenAsync(db, myToken, groupId)
