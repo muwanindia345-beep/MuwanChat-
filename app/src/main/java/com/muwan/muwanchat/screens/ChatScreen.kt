@@ -322,9 +322,10 @@ fun ChatScreen(
         val ids = selectedMessageIds.toList()
         val now = nowIso()
         scope.launch {
-            db.messageDao().deleteByIds(ids)
-            // Record karo taaki agla sync backend se inhe wapas na le aaye
+            // DELETE_FOR_ME_FIX: pehle tombstone, phir row delete -- warna beech mein
+            // koi sync chal jaye to message wapas insert ho jata tha
             db.deletedMessageDao().markDeleted(ids.map { DeletedMessageEntity(it, now) })
+            db.messageDao().deleteByIds(ids)
             // Server pe bhi persist karo -- taaki app reinstall/DB reset ke
             // baad bhi yeh message wapas na aaye (best-effort: local delete
             // turant ho chuka hai, backend call fail ho bhi jaaye to UI par
@@ -583,7 +584,7 @@ fun ChatScreen(
         try {
             val res = RetrofitClient.chatApi.getMessages("Bearer $token", roomId)
             if (res.isSuccessful) {
-                ChatRepository.syncMessages(db, res.body()?.messages ?: emptyList())
+                ChatRepository.syncMessages(db, res.body()?.messages ?: emptyList(), token = token)
             }
         } catch (_: Exception) {}
 

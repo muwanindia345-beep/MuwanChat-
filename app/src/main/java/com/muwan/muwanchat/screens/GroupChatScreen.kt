@@ -558,8 +558,9 @@ fun GroupChatScreen(
         val ids = selectedMessageIds.toList()
         val now = nowIso()
         scope.launch {
-            db.messageDao().deleteByIds(ids)
+            // DELETE_FOR_ME_FIX: pehle tombstone, phir row delete
             db.deletedMessageDao().markDeleted(ids.map { DeletedMessageEntity(it, now) })
+            db.messageDao().deleteByIds(ids)
             ids.forEach { id ->
                 try {
                     RetrofitClient.chatApi.hideMessageForMe("Bearer $myToken", groupId, id)
@@ -853,7 +854,7 @@ fun GroupChatScreen(
         try {
             val res = RetrofitClient.chatApi.getMessages("Bearer $token", groupId)
             if (res.isSuccessful) {
-                ChatRepository.syncMessages(db, res.body()?.messages ?: emptyList(), group?.members?.size)
+                ChatRepository.syncMessages(db, res.body()?.messages ?: emptyList(), group?.members?.size, token)
             }
         } catch (_: Exception) {}
 

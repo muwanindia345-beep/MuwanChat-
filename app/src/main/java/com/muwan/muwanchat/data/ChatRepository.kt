@@ -77,7 +77,7 @@ object ChatRepository {
             val res = RetrofitClient.chatApi.getMessages("Bearer $token", item.room_id)
             if (res.isSuccessful) {
                 val memberCount = if (item.isGroup && item.memberCount > 0) item.memberCount else null
-                syncMessages(db, res.body()?.messages ?: emptyList(), memberCount)
+                syncMessages(db, res.body()?.messages ?: emptyList(), memberCount, token)
                 prefetchedState[item.room_id] = "${item.lastTime}|${item.unreadCount}"
             }
         } catch (_: Exception) {
@@ -266,6 +266,8 @@ object ChatRepository {
         mentions: List<String> = emptyList(),
         bubbleFx: String? = null
     ) {
+        // DELETE_FOR_ME_FIX: "delete for me" kiya hua message socket/replay se wapas na aaye
+        if (db.deletedMessageDao().isDeleted(id)) return
         if (type == "system") {
             // Doosri jagah se (socket ya kahin bhi) aane wala real system message
             // agar humari optimistic placeholder se match kare (roomId+content),
@@ -473,7 +475,7 @@ object ChatRepository {
     // null/default rehne do). Isse fresh open / app reinstall ke baad bhi
     // pehle se "sabne dekh liya" wale messages turant green dikhte hain,
     // real-time "messages_seen" event ka wait nahi karna padta.
-    suspend fun syncMessages(db: MuwanChatDb, items: List<MessageItem>, groupMemberCount: Int? = null) {
+    suspend fun syncMessages(db: MuwanChatDb, items: List<MessageItem>, groupMemberCount: Int? = null, token: String? = null) {
         // "Delete for me" (single message) ka local record — jab tak hai,
         // backend se dobara aane pe bhi is message ko wapas insert mat karo
         val deletedIds = db.deletedMessageDao().getAllIds().toSet()
@@ -511,7 +513,26 @@ object ChatRepository {
             )
         }
         db.messageDao().insertAll(entities)
-        LocalMedia.autoDownloadAll(entities)
+        // DELETE_FOR_ME_FIX (1): user ne sync ke beech mein delete kiya ho to
+        // insertAll ne row wapas daal di hogi -- tombstones dobara padh ke hata do
+        val deletedNow = db.deletedMessageDao().getAllIds().toSet()
+        val resurrected = entities.map { it.id }.filter { it in deletedNow }
+        if (resurrected.isNotEmpty()) db.messageDao().deleteByIds(resurrected)
+        // DELETE_FOR_ME_FIX (2): server ab bhi inhe bhej raha hai => server pe hide
+        // fail hua tha (network). Chupchap dobara hide bhej do (self-heal).
+        if (token != null) {
+            val reHide = items.filter { it.id in deletedNow }
+            if (reHide.isNotEmpty()) {
+                seenScope.launch {
+                    reHide.forEach { m ->
+                        try {
+                            RetrofitClient.chatApi.hideMessageForMe("Bearer $token", m.room_id, m.id)
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        }
+        LocalMedia.autoDownloadAll(entities.filter { it.id !in deletedNow })
     }
 
     // Jo messages backend pe "delete for everyone" ho chuke the jab hum offline the,

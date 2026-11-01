@@ -13,4 +13,8 @@ interface DeletedMessageDao {
 
     @Query("DELETE FROM deleted_messages WHERE messageId = :messageId")
     suspend fun unmark(messageId: String)
+
+    // DELETE_FOR_ME_FIX: socket/recordMessage path ke liye O(1) check
+    @Query("SELECT EXISTS(SELECT 1 FROM deleted_messages WHERE messageId = :messageId)")
+    suspend fun isDeleted(messageId: String): Boolean
 }
