@@ -219,6 +219,13 @@ fun MessageBubble(
     val bubbleHPad = if (bubbleTheme.compact) 10.dp else 14.dp
     val bubbleVPad = if (bubbleTheme.compact) 7.dp else 10.dp
     val bubbleFontSize = if (bubbleTheme.compact) 14.sp else 15.sp
+    // BUBBLE_FX: sirf sent bubble pe animated effect (draw-only, layout unchanged)
+    val bubbleFxOn = message.sent && !isSticker && !message.isDeleted
+    val bubbleFxTime = rememberFxTime(bubbleFxOn && bubbleTheme.animated)
+    val bubbleFxShape = RoundedCornerShape(
+        topStart = bubbleCornerBig, topEnd = bubbleCornerBig,
+        bottomEnd = bubbleCornerTail, bottomStart = bubbleCornerBig
+    )
     // GROUP_REACTION_AVATAR_FIX
     var reactionRowHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
 
@@ -329,6 +336,7 @@ fun MessageBubble(
                     )
                 }
                 .then(if (isChannel && !isSticker) Modifier.fillMaxWidth() else Modifier.widthIn(max = 280.dp))
+                .bubbleGlow(bubbleFxShape, bubbleTheme, bubbleFxOn, bubbleFxTime)
                 .clip(
                     RoundedCornerShape(
                         topStart = bubbleCornerBig, topEnd = bubbleCornerBig,
@@ -337,6 +345,7 @@ fun MessageBubble(
                     )
                 )
                 .background(if (isSticker) Color.Transparent else if (message.sent) bubbleTheme.sentColor else if (isMentioningMe) Color(0xFF3D3418) else DarkBubbleReceived)
+                .bubbleFill(bubbleFxShape, bubbleTheme, bubbleFxOn, bubbleFxTime)
                 .padding(
                     horizontal = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else bubbleHPad,
                     vertical = if (isSticker) 0.dp else if (isMedia && !message.isDeleted) 4.dp else bubbleVPad
@@ -739,6 +748,11 @@ private fun CallBubble(
     val hPad = if (bubbleTheme.compact) 10.dp else 14.dp
     val vPad = if (bubbleTheme.compact) 7.dp else 10.dp
     val titleSize = if (bubbleTheme.compact) 14.sp else 15.sp
+    val callFxOn = message.sent && bubbleTheme.animated
+    val callFxTime = rememberFxTime(callFxOn)
+    val callFxShape = RoundedCornerShape(
+        topStart = cornerBig, topEnd = cornerBig, bottomEnd = cornerTail, bottomStart = cornerBig
+    )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -770,6 +784,7 @@ private fun CallBubble(
             Row(
                 modifier = Modifier
                     .widthIn(min = 190.dp, max = 280.dp)
+                    .bubbleGlow(callFxShape, bubbleTheme, callFxOn, callFxTime)
                     .clip(
                         RoundedCornerShape(
                             topStart = cornerBig, topEnd = cornerBig,
@@ -778,6 +793,7 @@ private fun CallBubble(
                         )
                     )
                     .background(bg)
+                    .bubbleFill(callFxShape, bubbleTheme, callFxOn, callFxTime)
                     .pointerInput(message.id, message.callInfo, isSelectionMode) {
                         detectTapGestures(
                             onLongPress = { onLongPress(message) },

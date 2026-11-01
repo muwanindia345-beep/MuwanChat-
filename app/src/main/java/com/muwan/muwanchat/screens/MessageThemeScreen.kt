@@ -98,6 +98,14 @@ fun MessageThemeScreen(navController: NavController, roomId: String) {
             )
 
             BubbleThemePresets.ALL.forEach { theme ->
+                if (theme.id == BubbleThemePresets.ANIMATED.first().id) {
+                    Text(
+                        "Animated",
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 ThemeOptionCard(
                     theme = theme,
                     isSelected = theme.id == selectedId,
@@ -154,13 +162,17 @@ private fun ThemeOptionCard(theme: BubbleTheme, isSelected: Boolean, onClick: ()
         val hPad = if (theme.compact) 10.dp else 14.dp
         val vPad = if (theme.compact) 7.dp else 10.dp
         val fSize = if (theme.compact) 14.sp else 15.sp
+        val fxTime = rememberFxTime(theme.animated)
+        val fxShape = RoundedCornerShape(
+            topStart = corner, topEnd = corner, bottomEnd = tail, bottomStart = corner
+        )
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
                 .background(Color.Black)
-                .padding(10.dp),
+                .padding(if (theme.animated) 16.dp else 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
@@ -183,6 +195,7 @@ private fun ThemeOptionCard(theme: BubbleTheme, isSelected: Boolean, onClick: ()
                 Box(
                     modifier = Modifier
                         .widthIn(max = 200.dp)
+                        .bubbleGlow(fxShape, theme, theme.animated, fxTime)
                         .clip(
                             RoundedCornerShape(
                                 topStart = corner, topEnd = corner,
@@ -190,6 +203,7 @@ private fun ThemeOptionCard(theme: BubbleTheme, isSelected: Boolean, onClick: ()
                             )
                         )
                         .background(theme.sentColor)
+                        .bubbleFill(fxShape, theme, theme.animated, fxTime)
                         .padding(horizontal = hPad, vertical = vPad)
                 ) {
                     Text("All good, bro 😄", color = Color.White, fontSize = fSize)
