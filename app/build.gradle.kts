@@ -40,10 +40,15 @@ android {
         // installs as an UPDATE over the previous beta, no uninstall needed.
         // Not the official key, so no secrets/env vars needed for it.
         create("betaRelease") {
-            storeFile = file("$projectDir/beta.keystore")
-            storePassword = "QwvGbECV77rXsJpXVId1"
-            keyAlias = "talkwave-beta"
-            keyPassword = "QwvGbECV77rXsJpXVId1"
+            // BETA_KEYSTORE_ENV: CI secret se decode hoke BETA_KEYSTORE_PATH par aata hai,
+            // repo mein koi password/keystore nahi.
+            val betaPath = System.getenv("BETA_KEYSTORE_PATH")
+            if (betaPath != null) {
+                storeFile = file(betaPath)
+                storePassword = System.getenv("BETA_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("BETA_KEY_ALIAS")
+                keyPassword = System.getenv("BETA_KEY_PASSWORD")
+            }
         }
     }
 

@@ -58,6 +58,10 @@ jobs:
       - name: Create google-services.json
         run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
 
+      - name: Decode beta keystore
+        run: |
+          echo "${{ secrets.BETA_KEYSTORE_BASE64 }}" | base64 -d > beta_ci.keystore
+
       - name: Build Beta APK
         # Beta bhi assembleBetaRelease banata hai -- same "release" buildType,
         # same proguard-rules.pro, same minifyEnabled/shrinkResources jo
@@ -65,7 +69,16 @@ jobs:
         # key (beta.keystore, signingConfigs["betaRelease"]) alag hain. Isse
         # ProGuard/R8-wale bugs beta testing me hi pakde jaayenge, official
         # release mein pehli baar nahi.
+        env:
+          BETA_KEYSTORE_PATH: ${{ github.workspace }}/beta_ci.keystore
+          BETA_KEYSTORE_PASSWORD: ${{ secrets.BETA_KEYSTORE_PASSWORD }}
+          BETA_KEY_ALIAS: ${{ secrets.BETA_KEY_ALIAS }}
+          BETA_KEY_PASSWORD: ${{ secrets.BETA_KEY_PASSWORD }}
         run: ./gradlew assembleBetaRelease
+
+      - name: Clean up beta keystore
+        if: always()
+        run: rm -f beta_ci.keystore
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
