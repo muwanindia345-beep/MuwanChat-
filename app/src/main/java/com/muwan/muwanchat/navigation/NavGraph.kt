@@ -499,7 +499,9 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
             info = pendingUpdate!!,
             onUpdate = {
                 sheetDismissed = true
-                navController.navigate(Screen.CheckUpdates.route)
+                // LANDING_PAGE_UPDATE
+                pendingUpdate?.let { com.muwan.muwanchat.data.UpdateManager.markVersionSeen(context, it.versionCode) }
+                com.muwan.muwanchat.data.UpdateManager.openUpdatePage(context)
             },
             onCancel = { sheetDismissed = true }
         )

@@ -93,140 +93,16 @@ object UpdateManager {
         manager.notify(1001, notification)
     }
 
-    private val downloadClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS)
-        .build()
-
-    // Real-time progress ke saath APK download + install intent fire
-    // karta hai. onProgress Dispatchers.Main pe safe call hai.
-    suspend fun downloadAndInstall(
-        context: Context,
-        apkUrl: String,
-        onProgress: (Int) -> Unit
-    ) = withContext(Dispatchers.IO) {
-        // SEC_FIX_V1: sirf https se APK download
-        val parsedUrl = apkUrl.toHttpUrlOrNull()
-        if (parsedUrl == null || !parsedUrl.isHttps) {
-            throw Exception("Update link secure (https) nahi hai — update roka gaya.")
-        }
-        val response = downloadClient.newCall(Request.Builder().url(apkUrl).addHeader("Accept-Encoding", "identity").build()).execute()
-        if (!response.isSuccessful) throw Exception("Download failed: ${response.code}")
-
-        val body = response.body ?: throw Exception("Empty response body")
-        val totalBytes = body.contentLength().takeIf { it > 0 } ?: -1L
-
-        val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
-
-        // Install (download se alag) me extra space lagta hai — dexopt compile ke liye
-        // aur purana version rollback-safety ke liye disk pe rakha jaata hai jab tak
-        // naya verify na ho. Isliye kam se kam APK size ka 3x ya 150MB, jo bhi zyada ho.
-        val minRequired = 150L * 1024 * 1024
-        val requiredSpace = if (totalBytes > 0) maxOf(totalBytes * 3, minRequired) else minRequired
-        val availableSpace = updatesDir.usableSpace
-        if (availableSpace < requiredSpace) {
-            val requiredMb = requiredSpace / (1024 * 1024)
-            val availableMb = availableSpace / (1024 * 1024)
-            throw InsufficientStorageException(
-                "Storage kam hai — update install karne ke liye kam se kam ${requiredMb}MB free space chahiye, sirf ${availableMb}MB available hai. Kuch jagah free karke try karo."
+    // LANDING_PAGE_UPDATE: in-app APK download/install hata diya. Update button
+    // official landing page kholta hai, wahan se browser APK download karta hai.
+    // URL sirf BuildConfig se aata hai (backend/push se aaya link use nahi hota).
+    fun openUpdatePage(context: Context) {
+        val url = BuildConfig.UPDATE_PAGE_URL
+        if (url.isBlank()) return
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
-        }
-
-        val apkFile = File(updatesDir, "MuwanChat-update.apk")
-
-        body.byteStream().use { input ->
-            FileOutputStream(apkFile).use { output ->
-                val buffer = ByteArray(8 * 1024)
-                var bytesRead: Int
-                var totalRead = 0L
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    output.write(buffer, 0, bytesRead)
-                    totalRead += bytesRead
-                    if (totalBytes > 0) {
-                        val percent = ((totalRead * 100) / totalBytes).toInt()
-                        withContext(Dispatchers.Main) { onProgress(percent) }
-                    }
-                }
-            }
-        }
-
-        val verifyError = verifyApk(context, apkFile)
-        if (verifyError != null) {
-            apkFile.delete()
-            throw Exception(verifyError)
-        }
-
-        withContext(Dispatchers.Main) {
-            onProgress(100)
-            installApk(context, apkFile)
-        }
-    }
-
-    // SEC_FIX_V1: download hui APK hamare hi app ki honi chahiye -- same package + same signing key.
-    // (Android install ke waqt bhi signature check karta hai; ye uske pehle hi galat file rok deta hai.)
-    private fun verifyApk(context: Context, apkFile: File): String? {
-        return try {
-            val pm = context.packageManager
-            val archive = archiveInfo(pm, apkFile.absolutePath)
-                ?: return "Download hui update file kharab hai — dobara try karo."
-            if (archive.packageName != context.packageName) {
-                return "Update file is app ki nahi hai — update roka gaya."
-            }
-            val installed = signerHashes(installedInfo(pm, context.packageName))
-            val incoming = signerHashes(archive)
-            // Dono jagah signer padh paaye aur ek bhi match nahi -> galat key se bani APK
-            if (installed.isNotEmpty() && incoming.isNotEmpty() && installed.intersect(incoming).isEmpty()) {
-                return "Update ka signature match nahi hua — update roka gaya."
-            }
-            null
-        } catch (e: Exception) {
-            "Update verify nahi ho paya — dobara try karo."
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun archiveInfo(pm: PackageManager, path: String): PackageInfo? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-            pm.getPackageArchiveInfo(path, PackageManager.GET_SIGNING_CERTIFICATES)
-        else
-            pm.getPackageArchiveInfo(path, PackageManager.GET_SIGNATURES)
-
-    @Suppress("DEPRECATION")
-    private fun installedInfo(pm: PackageManager, pkg: String): PackageInfo =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-            pm.getPackageInfo(pkg, PackageManager.GET_SIGNING_CERTIFICATES)
-        else
-            pm.getPackageInfo(pkg, PackageManager.GET_SIGNATURES)
-
-    @Suppress("DEPRECATION")
-    private fun signerHashes(info: PackageInfo): Set<String> {
-        val sigs: Array<Signature>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val si = info.signingInfo
-            when {
-                si == null -> null
-                si.hasMultipleSigners() -> si.apkContentsSigners
-                else -> si.signingCertificateHistory
-            }
-        } else {
-            info.signatures
-        }
-        return sigs?.map { sig ->
-            MessageDigest.getInstance("SHA-256").digest(sig.toByteArray())
-                .joinToString("") { "%02x".format(it) }
-        }?.toSet() ?: emptySet()
-    }
-
-    private fun installApk(context: Context, apkFile: File) {
-        val apkUri: Uri = FileProvider.getUriForFile(
-            context, "${context.packageName}.fileprovider", apkFile
-        )
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(apkUri, "application/vnd.android.package-archive")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-        }
-        context.startActivity(intent)
-        // Yahi pe Android khud "Install unknown apps" / Play Protect scan
-        // popup dikhayega — same signature hone se existing APK replace
-        // ho jayega, data safe rahega.
+        } catch (_: Exception) {}
     }
 }

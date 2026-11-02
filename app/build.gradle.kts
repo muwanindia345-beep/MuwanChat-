@@ -68,6 +68,7 @@ android {
         // Official build — same applicationId as always, ships only confirmed features.
         create("production") {
             dimension = "channel"
+            buildConfigField("String", "UPDATE_PAGE_URL", "\"https://muwanindia345-beep.github.io/talkwave-download/\"")
             buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
             buildConfigField("String", "BACKEND_URL", "\"https://irritably-payable-womanhood.ngrok-free.dev\"")
             signingConfig = signingConfigs.getByName("release")
@@ -76,6 +77,7 @@ android {
         // the official app on the same phone instead of conflicting with it.
         create("beta") {
             dimension = "channel"
+            buildConfigField("String", "UPDATE_PAGE_URL", "\"\"")
             applicationIdSuffix = ".beta"
             versionNameSuffix = "-beta"
             resValue("string", "app_name", "TalkWave Beta")

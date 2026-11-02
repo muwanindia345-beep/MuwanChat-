@@ -114,20 +114,7 @@ fun CheckUpdatesScreen(navController: NavController) {
                             text = "Update",
                             color = DarkAccent,
                             enabled = true,
-                            onClick = {
-                                val apkUrl = info.apkUrl ?: return@UpdateStatusButton
-                                state = UpdateState.DOWNLOADING
-                                progress = 0
-                                scope.launch {
-                                    try {
-                                        errorMessage = null
-                                        UpdateManager.downloadAndInstall(context, apkUrl) { p -> progress = p }
-                                    } catch (e: Exception) {
-                                        errorMessage = e.message
-                                        state = UpdateState.ERROR
-                                    }
-                                }
-                            }
+                            onClick = { UpdateManager.openUpdatePage(context) } // LANDING_PAGE_UPDATE
                         )
                     }
                 }
