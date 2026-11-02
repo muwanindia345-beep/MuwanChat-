@@ -49,6 +49,8 @@ object UpdateManager {
 
     // null = no update ya check fail hua (offline/backend down)
     suspend fun checkForUpdate(context: Context): AppVersionInfo? {
+        // BETA_NO_INSTALLER: beta GitHub se browser ke zariye update hota hai, in-app installer nahi
+        if (BuildConfig.FLAVOR == "beta") return null
         return try {
             val info = RetrofitClient.appApi.getVersion()
             if (info.versionCode > BuildConfig.VERSION_CODE) info else null
@@ -62,6 +64,7 @@ object UpdateManager {
 
     // Offline/background user ko yeh notification milega
     fun showUpdateNotification(context: Context, info: AppVersionInfo) {
+        if (BuildConfig.FLAVOR == "beta") return // BETA_NO_INSTALLER
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
