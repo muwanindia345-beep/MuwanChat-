@@ -88,6 +88,7 @@ fun RegisterScreen(navController: NavController) {
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf("") }
+    var showGuestComingSoon by remember { mutableStateOf(false) }  // GUEST_COMING_SOON
 
     val usernameErr = usernameError(username)
     val emailErr = emailError(email)
@@ -359,6 +360,24 @@ fun RegisterScreen(navController: NavController) {
                 } else {
                     Text("Create Account", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
+            }
+
+            // GUEST_COMING_SOON -- purple Continue Guest button (abhi sirf Coming Soon popup)
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { showGuestComingSoon = true },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E44FF)),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
+            ) {
+                Text("Continue Guest", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            if (showGuestComingSoon) {
+                ComingSoonDialog(
+                    feature = "👤 Continue Guest",
+                    onDismiss = { showGuestComingSoon = false }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
