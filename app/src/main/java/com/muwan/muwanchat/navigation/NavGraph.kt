@@ -103,7 +103,6 @@ sealed class Screen(val route: String) {
     object Settings        : Screen("settings")
     object AccountSettings : Screen("account_settings")
     object AcceptedUsers   : Screen("accepted_users")
-    object CheckUpdates    : Screen("check_updates")
     object Forward          : Screen("forward")
     object ViewAvatar       : Screen("view_avatar")
     object Media           : Screen("media/{uid}") {
@@ -472,19 +471,11 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.Settings.route) { SettingsScreen(navController) }
         composable(Screen.AccountSettings.route) { AccountSettingsScreen(navController) }
         composable(Screen.AcceptedUsers.route) { AcceptedUsersScreen(navController) }
-        composable(Screen.CheckUpdates.route) { CheckUpdatesScreen(navController) }
     }
     var pendingUpdate by remember { mutableStateOf<com.muwan.muwanchat.network.AppVersionInfo?>(null) }
     var sheetDismissed by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        // Notification tap se aaye hain to seedha Check Updates screen —
-        // popup ki zaroorat nahi, wahi screen sab dikha degi.
-        if (openUpdateScreen) {
-            navController.navigate(Screen.CheckUpdates.route)
-            return@LaunchedEffect
-        }
-
         // Ye check sirf tab chalta hai jab app already foreground/open hai,
         // isliye notification bhejne ka yahan koi matlab nahi — user already
         // screen dekh raha hai. Sirf in-app popup dikhega.
