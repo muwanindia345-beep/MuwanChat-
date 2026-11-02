@@ -20,6 +20,7 @@ class MuwanChatApp : Application(), ImageLoaderFactory {
         com.muwan.muwanchat.calling.ActiveCall.start(applicationContext) // STEP2_ACTIVE_CALL
         com.muwan.muwanchat.calling.ActiveGroupCall.start(applicationContext) // GROUP_CALL_V1_ANDROID
         com.muwan.muwanchat.calling.IceServerProvider.prefetch(applicationContext)
+        com.muwan.muwanchat.network.BackendKeepAlive.start(this) // KEEPALIVE_V1
     }
 
     override fun newImageLoader(): ImageLoader {

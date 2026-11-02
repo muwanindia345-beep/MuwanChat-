@@ -82,7 +82,7 @@ android {
             versionNameSuffix = "-beta"
             resValue("string", "app_name", "TalkWave Beta")
             buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
-            buildConfigField("String", "BACKEND_URL", "\"https://irritably-payable-womanhood.ngrok-free.dev\"")
+            buildConfigField("String", "BACKEND_URL", "\"https://muwan-chat-backend.onrender.com\"")
             signingConfig = signingConfigs.getByName("betaRelease")
         }
     }
