@@ -147,3 +147,7 @@
 # poori app ke liye off karta hai; shrink (unused code delete) aur
 # obfuscate (naam badalna) baaki sab jagah chalte rahenge.
 -dontoptimize
+
+# GUEST_P1 -- BouncyCastle (guest Ed25519). Sirf lightweight crypto API use hoti hai (reflection nahi),
+# par optional references ke warnings R8 ko fail na karein isliye dontwarn.
+-dontwarn org.bouncycastle.**

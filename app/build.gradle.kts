@@ -114,6 +114,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"  // GUEST_P1 (BouncyCastle)
         }
     }
 }
@@ -162,4 +163,6 @@ dependencies {
     // repository config nahi chahiye. Package naam org.webrtc.* hi hai
     // (Google ka original WebRTC API), yeh sirf uska maintained prebuilt hai.
     implementation("io.github.webrtc-sdk:android:144.7559.09")
+    // GUEST_P1 -- Ed25519 (guest identity). Lightweight API, Android Keystore Ed25519 API 33+ par hi hai.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
 }

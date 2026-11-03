@@ -72,4 +72,14 @@ object RetrofitClient {
             .build()
             .create(StatusApi::class.java)
     }
+
+    // GUEST_P1 -- guest backend (/guest/*). Auth wale APIs se alag.
+    val guestApi: GuestApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(CHAT_BACKEND_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GuestApi::class.java)
+    }
 }

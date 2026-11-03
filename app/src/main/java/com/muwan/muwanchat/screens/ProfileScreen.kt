@@ -41,6 +41,10 @@ import com.muwan.muwanchat.network.RetrofitClient
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+// GUEST_P1: true = BETA build ke Coming Soon popup mein handshake ka result bhi dikhta hai (test ke liye).
+// Production build mein ye kabhi nahi dikhta. Test ho jaye to false kar do.
+private const val GUEST_P1_SHOW_BETA_RESULT = true
+
 @Composable
 fun ProfileScreen(navController: NavController, mode: String) {
     val context = LocalContext.current
@@ -61,6 +65,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
     var isSaving by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf("") }
     var showGuestComingSoon by remember { mutableStateOf(false) }  // GUEST_UI
+    var guestBetaResult by remember { mutableStateOf("") }  // GUEST_P1
 
     fun applyProfileFields(name_: String?, bio_: String?, city_: String?, country_: String?, gender_: String?, avatar_: String?) {
         name = name_ ?: ""
@@ -133,7 +138,26 @@ fun ProfileScreen(navController: NavController, mode: String) {
             errorMsg = "Name daalna zaroori hai"
             return
         }
-        if (isGuest) { showGuestComingSoon = true; return }  // GUEST_UI
+        if (isGuest) {  // GUEST_P1
+            // Phase 1: UI Coming Soon hi rehta hai; peeche silent backend handshake (key + session).
+            showGuestComingSoon = true
+            scope.launch {
+                val r = com.muwan.muwanchat.data.GuestSession.ensure(context)
+                val isBeta = com.muwan.muwanchat.BuildConfig.APPLICATION_ID.endsWith(".beta")
+                if (isBeta) {
+                    android.util.Log.i("GuestSession", r.toString())
+                    if (GUEST_P1_SHOW_BETA_RESULT) {
+                        guestBetaResult = when (r) {
+                            is com.muwan.muwanchat.data.GuestSession.Result.Ok ->
+                                "\n\n[beta] backend connected\n" + r.guestId
+                            is com.muwan.muwanchat.data.GuestSession.Result.Fail ->
+                                "\n\n[beta] backend FAILED\n" + r.reason
+                        }
+                    }
+                }
+            }
+            return
+        }
         val finalGender = if (gender == "Custom") customGender.trim() else gender
         scope.launch {
             isSaving = true
@@ -178,7 +202,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
         if (showGuestComingSoon) {  // GUEST_UI
-            ComingSoonDialog(feature = "👤 Guest Mode", onDismiss = { showGuestComingSoon = false })
+            ComingSoonDialog(feature = "👤 Guest Mode" + guestBetaResult, onDismiss = { showGuestComingSoon = false })  // GUEST_P1
         }
         if (isLoading) {
             CircularProgressIndicator(color = DarkAccent, modifier = Modifier.align(Alignment.Center))
