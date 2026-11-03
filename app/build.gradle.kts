@@ -165,4 +165,6 @@ dependencies {
     implementation("io.github.webrtc-sdk:android:144.7559.09")
     // GUEST_P1 -- Ed25519 (guest identity). Lightweight API, Android Keystore Ed25519 API 33+ par hi hai.
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    // GUEST_P2B1 -- QR code banane ke liye (pure Java, chhota)
+    implementation("com.google.zxing:core:3.5.3")
 }

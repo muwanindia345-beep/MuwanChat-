@@ -371,7 +371,7 @@ fun ConversationListScreen(navController: NavController) {
                 if (isGuest) {  // GUEST_P2A: guest ko New Chat nahi, Invite People (abhi Coming Soon)
                     FabSheetOption(Icons.Filled.Add, "Invite People") {
                         showFabSheet = false
-                        comingSoonFeature = "👥 Invite People"
+                        navController.navigate(Screen.GuestInvite.route)  // GUEST_P2B1
                     }
                     FabSheetOption(Icons.Filled.Add, "Create Group") {
                         showFabSheet = false

@@ -5,6 +5,7 @@ package com.muwan.muwanchat.network
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header  // GUEST_P2B1
 import retrofit2.http.POST
 
 data class GuestChallengeResponse(
@@ -28,10 +29,30 @@ data class GuestSessionResponse(
     val error: String?
 )
 
+data class GuestInviteRequest(
+    val hash: String,
+    val uses: Int,
+    val ttlHours: Int
+)
+
+data class GuestInviteResponse(
+    val success: Boolean?,
+    val uses: Int?,
+    val expiresAt: String?,
+    val error: String?
+)
+
 interface GuestApi {
     @GET("guest/challenge")
     suspend fun challenge(): Response<GuestChallengeResponse>
 
     @POST("guest/session")
     suspend fun session(@Body request: GuestSessionRequest): Response<GuestSessionResponse>
+
+    // GUEST_P2B1: invite = secret ka SHA-256 hash (secret server ko kabhi nahi jaata)
+    @POST("guest/invite")
+    suspend fun createInvite(
+        @Header("Authorization") auth: String,
+        @Body request: GuestInviteRequest
+    ): Response<GuestInviteResponse>
 }

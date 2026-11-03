@@ -97,4 +97,14 @@ object GuestStore {
     }
 
     fun isGuestActive(context: Context): Boolean = activeGuestId(context).isNotEmpty()
+
+    // ───── GUEST_P2B1: apna invite (secret + expiry). Secret Keystore-encrypted prefs mein. ─────
+    fun inviteSecret(context: Context): String? =
+        prefs(context).getString("invite_secret", null)?.takeIf { it.isNotEmpty() }
+
+    fun inviteExpiryMs(context: Context): Long = prefs(context).getLong("invite_exp", 0L)
+
+    fun saveInvite(context: Context, secret: String, expiryMs: Long) {
+        prefs(context).edit().putString("invite_secret", secret).putLong("invite_exp", expiryMs).apply()
+    }
 }
