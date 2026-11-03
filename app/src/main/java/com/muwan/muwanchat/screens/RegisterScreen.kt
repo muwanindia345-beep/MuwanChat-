@@ -365,7 +365,7 @@ fun RegisterScreen(navController: NavController) {
             // GUEST_COMING_SOON -- purple Continue Guest button (abhi sirf Coming Soon popup)
             Spacer(modifier = Modifier.height(12.dp))
             Button(
-                onClick = { showGuestComingSoon = true },
+                onClick = { navController.navigate(Screen.GuestTerms.route) },  // GUEST_UI
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E44FF)),
                 shape = RoundedCornerShape(12.dp),

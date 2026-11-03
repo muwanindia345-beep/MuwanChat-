@@ -20,6 +20,8 @@ sealed class Screen(val route: String) {
     object Login           : Screen("login")
     object Register        : Screen("register")
     object TermsPolicy     : Screen("terms_policy")
+    object GuestTerms      : Screen("guest_terms")  // GUEST_UI
+    object GuestInfo       : Screen("guest_info")   // GUEST_UI
     object TermsPrivacy    : Screen("terms_privacy")
     object ApplicationRules : Screen("application_rules")
     object AppLock          : Screen("app_lock")
@@ -303,6 +305,8 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.Login.route) { LoginScreen(navController) }
         composable(Screen.Register.route) { RegisterScreen(navController) }
         composable(Screen.TermsPolicy.route) { TermsPolicyScreen(navController) }
+        composable(Screen.GuestTerms.route) { TermsPolicyScreen(navController, guest = true) }  // GUEST_UI
+        composable(Screen.GuestInfo.route) { GuestInfoScreen(navController) }  // GUEST_UI
         composable(Screen.TermsPrivacy.route) { TermsPrivacyScreen(navController) }
         composable(Screen.ApplicationRules.route) { ApplicationRulesScreen(navController) }
         composable(Screen.AppLock.route) { AppLockMethodsScreen(navController) }

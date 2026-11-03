@@ -45,8 +45,9 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(navController: NavController, mode: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val isOnboarding = mode == "onboarding"
-    val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
+    val isGuest = mode == "guest"  // GUEST_UI
+    val isOnboarding = mode == "onboarding" || isGuest
+    val db by remember { lazy { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) } }  // GUEST_UI: guest mein auth DB nahi banta
 
     var name by rememberSaveable { mutableStateOf("") }
     var bio by rememberSaveable { mutableStateOf("") }
@@ -59,6 +60,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
     var isLoading by remember { mutableStateOf(!isOnboarding && !hasFetchedProfile) }
     var isSaving by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf("") }
+    var showGuestComingSoon by remember { mutableStateOf(false) }  // GUEST_UI
 
     fun applyProfileFields(name_: String?, bio_: String?, city_: String?, country_: String?, gender_: String?, avatar_: String?) {
         name = name_ ?: ""
@@ -131,6 +133,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
             errorMsg = "Name daalna zaroori hai"
             return
         }
+        if (isGuest) { showGuestComingSoon = true; return }  // GUEST_UI
         val finalGender = if (gender == "Custom") customGender.trim() else gender
         scope.launch {
             isSaving = true
@@ -174,6 +177,9 @@ fun ProfileScreen(navController: NavController, mode: String) {
     }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+        if (showGuestComingSoon) {  // GUEST_UI
+            ComingSoonDialog(feature = "👤 Guest Mode", onDismiss = { showGuestComingSoon = false })
+        }
         if (isLoading) {
             CircularProgressIndicator(color = DarkAccent, modifier = Modifier.align(Alignment.Center))
         } else {
@@ -190,7 +196,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (!isOnboarding) {
+                    if (!isOnboarding || isGuest) {  // GUEST_UI
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }

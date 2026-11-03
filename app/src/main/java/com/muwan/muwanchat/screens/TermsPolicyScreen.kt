@@ -27,7 +27,7 @@ import com.muwan.muwanchat.navigation.Screen
 // nahi, dono checkbox tick karne ke baad hi "Confirm" enable hota hai.
 // Header/background app ke baaki screens jaisa hi hai.
 @Composable
-fun TermsPolicyScreen(navController: NavController) {
+fun TermsPolicyScreen(navController: NavController, guest: Boolean = false) {  // GUEST_UI
     val context = LocalContext.current
 
     var acceptedTerms by remember { mutableStateOf(false) }
@@ -57,6 +57,11 @@ fun TermsPolicyScreen(navController: NavController) {
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (guest) {  // GUEST_UI
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                }
+            }
             Text("Terms & Policy", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
         }
 
@@ -84,7 +89,8 @@ fun TermsPolicyScreen(navController: NavController) {
                 "• You're responsible for the content you share.\n" +
                 "• Nudity, harassment, spam, and malicious links are not allowed.\n" +
                 "• Group admins can remove members who break the rules.\n" +
-                "• Your data is transmitted securely, and encrypted at rest on our servers.",
+                if (guest) "• Guest chats are end-to-end encrypted and kept on your device, not on our servers."  // GUEST_UI
+                else "• Your data is transmitted securely, and encrypted at rest on our servers.",
                 color = Color(0xFFCCCCCC),
                 fontSize = 13.sp
             )
@@ -142,7 +148,9 @@ fun TermsPolicyScreen(navController: NavController) {
 
             Button(
                 onClick = {
-                    navController.navigate(Screen.Profile.createRoute("onboarding")) {
+                    if (guest) {  // GUEST_UI
+                        navController.navigate(Screen.GuestInfo.route)
+                    } else navController.navigate(Screen.Profile.createRoute("onboarding")) {
                         popUpTo(Screen.TermsPolicy.route) { inclusive = true }
                     }
                 },
