@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons  // ARROWBACK_FIX
+import androidx.compose.material.icons.filled.ArrowBack  // ARROWBACK_FIX
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,7 +61,7 @@ fun TermsPolicyScreen(navController: NavController, guest: Boolean = false) {  /
         ) {
             if (guest) {  // GUEST_UI
                 IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(androidx.compose.material.icons.Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
             }
             Text("Terms & Policy", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
