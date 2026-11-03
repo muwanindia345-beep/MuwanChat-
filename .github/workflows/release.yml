@@ -103,3 +103,32 @@ jobs:
           prerelease: false
           body_path: release_notes.md
           files: app/build/outputs/apk/production/release/app-production-release.apk
+
+      # TELEGRAM_V1
+      - name: Send to Telegram
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          VERSION: ${{ steps.ver.outputs.new_name }}
+          LANDING: https://muwanindia345-beep.github.io/talkwave-download/
+        run: |
+          if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
+            echo "Telegram secrets are not set, skipping."
+            exit 0
+          fi
+          APK=app/build/outputs/apk/production/release/app-production-release.apk
+          NOTES_TXT=$(tail -n +4 release_notes.md)
+          CAPTION=$(printf '🚀 TalkWave v%s\n\n%s\n\n🌐 Download page:\n%s' "$VERSION" "$NOTES_TXT" "$LANDING")
+          # Telegram caption limit 1024 characters
+          CAPTION=$(printf '%s' "$CAPTION" | python3 -c "import sys;print(sys.stdin.read()[:950],end='')")
+
+          if ! curl -sS --fail -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendDocument" \
+              -F chat_id="$TG_CHAT" \
+              -F document=@"$APK" \
+              -F caption="$CAPTION"; then
+            echo "APK upload failed (possibly larger than 50 MB), sending the message only."
+            curl -sS --fail -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              -F chat_id="$TG_CHAT" \
+              -F text="$CAPTION"
+          fi
