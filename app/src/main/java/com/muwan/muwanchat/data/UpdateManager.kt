@@ -100,8 +100,13 @@ object UpdateManager {
         val url = BuildConfig.UPDATE_PAGE_URL
         if (url.isBlank()) return
         try {
+            // LANDING_VERSION_V1: tell the landing page which version is installed
+            val uri = Uri.parse(url).buildUpon()
+                .appendQueryParameter("v", BuildConfig.VERSION_NAME)
+                .appendQueryParameter("c", BuildConfig.VERSION_CODE.toString())
+                .build()
             context.startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
         } catch (_: Exception) {}
     }
