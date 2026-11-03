@@ -37,6 +37,10 @@ fun SettingsScreen(navController: NavController) {
     if (guestLogoutSoon) {  // GUEST_P2A
         ComingSoonDialog(feature = "🚪 Logout / Delete Guest Data", onDismiss = { guestLogoutSoon = false })
     }
+    var guestBackupSoon by remember { mutableStateOf(false) }  // GUEST_BACKUP_ROW
+    if (guestBackupSoon) {  // GUEST_BACKUP_ROW
+        ComingSoonDialog(feature = "☁️ Google Drive Backup", onDismiss = { guestBackupSoon = false })
+    }
 
     LaunchedEffect(Unit) {
         notificationsEnabled = AuthDataStore.getNotificationsEnabled(context).first()
@@ -71,16 +75,16 @@ fun SettingsScreen(navController: NavController) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { navController.navigate(Screen.AccountSettings.route) }
+                .clickable { if (isGuestSession) guestBackupSoon = true else navController.navigate(Screen.AccountSettings.route) }  // GUEST_BACKUP_ROW
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.ManageAccounts, contentDescription = "Account Settings", tint = Color.White)
+            Icon(if (isGuestSession) Icons.Filled.CloudUpload else Icons.Filled.ManageAccounts, contentDescription = "Account Settings", tint = Color.White)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("Account Settings", color = Color.White, fontSize = 16.sp)
+                Text(if (isGuestSession) "Backup & Restore" else "Account Settings", color = Color.White, fontSize = 16.sp)
                 Text(
-                    "Password, email, username, delete account",
+                    if (isGuestSession) "Google Drive backup of your guest data" else "Password, email, username, delete account",
                     color = Color(0xFF888888),
                     fontSize = 12.sp
                 )
