@@ -138,23 +138,38 @@ fun ProfileScreen(navController: NavController, mode: String) {
             errorMsg = "Name daalna zaroori hai"
             return
         }
-        if (isGuest) {  // GUEST_P1
-            // Phase 1: UI Coming Soon hi rehta hai; peeche silent backend handshake (key + session).
-            showGuestComingSoon = true
+        if (isGuest) {  // GUEST_P2A
+            // Guest Save: backend handshake (key + session) -> profile apni guest Room DB mein -> home.
+            // Network na ho / server na mile to guest nahi banta, error dikhta hai (dobara try kar sakte hain).
             scope.launch {
-                val r = com.muwan.muwanchat.data.GuestSession.ensure(context)
-                val isBeta = com.muwan.muwanchat.BuildConfig.APPLICATION_ID.endsWith(".beta")
-                if (isBeta) {
-                    android.util.Log.i("GuestSession", r.toString())
-                    if (GUEST_P1_SHOW_BETA_RESULT) {
-                        guestBetaResult = when (r) {
-                            is com.muwan.muwanchat.data.GuestSession.Result.Ok ->
-                                "\n\n[beta] backend connected\n" + r.guestId
-                            is com.muwan.muwanchat.data.GuestSession.Result.Fail ->
-                                "\n\n[beta] backend FAILED\n" + r.reason
+                isSaving = true
+                errorMsg = ""
+                try {
+                    val r = com.muwan.muwanchat.data.GuestSession.ensure(context)
+                    when (r) {
+                        is com.muwan.muwanchat.data.GuestSession.Result.Ok -> {
+                            val guestGender = if (gender == "Custom") customGender.trim() else gender
+                            val guestDb = MuwanChatDb.get(context, r.guestId)
+                            guestDb.myProfileDao().upsert(
+                                MyProfileEntity(
+                                    name = name.trim(), bio = bio.trim().ifBlank { null },
+                                    city = city.trim().ifBlank { null }, country = country.trim().ifBlank { null },
+                                    gender = guestGender.ifBlank { null }, avatar = avatarBase64
+                                )
+                            )
+                            com.muwan.muwanchat.data.GuestStore.markOnboarded(context, r.guestId)
+                            navController.navigate(Screen.ConversationList.route) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
+                            }
+                        }
+                        is com.muwan.muwanchat.data.GuestSession.Result.Fail -> {
+                            errorMsg = "Couldn't connect to server. Check your internet and try again. (" + r.reason + ")"
                         }
                     }
+                } catch (e: Exception) {
+                    errorMsg = e.message ?: "Something went wrong, try again"
                 }
+                isSaving = false
             }
             return
         }

@@ -130,8 +130,12 @@ object AuthDataStore {
     // SharedPreferences reads already synchronous/in-memory-cached hain,
     // isliye ab runBlocking ki bhi zaroorat nahi (purane DataStore version
     // mein thi) — Room DB init aur Coil interceptor dono ke liye safe.
-    fun getUidBlocking(context: Context): String =
-        prefs(context).getString(UID_KEY, null) ?: ""
+    fun getUidBlocking(context: Context): String {
+        val uid = prefs(context).getString(UID_KEY, null) ?: ""
+        if (uid.isNotEmpty()) return uid
+        // GUEST_P2A: guest mode mein "uid" = guestId (isi se Room DB guest ki alag banti hai)
+        return GuestStore.activeGuestId(context)
+    }
 
     fun getTokenBlocking(context: Context): String =
         prefs(context).getString(TOKEN_KEY, null) ?: ""

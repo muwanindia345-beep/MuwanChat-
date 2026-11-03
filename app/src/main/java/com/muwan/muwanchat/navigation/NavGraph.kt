@@ -335,19 +335,20 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
                 CallHistoryScreen(navController)
             }
         }
-        composable(Screen.NewStatus.route) { NewStatusScreen(navController) }  // STATUS_V1
+        composable(Screen.NewStatus.route) { GuestGate(navController, "📸 New Status") { NewStatusScreen(navController) } }  // STATUS_V1  // GUEST_P2A
         composable(Screen.StatusViewer.route) { back ->
             StatusViewerScreen(navController, back.arguments?.getString("uid") ?: "")
         }
-        composable(Screen.UserSearch.route) { UserSearchScreen(navController) }
-        composable(Screen.Requests.route) { RequestsScreen(navController) }
+        composable(Screen.UserSearch.route) { GuestGate(navController, "🔍 New Chat") { UserSearchScreen(navController) } }  // GUEST_P2A
+        composable(Screen.Requests.route) { GuestGate(navController, "🔔 Requests") { RequestsScreen(navController) } }  // GUEST_P2A
         composable(Screen.Profile.route) { back ->
-            ProfileScreen(navController, back.arguments?.getString("mode") ?: "edit")
+            val profileMode = back.arguments?.getString("mode") ?: "edit"  // GUEST_P2A
+            GuestGate(navController, "👤 Edit Profile") { ProfileScreen(navController, profileMode) }
         }
         composable(Screen.AvatarCrop.route) { AvatarCropScreen(navController) }
-        composable(Screen.CreateGroup.route) { CreateGroupScreen(navController) }
-        composable(Screen.CreateChannel.route) { CreateChannelScreen(navController) }
-        composable(Screen.AddFromContacts.route) { AddFromContactsScreen(navController) }
+        composable(Screen.CreateGroup.route) { GuestGate(navController, "👥 Create Group") { CreateGroupScreen(navController) } }  // GUEST_P2A
+        composable(Screen.CreateChannel.route) { GuestGate(navController, "📢 Create Channel") { CreateChannelScreen(navController) } }  // GUEST_P2A
+        composable(Screen.AddFromContacts.route) { GuestGate(navController, "📇 Add from Contacts") { AddFromContactsScreen(navController) } }  // GUEST_P2A
         composable(Screen.AddMembersForChannel.route) { back ->
             AddFromContactsScreen(
                 navController = navController,
@@ -473,8 +474,8 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
             )
         }
         composable(Screen.Settings.route) { SettingsScreen(navController) }
-        composable(Screen.AccountSettings.route) { AccountSettingsScreen(navController) }
-        composable(Screen.AcceptedUsers.route) { AcceptedUsersScreen(navController) }
+        composable(Screen.AccountSettings.route) { GuestGate(navController, "⚙️ Account Settings") { AccountSettingsScreen(navController) } }  // GUEST_P2A
+        composable(Screen.AcceptedUsers.route) { GuestGate(navController, "👥 Accepted Users") { AcceptedUsersScreen(navController) } }  // GUEST_P2A
     }
     var pendingUpdate by remember { mutableStateOf<com.muwan.muwanchat.network.AppVersionInfo?>(null) }
     var sheetDismissed by remember { mutableStateOf(false) }

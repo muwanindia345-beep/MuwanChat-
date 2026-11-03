@@ -74,4 +74,27 @@ object GuestStore {
     fun clearToken(context: Context) {
         prefs(context).edit().remove(TOKEN_KEY).apply()
     }
+
+    // ───── GUEST_P2A: "guest mode active" ─────
+    // Plain prefs (Keystore nahi): guestId public key ka hash hai (secret nahi) aur ye flag
+    // AuthDataStore.getUidBlocking() jaise hot paths se padha jaata hai.
+    private const val STATE_PREFS = "guest_state"
+
+    private fun state(context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+
+    fun markOnboarded(context: Context, guestId: String) {
+        state(context).edit().putBoolean("onboarded", true).putString("gid", guestId).commit()
+    }
+
+    // Guest active = onboarded AUR koi auth login nahi. Auth login ho to auth hi jeetta hai.
+    // Active nahi to "" (isi se AuthDataStore.getUidBlocking() purani tarah kaam karta hai).
+    fun activeGuestId(context: Context): String {
+        val s = state(context)
+        if (!s.getBoolean("onboarded", false)) return ""
+        if (AuthDataStore.getTokenBlocking(context).isNotEmpty()) return ""
+        return s.getString("gid", null) ?: ""
+    }
+
+    fun isGuestActive(context: Context): Boolean = activeGuestId(context).isNotEmpty()
 }

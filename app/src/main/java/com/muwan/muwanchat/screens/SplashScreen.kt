@@ -88,6 +88,10 @@ fun SplashScreen(navController: NavController) {
             navController.navigate(Screen.ConversationList.route) {
                 popUpTo(Screen.Splash.route) { inclusive = true }
             }
+        } else if (com.muwan.muwanchat.data.GuestStore.isGuestActive(context)) {  // GUEST_P2A
+            navController.navigate(Screen.ConversationList.route) {
+                popUpTo(Screen.Splash.route) { inclusive = true }
+            }
         } else {
             navController.navigate(Screen.Login.route) {
                 popUpTo(Screen.Splash.route) { inclusive = true }

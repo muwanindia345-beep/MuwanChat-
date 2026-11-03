@@ -32,6 +32,11 @@ fun SettingsScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
 
     var notificationsEnabled by remember { mutableStateOf(true) }
+    val isGuestSession = remember { com.muwan.muwanchat.data.GuestStore.isGuestActive(context) }  // GUEST_P2A
+    var guestLogoutSoon by remember { mutableStateOf(false) }  // GUEST_P2A
+    if (guestLogoutSoon) {  // GUEST_P2A
+        ComingSoonDialog(feature = "🚪 Logout / Delete Guest Data", onDismiss = { guestLogoutSoon = false })
+    }
 
     LaunchedEffect(Unit) {
         notificationsEnabled = AuthDataStore.getNotificationsEnabled(context).first()
@@ -205,6 +210,7 @@ fun SettingsScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
+                    if (isGuestSession) { guestLogoutSoon = true; return@clickable }  // GUEST_P2A
                     scope.launch {
                         AppSocketManager.disconnect()
                         AuthDataStore.clearAuth(context)

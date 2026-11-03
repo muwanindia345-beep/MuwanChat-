@@ -122,6 +122,7 @@ fun ConversationListScreen(navController: NavController) {
     var showSecuritySheet by remember { mutableStateOf(false) }
     var avatarSheetConv by remember { mutableStateOf<ConversationItem?>(null) }  // AVATAR_SHEET_V1
     var comingSoonFeature by remember { mutableStateOf<String?>(null) }
+    val isGuest = remember { com.muwan.muwanchat.data.GuestStore.isGuestActive(context) }  // GUEST_P2A
 
     // ── Multi-select "delete chat" state ──────────────────────────────────
     var isSelectionMode by remember { mutableStateOf(false) }
@@ -206,7 +207,11 @@ fun ConversationListScreen(navController: NavController) {
     }
 // Ek baar setup: token/uid nikaalo, global socket connect karo, background sync karo
     LaunchedEffect(Unit) {
-        val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
+        val token = AuthDataStore.getToken(context).first() ?: run {  // GUEST_P2A
+            // guest ke paas auth token nahi: server sync nahi hota, isliye loading spinner yahin band
+            isLoading = false
+            return@LaunchedEffect
+        }
         myToken = token
 
         // Global socket — app-wide single connection, disconnect sirf logout par
@@ -363,13 +368,24 @@ fun ConversationListScreen(navController: NavController) {
     if (showFabSheet) {
         ModalBottomSheet(onDismissRequest = { showFabSheet = false }, containerColor = DarkSheet) {
             Column(modifier = Modifier.padding(bottom = 24.dp)) {
-                FabSheetOption(Icons.Filled.Add, "New Chat") {
-                    showFabSheet = false
-                    navController.navigate(Screen.UserSearch.route)
-                }
-                FabSheetOption(Icons.Filled.Add, "Create Group") {
-                    showFabSheet = false
-                    navController.navigate(Screen.CreateGroup.route)
+                if (isGuest) {  // GUEST_P2A: guest ko New Chat nahi, Invite People (abhi Coming Soon)
+                    FabSheetOption(Icons.Filled.Add, "Invite People") {
+                        showFabSheet = false
+                        comingSoonFeature = "👥 Invite People"
+                    }
+                    FabSheetOption(Icons.Filled.Add, "Create Group") {
+                        showFabSheet = false
+                        comingSoonFeature = "👥 Create Group"
+                    }
+                } else {
+                    FabSheetOption(Icons.Filled.Add, "New Chat") {
+                        showFabSheet = false
+                        navController.navigate(Screen.UserSearch.route)
+                    }
+                    FabSheetOption(Icons.Filled.Add, "Create Group") {
+                        showFabSheet = false
+                        navController.navigate(Screen.CreateGroup.route)
+                    }
                 }
             }
         }
