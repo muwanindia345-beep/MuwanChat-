@@ -448,6 +448,8 @@ fun ConversationListScreen(navController: NavController) {
         ComingSoonDialog(feature = feature, onDismiss = { comingSoonFeature = null })
     }
 
+    if (isGuest) GuestInviteHost()  // GUEST_P2B2: invite confirm popup
+
     Scaffold(
         containerColor = DarkBg,
         floatingActionButton = {

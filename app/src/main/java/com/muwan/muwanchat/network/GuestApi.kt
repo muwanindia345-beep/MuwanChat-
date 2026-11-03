@@ -42,6 +42,11 @@ data class GuestInviteResponse(
     val error: String?
 )
 
+data class GuestRedeemRequest(
+    val to: String,
+    val secret: String
+)
+
 interface GuestApi {
     @GET("guest/challenge")
     suspend fun challenge(): Response<GuestChallengeResponse>
@@ -54,5 +59,12 @@ interface GuestApi {
     suspend fun createInvite(
         @Header("Authorization") auth: String,
         @Body request: GuestInviteRequest
+    ): Response<GuestInviteResponse>
+
+    // GUEST_P2B2: invite redeem -- success par dono taraf allow ban jaata hai
+    @POST("guest/invite/redeem")
+    suspend fun redeemInvite(
+        @Header("Authorization") auth: String,
+        @Body request: GuestRedeemRequest
     ): Response<GuestInviteResponse>
 }

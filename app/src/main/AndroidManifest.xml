@@ -42,6 +42,14 @@
                 <data android:scheme="muwanchat" android:host="join" />
             </intent-filter>
 
+            <!-- GUEST_P2B2: guest invite deep link: muwan://guest?p={payload} (landing page /g isi par bhejta hai) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="muwan" android:host="guest" />
+            </intent-filter>
+
         </activity>
 
         <service

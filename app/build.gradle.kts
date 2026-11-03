@@ -167,4 +167,6 @@ dependencies {
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
     // GUEST_P2B1 -- QR code banane ke liye (pure Java, chhota)
     implementation("com.google.zxing:core:3.5.3")
+    // GUEST_P2B2 -- QR scan (Google Play services ka scanner: camera permission nahi chahiye)
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 }

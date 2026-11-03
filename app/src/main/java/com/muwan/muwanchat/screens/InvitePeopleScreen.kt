@@ -39,7 +39,11 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.DarkSheet
+import com.google.android.gms.codescanner.GmsBarcodeScannerOptions  // GUEST_P2B2
+import com.google.android.gms.codescanner.GmsBarcodeScanning  // GUEST_P2B2
+import com.google.mlkit.vision.barcode.common.Barcode  // GUEST_P2B2
 import com.muwan.muwanchat.data.GuestInvite
+import com.muwan.muwanchat.data.GuestInviteInbox  // GUEST_P2B2
 import kotlinx.coroutines.launch
 
 private fun makeQr(text: String, size: Int): Bitmap? = try {
@@ -210,7 +214,7 @@ fun InvitePeopleScreen(navController: NavController) {
                 }
 
                 Spacer(Modifier.height(16.dp))
-                val days = ((expiresAt - System.currentTimeMillis()) / 86_400_000L).coerceAtLeast(1L)
+                val days = ((expiresAt - System.currentTimeMillis() + 86_399_999L) / 86_400_000L).coerceAtLeast(1L)
                 Text(
                     "This invite works for about " + days + " day(s) and up to 10 people.",
                     color = Color(0xFF888888),
@@ -227,7 +231,22 @@ fun InvitePeopleScreen(navController: NavController) {
 
                 Spacer(Modifier.height(24.dp))
                 Button(
-                    onClick = { scanSoon = true },
+                    onClick = {  // GUEST_P2B2: asli QR scan
+                        val options = GmsBarcodeScannerOptions.Builder()
+                            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                            .build()
+                        GmsBarcodeScanning.getClient(context, options).startScan()
+                            .addOnSuccessListener { barcode ->
+                                val value = barcode.rawValue
+                                if (value != null) {
+                                    GuestInviteInbox.offer(value)
+                                    navController.popBackStack()
+                                }
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(context, "Couldn't open the scanner. Check your internet and try again.", Toast.LENGTH_LONG).show()
+                            }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
                     shape = RoundedCornerShape(12.dp)
