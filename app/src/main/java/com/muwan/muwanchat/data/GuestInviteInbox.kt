@@ -18,7 +18,7 @@ import retrofit2.Response
 
 object GuestInviteInbox {
 
-    class Invite(val guestId: String, val secret: String, val name: String, val country: String)
+    class Invite(val guestId: String, val secret: String, val name: String, val country: String, val pub: ByteArray)  // GUEST_P2C
 
     val pending = MutableStateFlow<String?>(null)
 
@@ -52,14 +52,17 @@ object GuestInviteInbox {
             val json = JSONObject(String(Base64.decode(payload, Base64.URL_SAFE), Charsets.UTF_8))
             val guestId = json.optString("g")
             val secret = json.optString("s")
+            val pub = try { GuestCrypto.fromB64(json.optString("k")) } catch (_: Exception) { ByteArray(0) }  // GUEST_P2C
             if (json.optInt("v", 0) != 1) null
             else if (!GID_RE.matches(guestId)) null
             else if (secret.length < 16 || secret.length > 200) null
+            else if (pub.size != 32 || GuestCrypto.guestIdOf(pub) != guestId) null  // key id se match honi chahiye
             else Invite(
                 guestId,
                 secret,
                 json.optString("n").trim().take(40),
-                json.optString("c").trim().take(40)
+                json.optString("c").trim().take(40),
+                pub
             )
         } catch (_: Exception) {
             null
@@ -80,6 +83,7 @@ object GuestInviteInbox {
 
             val db = MuwanChatDb.get(app, myId)
             val shown = inv.name.ifBlank { "Guest " + inv.guestId.takeLast(4) }
+            GuestPeers.put(app, inv.guestId, inv.pub)  // GUEST_P2C
             if (db.conversationDao().getByUid(inv.guestId) != null) {
                 return@withContext Pair(true, shown + " is already in your chats.")
             }
@@ -103,6 +107,8 @@ object GuestInviteInbox {
                 username = shown,
                 avatar = null
             )
+            GuestChat.start(app)  // GUEST_P2C
+            GuestChat.sendHelloAsync(app, inv.guestId)  // dusre ke phone mein bhi contact aa jaye
             Pair(true, shown + " added to your chats.")
         } catch (e: CancellationException) {
             throw e

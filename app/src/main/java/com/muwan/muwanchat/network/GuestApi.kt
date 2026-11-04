@@ -47,6 +47,30 @@ data class GuestRedeemRequest(
     val secret: String
 )
 
+// GUEST_P2C -- HTTP relay (socket down hone par fallback)
+data class GuestEnvelopeOut(
+    val to: String,
+    val mid: String,
+    val kind: String,
+    val payload: String
+)
+
+data class GuestRelayRequest(
+    val envelopes: List<GuestEnvelopeOut>
+)
+
+data class GuestRelayResult(
+    val mid: String?,
+    val to: String?,
+    val status: String?
+)
+
+data class GuestRelayResponse(
+    val success: Boolean?,
+    val results: List<GuestRelayResult>?,
+    val error: String?
+)
+
 interface GuestApi {
     @GET("guest/challenge")
     suspend fun challenge(): Response<GuestChallengeResponse>
@@ -67,4 +91,11 @@ interface GuestApi {
         @Header("Authorization") auth: String,
         @Body request: GuestRedeemRequest
     ): Response<GuestInviteResponse>
+
+    // GUEST_P2C
+    @POST("guest/relay")
+    suspend fun relay(
+        @Header("Authorization") auth: String,
+        @Body request: GuestRelayRequest
+    ): Response<GuestRelayResponse>
 }

@@ -145,6 +145,7 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
+    val isGuest = remember { com.muwan.muwanchat.data.GuestStore.isGuestActive(context) }  // GUEST_P2C
     val currentWallpaper by db.chatWallpaperDao().observeByRoomId(roomId).collectAsState(initial = null)
     val currentBubbleThemeEntity by db.chatBubbleThemeDao().observeByRoomId(roomId).collectAsState(initial = null)
     val bubbleTheme = com.muwan.muwanchat.data.BubbleThemePresets.fromId(currentBubbleThemeEntity?.themeId)
@@ -262,6 +263,16 @@ fun ChatScreen(
             }
         }
 
+        if (isGuest) {  // GUEST_P2C
+            scope.launch {
+                try {
+                    com.muwan.muwanchat.data.GuestChat.sendReaction(context, receiverUid, messageId, if (hadSameEmoji) "" else emoji)
+                } finally {
+                    reactionInFlight.value = reactionInFlight.value - messageId
+                }
+            }
+            return
+        }
         scope.launch {
             try {
                 val res = RetrofitClient.chatApi.reactToMessage(
@@ -332,7 +343,7 @@ fun ChatScreen(
             // koi farak nahi padta, bas reinstall-persistence miss hogi)
             ids.forEach { id ->
                 try {
-                    RetrofitClient.chatApi.hideMessageForMe("Bearer $myToken", roomId, id)
+                    if (!isGuest) RetrofitClient.chatApi.hideMessageForMe("Bearer $myToken", roomId, id)
                 } catch (_: Exception) {}
             }
             ChatRepository.refreshLastMessagePreview(db, roomId)
@@ -352,8 +363,12 @@ fun ChatScreen(
             val failedIds = ids.map { id ->
                 async {
                     val ok = try {
-                        val res = RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", roomId, id)
-                        res.isSuccessful || res.code() == 404   // 404 = server pe pehle se nahi hai
+                        if (isGuest) {  // GUEST_P2C
+                            com.muwan.muwanchat.data.GuestChat.sendDelete(context, receiverUid, id)
+                        } else {
+                            val res = RetrofitClient.chatApi.deleteMsgById("Bearer $myToken", roomId, id)
+                            res.isSuccessful || res.code() == 404   // 404 = server pe pehle se nahi hai
+                        }
                     } catch (_: Exception) {
                         false
                     }
@@ -394,7 +409,8 @@ fun ChatScreen(
         scope.launch {
             db.messageDao().editMessage(msg.id, newText)
             try {
-                RetrofitClient.chatApi.editMessage("Bearer $myToken", roomId, msg.id, EditMessageRequest(newText))
+                if (isGuest) com.muwan.muwanchat.data.GuestChat.sendEdit(context, receiverUid, msg.id, newText)  // GUEST_P2C
+                else RetrofitClient.chatApi.editMessage("Bearer $myToken", roomId, msg.id, EditMessageRequest(newText))
             } catch (_: Exception) {
             }
         }
@@ -499,6 +515,13 @@ fun ChatScreen(
         } else {
             scope.launch { db.messageDao().updateStatus(id, "PENDING") }
         }
+        if (isGuest) {  // GUEST_P2C
+            scope.launch {
+                val ok = com.muwan.muwanchat.data.GuestChat.sendText(context, receiverUid, id, content, replyToId)
+                db.messageDao().updateStatus(id, if (ok) "SENT" else "FAILED")
+            }
+            return
+        }
         if (AppSocketManager.isConnected) {
             val timeoutJob = scope.launch {
                 delay(8000)
@@ -558,6 +581,12 @@ fun ChatScreen(
     }
 
     LaunchedEffect(Unit) {
+        if (isGuest) {  // GUEST_P2C: guest ke liye alag raasta (auth token/API nahi)
+            myUid = AuthDataStore.getUidBlocking(context)
+            com.muwan.muwanchat.data.GuestChat.start(context)
+            com.muwan.muwanchat.data.GuestChat.onChatOpened(context, roomId, receiverUid)
+            return@LaunchedEffect
+        }
         val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
         myToken = token
         myUid = AuthDataStore.getUid(context).first() ?: ""
@@ -706,6 +735,7 @@ fun ChatScreen(
     DisposableEffect(roomId) {
         onDispose {
             AppSocketManager.leaveRoom(roomId)
+            if (isGuest) com.muwan.muwanchat.data.GuestChat.onChatClosed(roomId)  // GUEST_P2C
         }
     }
 
@@ -754,6 +784,7 @@ fun ChatScreen(
 
                 if (canPin) {
                     IconButton(onClick = {
+                        if (isGuest) { comingSoonFeature = "📌 Pin messages"; exitSelectionMode(); return@IconButton }  // GUEST_P2C
                         val idsToPin = selectedMessageIds.toList()
                         scope.launch {
                             idsToPin.forEach { id ->
@@ -773,6 +804,7 @@ fun ChatScreen(
 
                 if (canForward) {
                     IconButton(onClick = {
+                        if (isGuest) { comingSoonFeature = "↪️ Forward messages"; exitSelectionMode(); return@IconButton }  // GUEST_P2C
                         val toForward = messages.filter { selectedMessageIds.contains(it.id) }
                         ForwardMessageSelection.set(toForward)
                         exitSelectionMode()
@@ -801,6 +833,7 @@ fun ChatScreen(
                 avatarBase64 = conversationEntity?.avatar,
                 onBack = { navController.popBackStack() },
                 onVideoCall = { // VIDEO_P4
+                    if (isGuest) { comingSoonFeature = "📹 Video calls"; return@ChatHeader }  // GUEST_P2C
                     navController.navigate(
                         com.muwan.muwanchat.navigation.Screen.Call.createRoute(
                             uid = receiverUid,
@@ -811,6 +844,7 @@ fun ChatScreen(
                     )
                 },
                 onVoiceCall = {
+                    if (isGuest) { comingSoonFeature = "📞 Voice calls"; return@ChatHeader }  // GUEST_P2C
                     navController.navigate(
                         com.muwan.muwanchat.navigation.Screen.Call.createRoute(
                             uid = receiverUid,
@@ -1078,9 +1112,10 @@ fun ChatScreen(
                     if (showEmojiPicker) keyboardController?.hide() else keyboardController?.show()
                 }
             },
-            onPickImage = { showMediaSheet = true },
+            onPickImage = { if (isGuest) comingSoonFeature = "📎 Media sharing" else showMediaSheet = true },  // GUEST_P2C
             onSend = { sendMessage() },
             onGifReceived = { uri, kbMime, release ->
+                if (isGuest) { comingSoonFeature = "🎬 GIFs"; release(); return@ChatInputBar }  // GUEST_P2C
                 UploadScope.io.launch {
                     // Backend "gif" category/type ko ab fully support karta hai — raw passthrough,
                     // koi re-compress nahi (routes/chat.js check kiya). Isliye "image" ki jagah
@@ -1095,6 +1130,7 @@ fun ChatScreen(
                 }
             },
             onVoiceMessage = {
+                if (isGuest) { comingSoonFeature = "🎤 Voice messages"; return@ChatInputBar }  // GUEST_P2C
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     showVoiceRecorder = true
                 } else {

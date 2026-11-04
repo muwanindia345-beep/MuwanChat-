@@ -449,6 +449,9 @@ fun ConversationListScreen(navController: NavController) {
     }
 
     if (isGuest) GuestInviteHost()  // GUEST_P2B2: invite confirm popup
+    if (isGuest) androidx.compose.runtime.LaunchedEffect(Unit) {  // GUEST_P2C: socket + mailbox
+        com.muwan.muwanchat.data.GuestChat.start(context)
+    }
 
     Scaffold(
         containerColor = DarkBg,

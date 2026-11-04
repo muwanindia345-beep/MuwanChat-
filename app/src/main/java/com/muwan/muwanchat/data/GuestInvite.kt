@@ -92,6 +92,7 @@ object GuestInvite {
             .put("s", secret)
             .put("n", (profile?.name ?: "").take(40))
             .put("c", (profile?.country ?: "").take(40))
+            .put("k", GuestCrypto.b64(GuestStore.identity(context).publicKey))  // GUEST_P2C: E2EE ke liye public key
             .toString()
         val payload = Base64.encodeToString(
             json.toByteArray(Charsets.UTF_8),
