@@ -39,8 +39,8 @@ import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
 import com.muwan.muwanchat.DarkSheet
-import com.google.android.gms.codescanner.GmsBarcodeScannerOptions  // GUEST_P2B2
-import com.google.android.gms.codescanner.GmsBarcodeScanning  // GUEST_P2B2
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions  // GUEST_P2B2
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning  // GUEST_P2B2
 import com.google.mlkit.vision.barcode.common.Barcode  // GUEST_P2B2
 import com.muwan.muwanchat.data.GuestInvite
 import com.muwan.muwanchat.data.GuestInviteInbox  // GUEST_P2B2
