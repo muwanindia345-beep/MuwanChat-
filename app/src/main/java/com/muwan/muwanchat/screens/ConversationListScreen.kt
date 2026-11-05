@@ -189,7 +189,10 @@ fun ConversationListScreen(navController: NavController) {
                         val statusRes = RetrofitClient.chatApi.getRemovalStatus("Bearer $token", local.roomId)
                         val status = statusRes.body()
                         if (statusRes.isSuccessful && status?.removed == true) {
-                            db.conversationDao().markRemoved(local.roomId, status.removedByUsername ?: "Admin")
+                            val marker = if (status.groupDeleted) {
+                                if (ChatRepository.isChannelRoom(db, local.roomId)) "CHANNEL_DELETED" else "GROUP_DELETED"
+                            } else (status.removedByUsername ?: "Admin")
+                            db.conversationDao().markRemoved(local.roomId, marker)
                         } else {
                             // Koi removal record nahi mila -- ya to khud-leave tha
                             // (jo already delete ho chuka hoga) ya group hi delete
@@ -297,10 +300,12 @@ fun ConversationListScreen(navController: NavController) {
                     // deleteChatsLocally se list se hi hat jaata hai (GroupInfoScreen).
                     // Yahan sirf admin/owner-triggered removal handle hota hai.
                     if (!event.selfLeave) {
-                        db.conversationDao().markRemoved(
-                            event.roomId,
-                            if (event.groupDeleted) "GROUP_DELETED" else (event.removedByUsername ?: "Admin")
-                        )
+                        // CHANNEL_DELETE: channel ho to alag marker, taaki list me
+                        // "This channel has been deleted" + bina profile pic ke dikhe
+                        val marker = if (event.groupDeleted) {
+                            if (ChatRepository.isChannelRoom(db, event.roomId)) "CHANNEL_DELETED" else "GROUP_DELETED"
+                        } else (event.removedByUsername ?: "Admin")
+                        db.conversationDao().markRemoved(event.roomId, marker)
                     }
                 }
                 is SocketEvent.ConnectionRemoved -> {
@@ -684,7 +689,7 @@ fun ConversationRow(
             if (statusSeen.isNotEmpty()) {  // STATUS_V1
                 StatusRing(seen = statusSeen, diameter = 50.dp) {
                     AvatarView(
-                        avatarBase64 = conv.avatar,
+                        avatarBase64 = if (conv.isRemoved && conv.removedByUsername == "CHANNEL_DELETED") null else conv.avatar,
                         fallbackText = conv.username,
                         size = 42.dp,
                         fontSize = 17.sp,
@@ -693,7 +698,7 @@ fun ConversationRow(
                 }
             } else {
                 AvatarView(
-                    avatarBase64 = conv.avatar,
+                    avatarBase64 = if (conv.isRemoved && conv.removedByUsername == "CHANNEL_DELETED") null else conv.avatar,
                     fallbackText = conv.username,
                     size = 50.dp,
                     fontSize = 20.sp,
@@ -724,6 +729,7 @@ fun ConversationRow(
             Text(
                 when {
                     conv.isRemoved && conv.removedByUsername == "GROUP_DELETED" -> "This group was deleted by the owner"
+                    conv.isRemoved && conv.removedByUsername == "CHANNEL_DELETED" -> "This channel has been deleted"
                     conv.isRemoved -> "You were removed from this group by @${conv.removedByUsername ?: "Admin"}"
                     isTyping -> "typing..."
                     else -> conv.lastMessage.ifBlank { "Say hi! 👋" }

@@ -25,7 +25,9 @@ data class ConversationItem(
 
 data class RemovalStatusResponse(
     val removed: Boolean,
-    val removedByUsername: String? = null
+    val removedByUsername: String? = null,
+    // CHANNEL_DELETE: owner ne group/channel permanently delete kiya ho to true
+    val groupDeleted: Boolean = false
 )
 
 data class ConversationsResponse(

@@ -233,7 +233,7 @@ object ChatRepository {
     // Room broadcast channel hai ya nahi -- local caches se (network wait nahi).
     // group_info_cache channel kholte hi bharti hai, channels_cache Broadcast
     // tab se. Koi bhi error aaye to false (normal behaviour, kuch break nahi).
-    private suspend fun isChannelRoom(db: MuwanChatDb, roomId: String): Boolean {
+    suspend fun isChannelRoom(db: MuwanChatDb, roomId: String): Boolean {
         return try {
             val info = db.groupInfoCacheDao().get(roomId)?.json
             if (info != null && gson.fromJson(info, GroupData::class.java)?.isChannel == true) {

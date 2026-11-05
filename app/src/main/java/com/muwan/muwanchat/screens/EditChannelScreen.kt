@@ -29,6 +29,9 @@ import com.google.gson.Gson
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.DarkHeader
+import com.muwan.muwanchat.DarkSheet
+import com.muwan.muwanchat.data.ChatRepository
+import androidx.compose.material.icons.filled.Delete
 import com.muwan.muwanchat.data.AuthDataStore
 import com.muwan.muwanchat.data.GroupInfoCacheEntity
 import com.muwan.muwanchat.data.MuwanChatDb
@@ -62,6 +65,8 @@ fun EditChannelScreen(navController: NavController, groupId: String) {
     var currentAvatar by remember { mutableStateOf<String?>(null) }   // jo abhi dikh raha hai
     var newAvatar by remember { mutableStateOf<String?>(null) }       // sirf naya chuna hua
     var isSaving by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }  // CHANNEL_DELETE
+    var isDeleting by remember { mutableStateOf(false) }
 
     fun fillOnce(g: GroupData) {
         group = g
@@ -134,6 +139,36 @@ fun EditChannelScreen(navController: NavController, groupId: String) {
             } catch (e: Exception) {
                 Toast.makeText(context, friendlyErrorMessage(e), Toast.LENGTH_SHORT).show()
                 isSaving = false
+            }
+        }
+    }
+
+    // CHANNEL_DELETE: owner-only. Server sabko 'group_removed' (groupDeleted=true) bhejta hai,
+    // offline users ko removal-status se milta hai. Yahan sirf apni local copy saaf.
+    fun deleteChannelPermanently() {
+        if (isDeleting) return
+        isDeleting = true
+        scope.launch {
+            try {
+                val token = AuthDataStore.getToken(context).first()
+                if (token == null) {
+                    Toast.makeText(context, "Login required", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                val res = RetrofitClient.chatApi.deleteGroup("Bearer $token", groupId)
+                if (res.isSuccessful) {
+                    ChatRepository.deleteChatsLocally(db, setOf(groupId))
+                    showDeleteConfirm = false
+                    navController.navigate(Screen.ConversationList.route) {
+                        popUpTo(Screen.ConversationList.route) { inclusive = true }
+                    }
+                } else {
+                    Toast.makeText(context, "Could not delete channel. Please try again.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, friendlyErrorMessage(e), Toast.LENGTH_SHORT).show()
+            } finally {
+                isDeleting = false
             }
         }
     }
@@ -279,10 +314,63 @@ fun EditChannelScreen(navController: NavController, groupId: String) {
                         }
                     }
 
+                    // CHANNEL_DELETE: sirf owner ko dikhta hai
+                    if (group?.owner == myUid) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { showDeleteConfirm = true },
+                            enabled = !isSaving && !isDeleting,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFF3B30),
+                                disabledContainerColor = Color(0xFFFF3B30).copy(alpha = 0.45f),
+                                disabledContentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Delete Channel", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting) showDeleteConfirm = false },
+            containerColor = DarkSheet,
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCCCCCC),
+            title = { Text("\u26A0\uFE0F Delete Channel?") },
+            text = {
+                Text(
+                    "\"${group?.name ?: channelName}\" and all its messages and media will be " +
+                        "permanently deleted for everyone. All subscribers will be notified that " +
+                        "this channel has been deleted. This action cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { deleteChannelPermanently() }, enabled = !isDeleting) {
+                    if (isDeleting) {
+                        CircularProgressIndicator(color = Color(0xFFFF3B30), modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Delete", color = Color(0xFFFF3B30), fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }, enabled = !isDeleting) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

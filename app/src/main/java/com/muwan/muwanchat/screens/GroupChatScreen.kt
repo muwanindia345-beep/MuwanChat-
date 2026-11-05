@@ -899,10 +899,10 @@ fun GroupChatScreen(
                 }
                 is SocketEvent.GroupRemoved -> {
                     if (event.roomId == groupId && !event.selfLeave) {
-                        db.conversationDao().markRemoved(
-                            groupId,
-                            if (event.groupDeleted) "GROUP_DELETED" else (event.removedByUsername ?: "Admin")
-                        )
+                        val marker = if (event.groupDeleted) {
+                            if (group?.isChannel == true) "CHANNEL_DELETED" else "GROUP_DELETED"
+                        } else (event.removedByUsername ?: "Admin")
+                        db.conversationDao().markRemoved(groupId, marker)
                     }
                 }
                 is SocketEvent.GroupUpdated -> {
@@ -1386,7 +1386,9 @@ Box(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    if (conversationEntity?.removedByUsername == "GROUP_DELETED")
+                    if (conversationEntity?.removedByUsername == "CHANNEL_DELETED")
+                        "This channel has been deleted"
+                    else if (conversationEntity?.removedByUsername == "GROUP_DELETED")
                         "This group was deleted by the owner"
                     else
                         "You were removed from this group by @${conversationEntity?.removedByUsername ?: "Admin"}",
