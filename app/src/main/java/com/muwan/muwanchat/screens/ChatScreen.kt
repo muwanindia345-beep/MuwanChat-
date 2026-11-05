@@ -580,6 +580,12 @@ fun ChatScreen(
         }
     }
 
+    LaunchedEffect(isGuest, receiverUid) {  // GUEST_P2E: guest contact ka online/offline
+        if (isGuest) {
+            com.muwan.muwanchat.data.GuestChat.onlineUids.collect { isReceiverOnline = it.contains(receiverUid) }
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (isGuest) {  // GUEST_P2C: guest ke liye alag raasta (auth token/API nahi)
             myUid = AuthDataStore.getUidBlocking(context)
@@ -829,7 +835,6 @@ fun ChatScreen(
             ChatHeader(
                 receiverUsername = receiverUsername,
                 isOnline = isReceiverOnline,
-                showPresence = !isGuest,  // GUEST_P2D
                 isTyping = isReceiverTyping,
                 avatarBase64 = conversationEntity?.avatar,
                 onBack = { navController.popBackStack() },

@@ -19,6 +19,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -96,6 +98,23 @@ object GuestChat {
             sock.on(Socket.EVENT_CONNECT_ERROR) { args ->
                 Log.w(TAG, "socket error: " + (args.getOrNull(0)?.toString() ?: ""))
             }
+            sock.on(Socket.EVENT_CONNECT) {  // GUEST_P2E
+                scope.launch {
+                    try {
+                        refreshPresence(app)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            sock.on(Socket.EVENT_DISCONNECT) { _online.value = emptySet() }
+            sock.on("presence") { args ->
+                val o = args.getOrNull(0) as? JSONObject ?: return@on
+                val id = o.optString("id")
+                if (id.isEmpty()) return@on
+                _online.value = if (o.optBoolean("online")) _online.value + id else _online.value - id
+            }
             socket = sock
             socketToken = token
             sock.connect()
@@ -108,6 +127,7 @@ object GuestChat {
         openPeerId = peerUid
         scope.launch {
             try {
+                refreshPresence(app)  // GUEST_P2E
                 markOpenRead(app, roomId, peerUid)
             } catch (e: CancellationException) {
                 throw e
@@ -130,6 +150,41 @@ object GuestChat {
         db.conversationDao().clearUnread(roomId)
         db.messageDao().markSeen(roomId, myId)
         sendSeen(app, peerUid)
+    }
+
+    // GUEST_P2E ───────── presence ─────────
+    private val _online = MutableStateFlow<Set<String>>(emptySet())
+    val onlineUids: StateFlow<Set<String>> = _online
+
+    // Contacts ka online status server se (sirf wahi jo dono taraf se allowed hain). Baad ke changes push se aate hain.
+    private suspend fun refreshPresence(app: Context) {
+        val sock = socket ?: return
+        if (!sock.connected()) return
+        val myId = GuestStore.activeGuestId(app)
+        if (myId.isEmpty()) return
+        val ids = MuwanChatDb.get(app, myId).conversationDao().getAll()
+            .map { it.uid }.filter { it.startsWith("g_") }.distinct().take(200)
+        if (ids.isEmpty()) return
+        sock.emit("presence", JSONArray(ids), Ack { args ->
+            val arr = (args.getOrNull(0) as? JSONObject)?.optJSONArray("online")
+            if (arr != null) {
+                val s = HashSet<String>()
+                for (i in 0 until arr.length()) s.add(arr.optString(i))
+                _online.value = s
+            }
+        })
+    }
+
+    fun refreshPresenceNow(context: Context) {
+        val app = context.applicationContext
+        scope.launch {
+            try {
+                refreshPresence(app)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
     }
 
     // ───────── receive ─────────

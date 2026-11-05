@@ -79,7 +79,8 @@ fun ConversationListScreen(navController: NavController) {
 
     // Global singleton state — screen dispose/recompose hone par reset nahi hota,
     // isliye ChatScreen se wapas aane par turant sahi online/typing status dikhta hai
-    val onlineUids by AppSocketManager.onlineUids.collectAsState()
+    val presenceGuest = remember { com.muwan.muwanchat.data.GuestStore.isGuestActive(context) }  // GUEST_P2E
+    val onlineUids by (if (presenceGuest) com.muwan.muwanchat.data.GuestChat.onlineUids else AppSocketManager.onlineUids).collectAsState()
     val typingUsers by AppSocketManager.typingUsers.collectAsState()
     // STATUS_V1 -- jinke status hain unke avatar par ring
     val statusRepo = remember { StatusRepository(context) }
@@ -783,11 +784,7 @@ fun ConversationRow(
                     fontWeight = FontWeight.Bold
                 )
             } else {
-                val rowCtx = androidx.compose.ui.platform.LocalContext.current  // GUEST_P2D
-                val hidePresence = remember {  // guest mein presence nahi
-                    com.muwan.muwanchat.data.GuestStore.isGuestActive(rowCtx)
-                }
-                if (!hidePresence) Text(
+                Text(
                     if (conv.isOnline) "Online" else "Offline",
                     color = if (conv.isOnline) Color(0xFF4CD964) else Color(0xFFFF3B30),
                     fontSize = 10.sp,
