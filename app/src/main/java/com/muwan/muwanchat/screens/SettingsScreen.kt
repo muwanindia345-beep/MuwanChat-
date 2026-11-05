@@ -214,7 +214,19 @@ fun SettingsScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    if (isGuestSession) { guestLogoutSoon = true; return@clickable }  // GUEST_P2A
+                    if (isGuestSession) {  // GUEST_LOGOUT
+                        scope.launch {
+                            kotlinx.coroutines.withTimeoutOrNull(5000L) {
+                                com.muwan.muwanchat.data.GuestPush.unregister(context)
+                            }
+                            com.muwan.muwanchat.data.GuestChat.stop()
+                            com.muwan.muwanchat.data.GuestStore.markLoggedOut(context)
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.ConversationList.route) { inclusive = true }
+                            }
+                        }
+                        return@clickable
+                    }
                     scope.launch {
                         AppSocketManager.disconnect()
                         AuthDataStore.clearAuth(context)

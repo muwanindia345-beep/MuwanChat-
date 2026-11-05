@@ -64,6 +64,20 @@ object GuestPush {
         return true
     }
 
+    // GUEST_LOGOUT -- server se push token hatao (best effort; net na ho to chup-chaap aage badho)
+    suspend fun unregister(app: Context) {
+        try {
+            if (GuestSession.ensure(app) is GuestSession.Result.Ok) {
+                val t = GuestStore.token(app)
+                if (t != null) RetrofitClient.guestApi.unregisterPush("Bearer " + t)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
+        app.getSharedPreferences("guest_push", Context.MODE_PRIVATE).edit().clear().apply()
+    }
+
     private fun notifId(roomId: String): Int = roomId.hashCode()
 
     fun cancel(context: Context, roomId: String) {

@@ -98,6 +98,18 @@ object GuestStore {
 
     fun isGuestActive(context: Context): Boolean = activeGuestId(context).isNotEmpty()
 
+    // GUEST_LOGOUT -- sirf session band: token hata, active flag off. Seed/identity, guestId aur guest ka
+    // Room DB (guestId naam se) ko haath nahi lagta, isliye 'Continue Existing Guest' se wapas aa sakta hai.
+    fun markLoggedOut(context: Context) {
+        clearToken(context)
+        state(context).edit().putBoolean("onboarded", false).commit()
+    }
+
+    fun hasLoggedOutGuest(context: Context): Boolean {
+        val s = state(context)
+        return !s.getBoolean("onboarded", false) && !s.getString("gid", null).isNullOrEmpty() && hasIdentity(context)
+    }
+
     // ───── GUEST_P2B1: apna invite (secret + expiry). Secret Keystore-encrypted prefs mein. ─────
     fun inviteSecret(context: Context): String? =
         prefs(context).getString("invite_secret", null)?.takeIf { it.isNotEmpty() }

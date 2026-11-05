@@ -4,6 +4,7 @@ package com.muwan.muwanchat.network
 // Guest backend (routes/guest.js): challenge -> sign -> session. Server guest ka koi record save nahi karta.
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE  // GUEST_LOGOUT
 import retrofit2.http.GET
 import retrofit2.http.Header  // GUEST_P2B1
 import retrofit2.http.POST
@@ -156,5 +157,11 @@ interface GuestApi {
     suspend fun ackMailbox(
         @Header("Authorization") auth: String,
         @Body request: GuestAckRequest
+    ): Response<okhttp3.ResponseBody>
+
+    // GUEST_LOGOUT
+    @DELETE("guest/push-token")
+    suspend fun unregisterPush(
+        @Header("Authorization") auth: String
     ): Response<okhttp3.ResponseBody>
 }

@@ -54,6 +54,7 @@ object GuestChat {
 
     fun start(context: Context) {
         val app = context.applicationContext
+        if (!GuestStore.isGuestActive(app)) return  // GUEST_LOGOUT
         GuestPush.ensureRegistered(app)  // GUEST_P2F: FCM token server ko
         scope.launch {
             try {
@@ -66,8 +67,23 @@ object GuestChat {
         }
     }
 
+    // GUEST_LOGOUT -- socket band, open chat bhula do, online list khali
+    fun stop() {
+        try {
+            socket?.off()
+            socket?.disconnect()
+        } catch (_: Exception) {
+        }
+        socket = null
+        socketToken = null
+        openRoomId = null
+        openPeerId = null
+        _online.value = emptySet()
+    }
+
     private suspend fun connect(app: Context) {
         connectLock.withLock {
+            if (!GuestStore.isGuestActive(app)) return@withLock  // GUEST_LOGOUT
             if (GuestSession.ensure(app) !is GuestSession.Result.Ok) return@withLock
             val token = GuestStore.token(app) ?: return@withLock
             val cur = socket
@@ -332,6 +348,7 @@ object GuestChat {
     // GUEST_P2F ───────── push wake: mailbox HTTP se ─────────
     fun onPushWake(context: Context) {
         val app = context.applicationContext
+        if (!GuestStore.isGuestActive(app)) return  // GUEST_LOGOUT
         scope.launch {
             try {
                 syncMailbox(app)
