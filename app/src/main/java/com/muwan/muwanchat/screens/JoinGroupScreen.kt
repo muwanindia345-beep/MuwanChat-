@@ -167,7 +167,7 @@ fun JoinGroupScreen(navController: NavController, code: String) {
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
                                 modifier = Modifier.fillMaxWidth()
-                            ) { Text("Open Chat", color = Color.White) }
+                            ) { Text(if (s.data.isChannel) "Open Channel" else "Open Chat", color = Color.White) }  // CHANNEL_OPEN_BTN
                         }
                         s.alreadyRequested -> {
                             Button(
@@ -210,7 +210,7 @@ fun JoinGroupScreen(navController: NavController, code: String) {
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Open Chat", color = Color.White) }
+                    ) { Text(if (s.isChannel) "Open Channel" else "Open Chat", color = Color.White) }
                 }
 
                 is JoinSheetState.Pending -> {
