@@ -50,6 +50,7 @@ fun LoginScreen(navController: NavController) {
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf("") }
+    var showGuestExistingSoon by remember { mutableStateOf(false) }  // GUEST_LOGIN_BTN
 
     fun handleLogin() {
         if (email.isBlank() || password.isBlank()) {
@@ -206,6 +207,24 @@ fun LoginScreen(navController: NavController) {
                 }
             } else {
                 PhoneLoginSection(navController = navController)
+            }
+
+            // GUEST_LOGIN_BTN -- purple Continue Existing Guest (abhi sirf Coming Soon popup)
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { showGuestExistingSoon = true },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E44FF)),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
+            ) {
+                Text("Continue Existing Guest", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            if (showGuestExistingSoon) {
+                ComingSoonDialog(
+                    feature = "👤 Continue Existing Guest",
+                    onDismiss = { showGuestExistingSoon = false }
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
