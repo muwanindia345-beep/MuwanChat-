@@ -43,7 +43,12 @@ fun GuestInviteHost() {
     val raw by GuestInviteInbox.pending.collectAsState()
     var busy by remember { mutableStateOf(false) }
     var outcome by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
-    val invite = remember(raw) { raw?.let { GuestInviteInbox.parse(it) } }
+    var resolved by remember(raw) { mutableStateOf<GuestInviteInbox.Resolved?>(null) }  // GUEST_P2D
+    LaunchedEffect(raw) {
+        val r = raw
+        resolved = if (r == null) null else GuestInviteInbox.resolve(r)
+    }
+    val invite = resolved?.invite
 
     val current = raw
     if (current == null) return
@@ -75,6 +80,15 @@ fun GuestInviteHost() {
                 ) { Text("OK", color = Color.White) }
             }
         )
+    } else if (resolved == null) {  // GUEST_P2D: invite server se check ho raha hai
+        AlertDialog(
+            onDismissRequest = { close() },
+            containerColor = DarkSheet,
+            title = { Text("Checking invite…", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = { Text("Please wait a moment.", color = Color(0xFFCCCCCC), fontSize = 14.sp) },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { close() }) { Text("Cancel", color = Color(0xFF888888)) } }
+        )
     } else if (invite == null) {
         AlertDialog(
             onDismissRequest = { close() },
@@ -82,7 +96,7 @@ fun GuestInviteHost() {
             title = { Text("Invalid invite", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "This QR code or link is not a valid TalkWave guest invite.",
+                    resolved?.error ?: "This QR code or link is not a valid TalkWave guest invite.",
                     color = Color(0xFFCCCCCC),
                     fontSize = 14.sp
                 )

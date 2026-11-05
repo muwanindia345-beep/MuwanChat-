@@ -24,6 +24,7 @@ sealed class Screen(val route: String) {
     object GuestInfo       : Screen("guest_info")   // GUEST_UI
     object GuestInvite     : Screen("guest_invite")  // GUEST_P2B1
     object GuestJoin       : Screen("guest_join?p={p}")  // GUEST_P2B2
+    object GuestJoinShort  : Screen("guest_join_short?c={c}&s={s}")  // GUEST_P2D
     object TermsPrivacy    : Screen("terms_privacy")
     object ApplicationRules : Screen("application_rules")
     object AppLock          : Screen("app_lock")
@@ -320,6 +321,26 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
             deepLinks = listOf(navDeepLink { uriPattern = "muwan://guest?p={p}" })
         ) { back ->
             GuestJoinRoute(navController, back.arguments?.getString("p"))
+        }
+        composable(  // GUEST_P2D: chhota link deep link  muwan://invite?c=CODE&s=SECRET
+            Screen.GuestJoinShort.route,
+            arguments = listOf(
+                navArgument("c") {
+                    type = androidx.navigation.NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("s") {
+                    type = androidx.navigation.NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            ),
+            deepLinks = listOf(navDeepLink { uriPattern = "muwan://invite?c={c}&s={s}" })
+        ) { back ->
+            val c = back.arguments?.getString("c")
+            val sec = back.arguments?.getString("s")
+            GuestJoinRoute(navController, if (c != null && sec != null) "muwan://invite?c=" + c + "&s=" + sec else null)
         }
         composable(Screen.TermsPrivacy.route) { TermsPrivacyScreen(navController) }
         composable(Screen.ApplicationRules.route) { ApplicationRulesScreen(navController) }

@@ -31,6 +31,7 @@ import com.muwan.muwanchat.DarkSheet
 fun ChatHeader(
     receiverUsername: String,
     isOnline: Boolean,
+    showPresence: Boolean = true,  // GUEST_P2D: guest mode mein online/offline nahi dikhate
     isTyping: Boolean = false,
     avatarBase64: String? = null,
     onBack: () -> Unit,
@@ -87,7 +88,7 @@ fun ChatHeader(
                     isOnline -> Color(0xFF4CD964)
                     else -> Color(0xFF888888)
                 }
-                Text(
+                if (showPresence || isTyping) Text(
                     statusText,
                     color = statusColor,
                     fontSize = 12.sp,

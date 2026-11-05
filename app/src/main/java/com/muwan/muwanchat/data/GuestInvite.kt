@@ -99,7 +99,42 @@ object GuestInvite {
             Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
         )
         val base = com.muwan.muwanchat.BuildConfig.BACKEND_URL.trimEnd('/')
-        return Result.Ok(Info(base + "/g#" + payload, expiry))
+        val shortLink = shortLink(context, token, base, secret, expiry, profile?.name ?: "", profile?.country ?: "")  // GUEST_P2D
+        return Result.Ok(Info(shortLink ?: (base + "/g#" + payload), expiry))
+    }
+
+    // GUEST_P2D: chhota link https://<backend>/g/<CODE>#<SECRET>. Server par sirf public data (id, key, naam, country);
+    // secret fragment mein rehta hai (server ko nahi jaata). Kuch bhi fail ho to null -> purana lamba link.
+    private suspend fun shortLink(
+        context: Context, token: String, base: String, secret: String, expiry: Long, name: String, country: String
+    ): String? {
+        return try {
+            val pubB64 = GuestCrypto.b64(GuestStore.identity(context).publicKey)
+            val sig = sha256Hex(name.take(40) + "|" + country.take(40) + "|" + pubB64)
+            val sp = context.getSharedPreferences("guest_invite_link", Context.MODE_PRIVATE)
+            val storedCode = sp.getString("code", null)
+            val storedSig = sp.getString("sig", null)
+            val storedExp = sp.getLong("exp", 0L)
+            val now = System.currentTimeMillis()
+            if (storedCode != null && storedSig == sig && storedExp >= expiry - 5 * 60_000L &&
+                storedExp - now >= REUSE_MIN_LEFT_MS
+            ) {
+                return base + "/g/" + storedCode + "#" + secret
+            }
+            val hours = ((expiry - now + 3_599_999L) / 3_600_000L).coerceIn(1L, 720L).toInt()
+            val res = RetrofitClient.guestApi.createLink(
+                "Bearer " + token,
+                com.muwan.muwanchat.network.GuestLinkRequest(pubB64, name.take(40), country.take(40), hours, storedCode)
+            )
+            val code = res.body()?.code
+            if (!res.isSuccessful || code.isNullOrBlank()) return null
+            sp.edit().putString("code", code).putString("sig", sig).putLong("exp", now + hours * 3_600_000L).apply()
+            base + "/g/" + code + "#" + secret
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun newSecret(): String {

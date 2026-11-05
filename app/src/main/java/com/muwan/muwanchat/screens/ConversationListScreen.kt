@@ -783,7 +783,11 @@ fun ConversationRow(
                     fontWeight = FontWeight.Bold
                 )
             } else {
-                Text(
+                val rowCtx = androidx.compose.ui.platform.LocalContext.current  // GUEST_P2D
+                val hidePresence = remember {  // guest mein presence nahi
+                    com.muwan.muwanchat.data.GuestStore.isGuestActive(rowCtx)
+                }
+                if (!hidePresence) Text(
                     if (conv.isOnline) "Online" else "Offline",
                     color = if (conv.isOnline) Color(0xFF4CD964) else Color(0xFFFF3B30),
                     fontSize = 10.sp,

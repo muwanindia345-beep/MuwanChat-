@@ -50,6 +50,14 @@
                 <data android:scheme="muwan" android:host="guest" />
             </intent-filter>
 
+            <!-- GUEST_P2D: chhota invite link deep link: muwan://invite?c={code}&s={secret} -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="muwan" android:host="invite" />
+            </intent-filter>
+
         </activity>
 
         <service

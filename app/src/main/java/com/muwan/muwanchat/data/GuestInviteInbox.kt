@@ -46,6 +46,52 @@ object GuestInviteInbox {
         return candidate?.takeIf { PAYLOAD_RE.matches(it) }
     }
 
+    // GUEST_P2D: lamba (payload) ya chhota (/g/CODE#SECRET, muwan://invite?c=&s=) -- dono chalte hain.
+    class Resolved(val invite: Invite?, val error: String?)
+
+    private val SHORT_RE = Regex("/g/([A-Za-z0-9]{10})/?#([A-Za-z0-9_-]{16,200})")
+    private val CODE_RE = Regex("^[A-Za-z0-9]{10}$")
+    private val SECRET_RE = Regex("^[A-Za-z0-9_-]{16,200}$")
+
+    private fun parseShort(raw: String): Pair<String, String>? {
+        val t = raw.trim()
+        if (t.isEmpty() || t.length > 6000) return null
+        if (t.startsWith("muwan://invite", ignoreCase = true)) {
+            val u = Uri.parse(t)
+            val c = u.getQueryParameter("c") ?: return null
+            val s = u.getQueryParameter("s") ?: return null
+            return if (CODE_RE.matches(c) && SECRET_RE.matches(s)) Pair(c, s) else null
+        }
+        val m = SHORT_RE.find(t) ?: return null
+        return Pair(m.groupValues[1], m.groupValues[2])
+    }
+
+    // Chhote link ke liye server se public data laata hai; key ko guestId se verify karta hai (nakli key nahi chalegi).
+    suspend fun resolve(raw: String): Resolved = withContext(Dispatchers.IO) {
+        val ref = parseShort(raw)
+        if (ref == null) return@withContext Resolved(parse(raw), null)
+        try {
+            val res = RetrofitClient.guestApi.getLink(ref.first)
+            val b = res.body()
+            if (res.code() == 404) {
+                return@withContext Resolved(null, "This invite link is invalid or has expired. Ask your friend for a new one.")
+            }
+            if (!res.isSuccessful || b == null) {
+                return@withContext Resolved(null, "Couldn't check this invite right now. Check your internet and try again.")
+            }
+            val g = b.g ?: ""
+            val pub = try { GuestCrypto.fromB64(b.k ?: "") } catch (_: Exception) { ByteArray(0) }
+            if (!GID_RE.matches(g) || pub.size != 32 || GuestCrypto.guestIdOf(pub) != g) {
+                return@withContext Resolved(null, "This invite link is invalid.")
+            }
+            Resolved(Invite(g, ref.second, (b.n ?: "").trim().take(40), (b.c ?: "").trim().take(40), pub), null)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Resolved(null, friendlyErrorMessage(e))
+        }
+    }
+
     fun parse(raw: String): Invite? {
         val payload = extractPayload(raw) ?: return null
         return try {

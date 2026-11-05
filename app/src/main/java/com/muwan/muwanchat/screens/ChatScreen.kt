@@ -829,6 +829,7 @@ fun ChatScreen(
             ChatHeader(
                 receiverUsername = receiverUsername,
                 isOnline = isReceiverOnline,
+                showPresence = !isGuest,  // GUEST_P2D
                 isTyping = isReceiverTyping,
                 avatarBase64 = conversationEntity?.avatar,
                 onBack = { navController.popBackStack() },

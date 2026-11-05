@@ -71,6 +71,26 @@ data class GuestRelayResponse(
     val error: String?
 )
 
+// GUEST_P2D -- short invite link (backend guest_backend_v4)
+data class GuestLinkRequest(
+    val publicKey: String,
+    val name: String,
+    val country: String,
+    val ttlHours: Int,
+    val code: String? = null
+)
+
+data class GuestLinkResponse(
+    val success: Boolean?,
+    val code: String?,
+    val expiresAt: String?,
+    val g: String?,
+    val k: String?,
+    val n: String?,
+    val c: String?,
+    val error: String?
+)
+
 interface GuestApi {
     @GET("guest/challenge")
     suspend fun challenge(): Response<GuestChallengeResponse>
@@ -98,4 +118,14 @@ interface GuestApi {
         @Header("Authorization") auth: String,
         @Body request: GuestRelayRequest
     ): Response<GuestRelayResponse>
+
+    // GUEST_P2D
+    @POST("guest/link")
+    suspend fun createLink(
+        @Header("Authorization") auth: String,
+        @Body request: GuestLinkRequest
+    ): Response<GuestLinkResponse>
+
+    @GET("guest/link/{code}")
+    suspend fun getLink(@retrofit2.http.Path("code") code: String): Response<GuestLinkResponse>
 }
