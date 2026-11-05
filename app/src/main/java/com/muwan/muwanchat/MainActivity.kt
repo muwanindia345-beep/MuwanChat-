@@ -100,11 +100,14 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         AppLockState.onActivityStarted(applicationContext)
+        com.muwan.muwanchat.data.GuestPush.visible = true  // GUEST_P2F
+        com.muwan.muwanchat.data.GuestChat.onAppVisible(applicationContext)
     }
 
     override fun onStop() {
         super.onStop()
         AppLockState.onActivityStopped(isChangingConfigurations)
+        com.muwan.muwanchat.data.GuestPush.visible = false  // GUEST_P2F
     }
 
     // Too many wrong pattern attempts: log the account out (same as Settings ->

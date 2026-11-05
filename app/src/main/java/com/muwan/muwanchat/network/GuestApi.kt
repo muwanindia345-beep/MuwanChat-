@@ -91,6 +91,15 @@ data class GuestLinkResponse(
     val error: String?
 )
 
+// GUEST_P2F -- push token + HTTP mailbox (push se jaagne par)
+data class GuestPushTokenRequest(
+    val token: String
+)
+
+data class GuestAckRequest(
+    val ids: List<String>
+)
+
 interface GuestApi {
     @GET("guest/challenge")
     suspend fun challenge(): Response<GuestChallengeResponse>
@@ -128,4 +137,24 @@ interface GuestApi {
 
     @GET("guest/link/{code}")
     suspend fun getLink(@retrofit2.http.Path("code") code: String): Response<GuestLinkResponse>
+
+    // GUEST_P2F
+    @POST("guest/push-token")
+    suspend fun registerPush(
+        @Header("Authorization") auth: String,
+        @Body request: GuestPushTokenRequest
+    ): Response<okhttp3.ResponseBody>
+
+    @GET("guest/mailbox")
+    suspend fun mailbox(
+        @Header("Authorization") auth: String,
+        @retrofit2.http.Query("after") after: String?,
+        @retrofit2.http.Query("limit") limit: Int
+    ): Response<okhttp3.ResponseBody>
+
+    @POST("guest/mailbox/ack")
+    suspend fun ackMailbox(
+        @Header("Authorization") auth: String,
+        @Body request: GuestAckRequest
+    ): Response<okhttp3.ResponseBody>
 }

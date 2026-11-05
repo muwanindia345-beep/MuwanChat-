@@ -7,6 +7,7 @@ import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.muwan.muwanchat.network.GuestAckRequest  // GUEST_P2F
 import com.muwan.muwanchat.network.GuestEnvelopeOut
 import com.muwan.muwanchat.network.GuestRelayRequest
 import com.muwan.muwanchat.network.MessageReaction
@@ -53,6 +54,7 @@ object GuestChat {
 
     fun start(context: Context) {
         val app = context.applicationContext
+        GuestPush.ensureRegistered(app)  // GUEST_P2F: FCM token server ko
         scope.launch {
             try {
                 connect(app)
@@ -149,6 +151,7 @@ object GuestChat {
         val db = MuwanChatDb.get(app, myId)
         db.conversationDao().clearUnread(roomId)
         db.messageDao().markSeen(roomId, myId)
+        GuestPush.cancel(app, roomId)  // GUEST_P2F
         sendSeen(app, peerUid)
     }
 
@@ -278,7 +281,8 @@ object GuestChat {
                     otherUsername = shown,
                     replyToId = d.body.optString("r").ifBlank { null }
                 )
-                if (openRoomId == roomId) markOpenRead(app, roomId, d.from)
+                if (!GuestPush.visible) GuestPush.showMessage(app, roomId, shown, text)  // GUEST_P2F: decrypted notification
+                if (openRoomId == roomId && GuestPush.visible) markOpenRead(app, roomId, d.from)
             }
             "react" -> {
                 val target = db.messageDao().getById(d.body.optString("m")) ?: return
@@ -322,6 +326,66 @@ object GuestChat {
             }
             "seen" -> db.messageDao().markMySentAsSeen(roomId, myId)
             else -> {}   // "hello" aur anjaan kinds: sirf contact + key save ho chuki
+        }
+    }
+
+    // GUEST_P2F ───────── push wake: mailbox HTTP se ─────────
+    fun onPushWake(context: Context) {
+        val app = context.applicationContext
+        scope.launch {
+            try {
+                syncMailbox(app)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "push sync failed: " + e.message)
+            }
+        }
+    }
+
+    // App wapas screen par aayi aur koi chat khuli hai: background mein aaye messages read mark + notification hatao
+    fun onAppVisible(context: Context) {
+        val room = openRoomId
+        val peer = openPeerId
+        if (room != null && peer != null) onChatOpened(context, room, peer)
+    }
+
+    // Socket ke bina: pending envelopes HTTP se (page-wise), wahi decrypt/save/notify, phir ack.
+    suspend fun syncMailbox(app: Context) {
+        processLock.withLock {
+            if (GuestSession.ensure(app) !is GuestSession.Result.Ok) return
+            val token = GuestStore.token(app) ?: return
+            val myId = GuestStore.activeGuestId(app)
+            if (myId.isEmpty()) return
+            var after: String? = null
+            for (page in 0 until 10) {
+                val res = RetrofitClient.guestApi.mailbox("Bearer " + token, after, PAGE)
+                if (!res.isSuccessful) return
+                val bodyText = res.body()?.string() ?: return
+                val arr = JSONObject(bodyText).optJSONArray("envelopes") ?: return
+                if (arr.length() == 0) return
+                val list = ArrayList<JSONObject>()
+                for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { list.add(it) }
+                list.sortBy { it.optString("id") }
+                val ackIds = ArrayList<String>()
+                for (e in list) {
+                    val id = e.optString("id")
+                    val d = decode(app, e, myId)
+                    try {
+                        if (d != null) applyEnvelope(app, myId, d)
+                        if (id.isNotEmpty()) ackIds.add(id)
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Log.w(TAG, "apply failed (will retry): " + ex.message)
+                    }
+                }
+                if (ackIds.isNotEmpty()) {
+                    RetrofitClient.guestApi.ackMailbox("Bearer " + token, GuestAckRequest(ackIds))
+                }
+                after = list.last().optString("id")
+                if (list.size < PAGE) return
+            }
         }
     }
 

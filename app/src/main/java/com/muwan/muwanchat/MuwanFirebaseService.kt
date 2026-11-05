@@ -22,6 +22,10 @@ class MuwanFirebaseService : FirebaseMessagingService() {
         super.onNewToken(token)
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                if (com.muwan.muwanchat.data.GuestStore.isGuestActive(applicationContext)) {  // GUEST_P2F
+                    com.muwan.muwanchat.data.GuestPush.register(applicationContext, token)
+                    return@launch
+                }
                 val authToken = AuthDataStore.getToken(applicationContext).first() ?: return@launch
                 RetrofitClient.usersApi.updateFcmToken(
                     "Bearer $authToken",
@@ -46,6 +50,12 @@ class MuwanFirebaseService : FirebaseMessagingService() {
                 )
                 com.muwan.muwanchat.data.UpdateManager.showUpdateNotification(applicationContext, info)
             }
+            return
+        }
+
+        // GUEST_P2F: guest push (content-free wake) -> mailbox laao, decrypt, notification. Calls abhi Coming Soon.
+        if (message.data["guest"] == "1") {
+            if (message.data["gkind"] != "call") com.muwan.muwanchat.data.GuestChat.onPushWake(applicationContext)
             return
         }
 
