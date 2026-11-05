@@ -1514,7 +1514,7 @@ Box(
             title = { Text("Leave Channel?", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "Ye channel aapki Broadcast list se hat jayega.",
+                    "This channel will be removed from your Broadcast list.",  // LEAVE_CH_EN
                     color = Color(0xFFAAAAAA)
                 )
             },
