@@ -213,12 +213,12 @@ fun LoginScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { showGuestExistingSoon = true },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E44FF)),
                 shape = RoundedCornerShape(12.dp),
                 enabled = !isLoading
             ) {
-                Text("Continue Existing Guest", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Continue Exist Guest", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
             if (showGuestExistingSoon) {
                 ComingSoonDialog(
