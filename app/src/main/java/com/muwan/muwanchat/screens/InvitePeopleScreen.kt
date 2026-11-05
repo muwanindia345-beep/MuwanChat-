@@ -77,6 +77,8 @@ fun InvitePeopleScreen(navController: NavController) {
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var scanSoon by remember { mutableStateOf(false) }
+    var showLinkBox by remember { mutableStateOf(false) }  // GUEST_PASTE
+    var pastedLink by remember { mutableStateOf("") }
 
     fun load() {
         loading = true
@@ -99,6 +101,67 @@ fun InvitePeopleScreen(navController: NavController) {
 
     if (scanSoon) {
         ComingSoonDialog(feature = "📷 Scan QR Code", onDismiss = { scanSoon = false })
+    }
+
+    if (showLinkBox) {  // GUEST_PASTE: link paste karke add
+        AlertDialog(
+            onDismissRequest = { showLinkBox = false },
+            containerColor = DarkSheet,
+            title = { Text("Add a shared link", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(
+                        "Paste the invite link your friend sent you.",
+                        color = Color(0xFFCCCCCC),
+                        fontSize = 13.sp
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = pastedLink,
+                        onValueChange = { pastedLink = it },
+                        placeholder = { Text("https://…/g#…", color = Color(0xFF666666)) },
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = DarkAccent,
+                            unfocusedBorderColor = Color(0xFF444444),
+                            cursorColor = DarkAccent
+                        )
+                    )
+                    TextButton(onClick = {
+                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        val clip = cm?.primaryClip
+                        val t = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(context).toString() else ""
+                        if (t.isNotBlank()) pastedLink = t.trim()
+                        else Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text("Paste from clipboard", color = DarkAccent)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val v = pastedLink.trim()
+                        if (v.isEmpty()) {
+                            Toast.makeText(context, "Paste a link first", Toast.LENGTH_SHORT).show()
+                        } else {
+                            showLinkBox = false
+                            pastedLink = ""
+                            GuestInviteInbox.offer(v)
+                            navController.popBackStack()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Continue", color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLinkBox = false }) { Text("Cancel", color = Color(0xFF888888)) }
+            }
+        )
     }
 
     Column(
@@ -253,6 +316,23 @@ fun InvitePeopleScreen(navController: NavController) {
                 ) {
                     Text("Scan a QR code", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+
+                Spacer(Modifier.height(12.dp))  // GUEST_PASTE
+                OutlinedButton(
+                    onClick = { showLinkBox = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Add a shared link", color = DarkAccent, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Can't scan or open the link? Paste it here instead.",
+                    color = Color(0xFF888888),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(24.dp))
             } else {
                 Spacer(Modifier.height(60.dp))
                 Text(
