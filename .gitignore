@@ -10,3 +10,10 @@ bugfix_*.py
 fix_*.py
 revert_*.py
 *.bak*
+
+# one-off patch scripts (auto-added by clean_patches.py)
+*_patch.py
+*_fix.py
+guest_backend_v*.py
+.guest_ui_backup/
+ngrok*.tgz
