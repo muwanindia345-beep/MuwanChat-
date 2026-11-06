@@ -50,6 +50,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isGuest = mode == "guest"  // GUEST_UI
+    val isGuestEdit = mode == "guest_edit"  // GUEST_PROF: guest ka profile baad mein edit
     val isOnboarding = mode == "onboarding" || isGuest
     val db by remember { lazy { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) } }  // GUEST_UI: guest mein auth DB nahi banta
 
@@ -90,6 +91,10 @@ fun ProfileScreen(navController: NavController, mode: String) {
                 isLoading = false
             }
 
+            if (isGuestEdit) {  // GUEST_PROF: guest ka profile sirf local hai, server se kuch nahi laana
+                isLoading = false
+                return@LaunchedEffect
+            }
             // 2) Background me network se fresh data lao, UI + cache dono update
             try {
                 val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
@@ -166,6 +171,29 @@ fun ProfileScreen(navController: NavController, mode: String) {
                             errorMsg = "Couldn't connect to server. Check your internet and try again. (" + r.reason + ")"
                         }
                     }
+                } catch (e: Exception) {
+                    errorMsg = e.message ?: "Something went wrong, try again"
+                }
+                isSaving = false
+            }
+            return
+        }
+        if (isGuestEdit) {  // GUEST_PROF: local save + contacts ko encrypted profile
+            val guestGender = if (gender == "Custom") customGender.trim() else gender
+            scope.launch {
+                isSaving = true
+                errorMsg = ""
+                try {
+                    db.myProfileDao().upsert(
+                        MyProfileEntity(
+                            name = name.trim(), bio = bio.trim().ifBlank { null },
+                            city = city.trim().ifBlank { null }, country = country.trim().ifBlank { null },
+                            gender = guestGender.ifBlank { null }, avatar = avatarBase64
+                        )
+                    )
+                    com.muwan.muwanchat.data.GuestProfile.markChanged(context)
+                    com.muwan.muwanchat.data.GuestProfile.syncSoon(context)
+                    navController.popBackStack()
                 } catch (e: Exception) {
                     errorMsg = e.message ?: "Something went wrong, try again"
                 }

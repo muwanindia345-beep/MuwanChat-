@@ -155,6 +155,7 @@ object GuestInviteInbox {
             )
             GuestChat.start(app)  // GUEST_P2C
             GuestChat.sendHelloAsync(app, inv.guestId)  // dusre ke phone mein bhi contact aa jaye
+            GuestProfile.syncSoon(app)  // GUEST_PROF: apna photo/description bhi
             Pair(true, shown + " added to your chats.")
         } catch (e: CancellationException) {
             throw e

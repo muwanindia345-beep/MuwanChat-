@@ -117,6 +117,7 @@ object GuestChat {
                 Log.w(TAG, "socket error: " + (args.getOrNull(0)?.toString() ?: ""))
             }
             sock.on(Socket.EVENT_CONNECT) {  // GUEST_P2E
+                GuestProfile.syncSoon(app)  // GUEST_PROF: pending profile updates
                 scope.launch {
                     try {
                         refreshPresence(app)
@@ -276,6 +277,7 @@ object GuestChat {
         val existing = db.conversationDao().getByRoomId(roomId)
         if (existing == null) {
             ChatRepository.addConversationPlaceholder(db, roomId, d.from, shown, null)
+            GuestProfile.syncSoon(app)  // GUEST_PROF: naye contact ko apna profile bhejo
         } else if (d.name.isNotBlank() && existing.username != d.name) {
             db.conversationDao().upsertOne(existing.copy(username = d.name))
         }
@@ -341,6 +343,7 @@ object GuestChat {
                 ChatRepository.refreshLastMessagePreview(db, roomId)
             }
             "seen" -> db.messageDao().markMySentAsSeen(roomId, myId)
+            "prof" -> GuestProfile.applyIncoming(db, roomId, d.from, d.body)  // GUEST_PROF
             else -> {}   // "hello" aur anjaan kinds: sirf contact + key save ho chuki
         }
     }
@@ -495,6 +498,10 @@ object GuestChat {
             app.applicationContext, toUid, newMid("s-"), "seen",
             JSONObject().put("ts", System.currentTimeMillis())
         )
+
+    // GUEST_PROF
+    suspend fun sendProfile(app: Context, toUid: String, body: JSONObject): Boolean =
+        sendEnvelope(app.applicationContext, toUid, newMid("p-"), "prof", body)
 
     // Invite accept hote hi: dusre ko batao ki hum judd gaye (uske phone mein contact + key aa jaati hai)
     fun sendHelloAsync(context: Context, toUid: String) {

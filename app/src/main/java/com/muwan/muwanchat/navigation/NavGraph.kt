@@ -374,7 +374,12 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.Requests.route) { GuestGate(navController, "🔔 Requests") { RequestsScreen(navController) } }  // GUEST_P2A
         composable(Screen.Profile.route) { back ->
             val profileMode = back.arguments?.getString("mode") ?: "edit"  // GUEST_P2A
-            GuestGate(navController, "👤 Edit Profile") { ProfileScreen(navController, profileMode) }
+            val profileCtx = androidx.compose.ui.platform.LocalContext.current  // GUEST_PROF
+            if (profileMode == "edit" && com.muwan.muwanchat.data.GuestStore.isGuestActive(profileCtx)) {
+                ProfileScreen(navController, "guest_edit")
+            } else {
+                GuestGate(navController, "👤 Edit Profile") { ProfileScreen(navController, profileMode) }
+            }
         }
         composable(Screen.AvatarCrop.route) { AvatarCropScreen(navController) }
         composable(Screen.CreateGroup.route) { GuestGate(navController, "👥 Create Group") { CreateGroupScreen(navController) } }  // GUEST_P2A

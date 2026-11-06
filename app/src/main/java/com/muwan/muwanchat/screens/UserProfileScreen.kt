@@ -47,6 +47,7 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
     val scope = rememberCoroutineScope()
     val db = remember { MuwanChatDb.get(context, AuthDataStore.getUidBlocking(context)) }
 
+    val isGuest = remember { com.muwan.muwanchat.data.GuestStore.isGuestActive(context) }  // GUEST_PROF
     var user by remember { mutableStateOf<UserItem?>(null) }
     var status by remember { mutableStateOf("none") }
     var showMediaComingSoon by remember { mutableStateOf(false) }
@@ -67,6 +68,20 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
 
     // Background me backend se refresh — profile local cache update, status live
     LaunchedEffect(uid) {
+        if (isGuest) {  // GUEST_PROF: guest contact ka profile sirf local (encrypted prof envelope se aaya)
+            myUid = AuthDataStore.getUidBlocking(context)
+            status = "friends"
+            if (user == null) {
+                val c = db.conversationDao().getByUid(uid)
+                if (c != null) {
+                    user = UserItem(uid = uid, username = "guest_" + uid.takeLast(6), name = c.username, avatar = c.avatar)
+                } else {
+                    errorMsg = "Contact not found"
+                }
+            }
+            isLoading = false
+            return@LaunchedEffect
+        }
         try {
             val token = AuthDataStore.getToken(context).first() ?: return@LaunchedEffect
 
@@ -112,7 +127,8 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
 
     fun openChat() {
         val u = user ?: return
-        val roomId = listOf(myUid, uid).sorted().joinToString("_")
+        val roomId = if (isGuest) com.muwan.muwanchat.data.GuestInviteInbox.roomIdFor(myUid, uid)  // GUEST_PROF
+            else listOf(myUid, uid).sorted().joinToString("_")
         navController.navigate(Screen.Chat.createRoute(uid, u.username, roomId))
     }
 
@@ -212,7 +228,8 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
                         if (fromChat) {
                             Button(
                                 onClick = {
-                                    navController.navigate(Screen.Media.createRoute(uid))
+                                    if (isGuest) showMediaComingSoon = true  // GUEST_PROF
+                                    else navController.navigate(Screen.Media.createRoute(uid))
                                 },
                                 modifier = Modifier.fillMaxWidth().height(48.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = DarkAccent),
