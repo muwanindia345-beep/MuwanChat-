@@ -272,6 +272,10 @@ object GuestChat {
     private suspend fun applyEnvelope(app: Context, myId: String, d: Decoded) {
         val db = MuwanChatDb.get(app, myId)
         GuestPeers.put(app, d.from, d.pub)
+        if (d.kind == "ginv" || d.kind == "gmsg") {  // GUEST_GROUP_HOOK: group envelopes 1:1 chat nahi banate
+            GuestGroups.onEnvelope(app, db, myId, d.from, d.mid, d.kind, d.createdAt, d.name, d.body)
+            return
+        }
         val roomId = GuestInviteInbox.roomIdFor(myId, d.from)
         val shown = d.name.ifBlank { "Guest " + d.from.takeLast(4) }
 
@@ -431,7 +435,7 @@ object GuestChat {
 
     // ───────── send ─────────
 
-    private suspend fun sendEnvelope(app: Context, toUid: String, mid: String, kind: String, body: JSONObject): Boolean =
+    internal suspend fun sendEnvelope(app: Context, toUid: String, mid: String, kind: String, body: JSONObject): Boolean =  // GUEST_GROUP_HOOK
         withContext(Dispatchers.IO) {
             val myId = GuestStore.activeGuestId(app)
             if (myId.isEmpty()) return@withContext false
