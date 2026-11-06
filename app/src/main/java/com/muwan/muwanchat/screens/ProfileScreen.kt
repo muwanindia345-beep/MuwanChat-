@@ -93,6 +93,7 @@ fun ProfileScreen(navController: NavController, mode: String) {
 
             if (isGuestEdit) {  // GUEST_PROF: guest ka profile sirf local hai, server se kuch nahi laana
                 isLoading = false
+                hasFetchedProfile = true  // GUEST_AVATAR_FIX: crop se wapas aane par cache dobara load na ho
                 return@LaunchedEffect
             }
             // 2) Background me network se fresh data lao, UI + cache dono update
