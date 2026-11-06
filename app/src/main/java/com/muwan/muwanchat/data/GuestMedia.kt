@@ -366,6 +366,12 @@ object GuestMedia {
 
     private fun drop(app: Context, mid: String) { prefs(app).edit().remove(mid).apply() }
 
+    fun isPending(app: Context, url: string): Boolean {
+        if (!isGuestUrl(url)) return false
+        val mid = url.removePrefix(HOST).substringBeforeLast('.')
+        return prefs(app).contains(mid)
+    }
+
     private fun bump(app: Context, mid: String, rec: JSONObject) {
         val a = rec.optInt("a") + 1
         if (a >= MAX_ATTEMPTS) drop(app, mid)

@@ -27,9 +27,11 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import com.muwan.muwanchat.data.UploadProgressTracker
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.colletAsState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -488,6 +490,12 @@ fun MessageBubble(
                     }
 
                     "video" -> message.mediaUrl?.let { url ->
+                     val ctx = LocalContext.Current
+                     val ver by com.muwan.muwanchat.data.LocalMedia.version.collectAsState()
+                     val downloading = remember(url, ver) {
+                         com.muwan.muwanchat.data.GuestMedia.isPending(ctx, url) &&
+                             !com.muwan.muwanchat.data.LocalMedia.exists(ctx, url)
+                     }
                         Box(
                             modifier = (
                                 // CHANNEL_MEDIA_FULLWIDTH: channel mein video thumbnail bhi full width
@@ -496,7 +504,7 @@ fun MessageBubble(
                             )
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFF1A1A1A))
-                                .clickable { if (isSelectionMode) onTap() else onVideoTap(url) },
+                                .clickable { if (isSelectionMode) onTap() else if (!downloading) onVideoTap(url) },
                             contentAlignment = Alignment.Center
                         ) {
                             AsyncImage(
@@ -509,6 +517,12 @@ fun MessageBubble(
                             )
                             if (message.status == "UPLOADING") {
                                 UploadProgressRing(UploadProgressTracker.progress[message.id])
+                            } else if (downloading) {
+                                CircularProgressIndicator(
+                                    colour = Colour.White,
+                                    strokeWidth = 3.dp,
+                                    modifier = Modifier.size(40.dp)
+                                )
                             } else {
                                 Icon(
                                     Icons.Filled.PlayCircle,
