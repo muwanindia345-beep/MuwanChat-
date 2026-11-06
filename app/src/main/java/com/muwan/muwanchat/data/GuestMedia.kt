@@ -250,9 +250,9 @@ object GuestMedia {
         val key = ByteArray(32).also { rng.nextBytes(it) }
         val nonce = ByteArray(12).also { rng.nextBytes(it) }
         val cipher = withContext(Dispatchers.Default) { aead(true, key, nonce, mid, plain) }
-        val (blobId, upErr) = withContext(Dispatchers.IO) { upload(app, cipher) }
+        val (blobId, upErr) = withContext(Dispatchers.IO) { upload(app, cipher, mid) }  // GUEST_UPLOAD_PROGRESS
         if (blobId == null) return upErr ?: "Upload failed"
-        UploadProgressTracker.update(mid, 80)
+        UploadProgressTracker.update(mid, 100)  // GUEST_UPLOAD_PROGRESS: real % upload() se aata hai
         val body = JSONObject()
             .put("u", blobId)
             .put("k", Base64.encodeToString(key, Base64.NO_WRAP))
@@ -276,13 +276,17 @@ object GuestMedia {
         return GuestStore.token(app)
     }
 
-    private suspend fun upload(app: Context, cipher: ByteArray): Pair<String?, String?> {
+    private suspend fun upload(app: Context, cipher: ByteArray, mid: String): Pair<String?, String?> {  // GUEST_UPLOAD_PROGRESS
         return try {
             val tk = token(app) ?: return null to "Guest session expired, reopen the app"
             val req = Request.Builder()
                 .url(baseUrl + "/guest/media?readers=1")
                 .header("Authorization", "Bearer " + tk)
-                .post(cipher.toRequestBody("application/octet-stream".toMediaType()))
+                .post(
+                    com.muwan.muwanchat.network.CountingRequestBody(
+                        cipher.toRequestBody("application/octet-stream".toMediaType())
+                    ) { percent -> UploadProgressTracker.update(mid, percent) }  // GUEST_UPLOAD_PROGRESS
+                )
                 .build()
             http.newCall(req).execute().use { r ->
                 val txt = r.body?.string() ?: ""
