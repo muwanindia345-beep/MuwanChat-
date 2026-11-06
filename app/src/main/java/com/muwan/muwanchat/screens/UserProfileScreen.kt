@@ -49,8 +49,7 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
 
     val isGuest = remember { com.muwan.muwanchat.data.GuestStore.isGuestActive(context) }  // GUEST_PROF
     var user by remember { mutableStateOf<UserItem?>(null) }
-    var status by remember { mutableStateOf("none") }
-    var showMediaComingSoon by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("none") 
     var isLoading by remember { mutableStateOf(true) }
     var isSendingRequest by remember { mutableStateOf(false) }
     var myUid by remember { mutableStateOf("") }
@@ -68,11 +67,11 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
 
     // Background me backend se refresh — profile local cache update, status live
     LaunchedEffect(uid) {
-        if (isGuest) {  // GUEST_PROF: guest contact ka profile sirf local (encrypted prof envelope se aaya)
+        if (isGuest) {  // GUEST_PROF
             myUid = AuthDataStore.getUidBlocking(context)
             status = "friends"
+            val c = db.conversationDao().getByUid(uid)
             if (user == null) {
-                val c = db.conversationDao().getByUid(uid)
                 if (c != null) {
                     user = UserItem(uid = uid, username = "guest_" + uid.takeLast(6), name = c.username, avatar = c.avatar)
                 } else {
@@ -80,6 +79,9 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
                 }
             }
             isLoading = false
+            db.CachedUserProfileDao().observe(uid).collect { cached
+                if (cached != null) user = cached.toModel()
+            }
             return@LaunchedEffect
         }
         try {
@@ -227,7 +229,7 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
                     "friends" -> {
                         if (fromChat) {
                             Button(
-                                onClick = {
+                                onClick = { navController.navigate(Screen.Media.createRoute(uid)) },
                                     if (isGuest) showMediaComingSoon = true  // GUEST_PROF
                                     else navController.navigate(Screen.Media.createRoute(uid))
                                 },
@@ -298,9 +300,5 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
-    }
-
-    if (showMediaComingSoon) {
-        ComingSoonDialog(feature = "🖼️ Shared Media", onDismiss = { showMediaComingSoon = false })
     }
 }
