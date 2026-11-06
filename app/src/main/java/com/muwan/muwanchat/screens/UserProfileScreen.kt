@@ -49,11 +49,13 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
 
     val isGuest = remember { com.muwan.muwanchat.data.GuestStore.isGuestActive(context) }  // GUEST_PROF
     var user by remember { mutableStateOf<UserItem?>(null) }
-    var status by remember { mutableStateOf("none") 
+    var status by remember { mutableStateOf("none") }
     var isLoading by remember { mutableStateOf(true) }
     var isSendingRequest by remember { mutableStateOf(false) }
     var myUid by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf("") }
+    var showMediaComingSoon by remember { mutableStateOf(false) }  // GUEST_PROF
+    if (showMediaComingSoon) ComingSoonDialog("Media") { showMediaComingSoon = false }  // GUEST_PROF
 
     // Local cache se turant dikhao (offline-first) — status abhi bhi live check hota hai
     LaunchedEffect(uid) {
@@ -229,7 +231,7 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
                     "friends" -> {
                         if (fromChat) {
                             Button(
-                                onClick = { navController.navigate(Screen.Media.createRoute(uid)) },
+                                onClick = {
                                     if (isGuest) showMediaComingSoon = true  // GUEST_PROF
                                     else navController.navigate(Screen.Media.createRoute(uid))
                                 },
