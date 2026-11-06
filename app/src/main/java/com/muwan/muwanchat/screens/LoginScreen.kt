@@ -30,6 +30,8 @@ import androidx.navigation.NavController
 import com.muwan.muwanchat.DarkAccent
 import com.muwan.muwanchat.DarkBg
 import com.muwan.muwanchat.data.AuthDataStore
+import com.muwan.muwanchat.data.GuestSession
+import com.muwan.muwanchat.data.GuestStore
 import com.muwan.muwanchat.navigation.Screen
 import com.muwan.muwanchat.network.RetrofitClient
 import com.muwan.muwanchat.util.friendlyErrorMessage
@@ -212,7 +214,31 @@ fun LoginScreen(navController: NavController) {
             // GUEST_LOGIN_BTN -- purple Continue Existing Guest (abhi sirf Coming Soon popup)
             Spacer(modifier = Modifier.height(12.dp))
             Button(
-                onClick = { showGuestExistingSoon = true },
+                onClick = { 
+                    if (!GuestStore.hasLoggedOutGuest( context )) {
+                        showGuestExistingSoon = true
+                    } else {
+                        scope.launch {
+                            isLoading = true
+                            when (val r = GuestSession.ensure( context )) {
+                                is GuestSession.Result.Ok -> {
+                                    GuestStore.markOnboarded( context, r.guestId)
+                                    navController.navigate(Screen.ConversationList.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
+                                    } 
+                                 }
+                                 is GuestSession.Result.Fail -> {
+                                     android.widget.Toast.makeTest(
+                                         context, "Coudn't connect: " + r.reason,
+                                         android.widget.Toast.LENGTH_LONG
+                                      ).show()
+                                 }
+                            }
+                            isLoading = false
+                        }
+                     }
+                  
+                },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E44FF)),
                 shape = RoundedCornerShape(12.dp),
