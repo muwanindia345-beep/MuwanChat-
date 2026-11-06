@@ -517,7 +517,9 @@ fun ChatScreen(
         }
         if (isGuest) {  // GUEST_P2C
             scope.launch {
-                val ok = com.muwan.muwanchat.data.GuestChat.sendText(context, receiverUid, id, content, replyToId)
+                val ok = if (type != "text")  // GUEST_MEDIA: failed media retry
+                    com.muwan.muwanchat.data.GuestMedia.retry(context, myUid, id, receiverUid, type, fileName, mimeType, replyToId)
+                else com.muwan.muwanchat.data.GuestChat.sendText(context, receiverUid, id, content, replyToId)
                 db.messageDao().updateStatus(id, if (ok) "SENT" else "FAILED")
             }
             return
@@ -1118,10 +1120,9 @@ fun ChatScreen(
                     if (showEmojiPicker) keyboardController?.hide() else keyboardController?.show()
                 }
             },
-            onPickImage = { if (isGuest) comingSoonFeature = "📎 Media sharing" else showMediaSheet = true },  // GUEST_P2C
+            onPickImage = { showMediaSheet = true },  // GUEST_MEDIA
             onSend = { sendMessage() },
             onGifReceived = { uri, kbMime, release ->
-                if (isGuest) { comingSoonFeature = "🎬 GIFs"; release(); return@ChatInputBar }  // GUEST_P2C
                 UploadScope.io.launch {
                     // Backend "gif" category/type ko ab fully support karta hai — raw passthrough,
                     // koi re-compress nahi (routes/chat.js check kiya). Isliye "image" ki jagah
@@ -1136,7 +1137,6 @@ fun ChatScreen(
                 }
             },
             onVoiceMessage = {
-                if (isGuest) { comingSoonFeature = "🎤 Voice messages"; return@ChatInputBar }  // GUEST_P2C
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     showVoiceRecorder = true
                 } else {
@@ -1362,6 +1362,14 @@ private suspend fun uploadMediaMessage(
 ) {
     val id = UUID.randomUUID().toString()
     val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
+    if (com.muwan.muwanchat.data.GuestStore.isGuestActive(context)) {  // GUEST_MEDIA
+        com.muwan.muwanchat.data.GuestMedia.send(
+            context, uri, displayType, roomId, myUid, receiverUid, receiverUsername,
+            skipCompression = skipCompression, mimeOverride = mimeOverride
+        )
+        setUploading(false)
+        return
+    }
     val guessedMime = mimeOverride?.takeIf { it.startsWith("image/") }
         ?: context.contentResolver.getType(uri)
         ?: "application/octet-stream"
@@ -1468,6 +1476,14 @@ private suspend fun uploadVideoMessage(
 ) {
     val id = UUID.randomUUID().toString()
     val filename = withContext(Dispatchers.IO) { getFileName(context, uri) }
+    if (com.muwan.muwanchat.data.GuestStore.isGuestActive(context)) {  // GUEST_MEDIA
+        com.muwan.muwanchat.data.GuestMedia.send(
+            context, uri, "video", roomId, myUid, receiverUid, receiverUsername,
+            mimeOverride = context.contentResolver.getType(uri) ?: "video/mp4"
+        )
+        setUploading(false)
+        return
+    }
     val mime = context.contentResolver.getType(uri) ?: "video/mp4"
 
     if (!isNetworkAvailable(context)) {
@@ -1542,6 +1558,15 @@ private suspend fun uploadAudioMessage(
     val id = UUID.randomUUID().toString()
     val filename = file.name
     val mime = "audio/mp4"
+    if (com.muwan.muwanchat.data.GuestStore.isGuestActive(context)) {  // GUEST_MEDIA
+        com.muwan.muwanchat.data.GuestMedia.send(
+            context, Uri.fromFile(file), "audio", roomId, myUid, receiverUid, receiverUsername,
+            mimeOverride = mime, nameOverride = file.name
+        )
+        file.delete()
+        setUploading(false)
+        return
+    }
     val localUri = Uri.fromFile(file).toString()
 
     if (!isNetworkAvailable(context)) {

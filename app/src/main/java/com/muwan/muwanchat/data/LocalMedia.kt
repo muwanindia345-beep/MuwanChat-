@@ -160,6 +160,7 @@ object LocalMedia {
     fun autoDownload(type: String, content: String, createdAt: String, deleted: Boolean = false) {
         val ctx = appContext ?: return
         if (deleted || type !in MEDIA_TYPES || !isHttp(content)) return
+        if (content.startsWith("https://guestmedia.invalid/")) return  // GUEST_MEDIA: local-only, GuestMedia khud laata hai
         if (!isRecent(createdAt)) return
         val dest = fileFor(ctx, content)
         if (dest.isFile && dest.length() > 0L) return

@@ -118,6 +118,7 @@ object GuestChat {
             }
             sock.on(Socket.EVENT_CONNECT) {  // GUEST_P2E
                 GuestProfile.syncSoon(app)  // GUEST_PROF: pending profile updates
+                GuestMedia.resume(app)  // GUEST_MEDIA: adhoore downloads
                 scope.launch {
                     try {
                         refreshPresence(app)
@@ -344,6 +345,18 @@ object GuestChat {
             }
             "seen" -> db.messageDao().markMySentAsSeen(roomId, myId)
             "prof" -> GuestProfile.applyIncoming(db, roomId, d.from, d.body)  // GUEST_PROF
+            "media" -> {  // GUEST_MEDIA
+                if (db.messageDao().getById(d.mid) != null) return
+                val inc = GuestMedia.parseIncoming(d.mid, d.body) ?: return
+                ChatRepository.recordMessage(
+                    db = db, id = d.mid, roomId = roomId, senderUid = d.from, receiverUid = myId,
+                    content = inc.url, type = inc.type, createdAt = d.createdAt, myUid = myId,
+                    otherUsername = shown, fileName = inc.fileName, mimeType = inc.mime, replyToId = inc.replyTo
+                )
+                GuestMedia.enqueue(app, d.mid, d.body)
+                if (!GuestPush.visible) GuestPush.showMessage(app, roomId, shown, GuestMedia.label(inc.type))
+                if (openRoomId == roomId && GuestPush.visible) markOpenRead(app, roomId, d.from)
+            }
             else -> {}   // "hello" aur anjaan kinds: sirf contact + key save ho chuki
         }
     }
@@ -498,6 +511,10 @@ object GuestChat {
             app.applicationContext, toUid, newMid("s-"), "seen",
             JSONObject().put("ts", System.currentTimeMillis())
         )
+
+    // GUEST_MEDIA
+    suspend fun sendMedia(app: Context, toUid: String, mid: String, body: JSONObject): Boolean =
+        sendEnvelope(app.applicationContext, toUid, mid, "media", body)
 
     // GUEST_PROF
     suspend fun sendProfile(app: Context, toUid: String, body: JSONObject): Boolean =
