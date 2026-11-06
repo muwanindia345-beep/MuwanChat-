@@ -31,7 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import com.muwan.muwanchat.data.UploadProgressTracker
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.colletAsState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -490,7 +490,7 @@ fun MessageBubble(
                     }
 
                     "video" -> message.mediaUrl?.let { url ->
-                     val ctx = LocalContext.Current
+                     val ctx = LocalContext.current
                      val ver by com.muwan.muwanchat.data.LocalMedia.version.collectAsState()
                      val downloading = remember(url, ver) {
                          com.muwan.muwanchat.data.GuestMedia.isPending(ctx, url) &&
@@ -519,7 +519,7 @@ fun MessageBubble(
                                 UploadProgressRing(UploadProgressTracker.progress[message.id])
                             } else if (downloading) {
                                 CircularProgressIndicator(
-                                    colour = Colour.White,
+                                    color = Color.White,
                                     strokeWidth = 3.dp,
                                     modifier = Modifier.size(40.dp)
                                 )

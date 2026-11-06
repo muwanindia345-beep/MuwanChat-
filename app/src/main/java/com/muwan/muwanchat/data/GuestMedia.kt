@@ -366,7 +366,7 @@ object GuestMedia {
 
     private fun drop(app: Context, mid: String) { prefs(app).edit().remove(mid).apply() }
 
-    fun isPending(app: Context, url: string): Boolean {
+    fun isPending(app: Context, url: String): Boolean {
         if (!isGuestUrl(url)) return false
         val mid = url.removePrefix(HOST).substringBeforeLast('.')
         return prefs(app).contains(mid)
