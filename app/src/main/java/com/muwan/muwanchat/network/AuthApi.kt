@@ -13,7 +13,16 @@ data class LoginRequest(val email: String, val password: String)
 data class VerifyRequest(val email: String, val otp: String)
 data class ResendRequest(val email: String)
 data class PhoneSendRequest(val phone: String)
-data class PhoneVerifyRequest(val phone: String, val otp: String)
+data class PhoneVerifyRequest(val phone: String, val sessionId: String)
+data class PhoneCancelRequest(val sessionId: String)  // PHONE_CALL_V1
+data class PhoneSendResponse(
+    val success: Boolean?, val error: String?, val sessionId: String?,
+    val callNumber: String?, val expiresIn: Int?, val maskedPhone: String?
+)
+data class PhoneVerifyResponse(
+    val success: Boolean?, val pending: Boolean?, val expired: Boolean?, val error: String?,
+    val token: String?, val isNewUser: Boolean?, val user: UserData?
+)
 
 data class ChangeUsernameRequest(val username: String)
 data class ChangeEmailRequest(val newEmail: String, val currentPassword: String)
@@ -70,10 +79,13 @@ interface AuthApi {
     suspend fun me(@Header("Authorization") token: String): Response<AuthResponse>
 
     @POST("auth/phone/send")
-    suspend fun phoneSend(@Body request: PhoneSendRequest): Response<AuthResponse>
+    suspend fun phoneSend(@Body request: PhoneSendRequest): Response<PhoneSendResponse>
 
     @POST("auth/phone/verify")
-    suspend fun phoneVerify(@Body request: PhoneVerifyRequest): Response<AuthResponse>
+    suspend fun phoneVerify(@Body request: PhoneVerifyRequest): Response<PhoneVerifyResponse>
+
+    @POST("auth/phone/cancel")
+    suspend fun phoneCancel(@Body request: PhoneCancelRequest): Response<AccountActionResponse>
 
     @PUT("auth/username")
     suspend fun changeUsername(

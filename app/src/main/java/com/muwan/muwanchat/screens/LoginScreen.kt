@@ -265,10 +265,14 @@ fun PhoneLoginSection(navController: NavController) {
         scope.launch {
             try {
                 val res = RetrofitClient.authApi.phoneSend(PhoneSendRequest(phone.trim()))
-                if (res.isSuccessful) {
-                    navController.navigate(Screen.PhoneOTP.createRoute(phone.trim()))
+                val b = res.body()
+                val sid = b?.sessionId
+                val num = b?.callNumber
+                if (res.isSuccessful && b?.success == true && !sid.isNullOrBlank() && !num.isNullOrBlank()) {
+                    PhoneVerifySession.set(phone.trim(), sid, num)  // PHONE_CALL_V1
+                    navController.navigate(Screen.PhoneVerify.route)
                 } else {
-                    errorMsg = res.body()?.error ?: "Failed to send OTP"
+                    errorMsg = b?.error ?: authErrorMessage(res, "Failed to start verification")
                 }
             } catch (e: Exception) {
                 errorMsg = friendlyErrorMessage(e)

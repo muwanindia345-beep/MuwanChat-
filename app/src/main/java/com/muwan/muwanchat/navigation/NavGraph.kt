@@ -30,9 +30,7 @@ sealed class Screen(val route: String) {
     object AppLock          : Screen("app_lock")
     object SetPattern       : Screen("set_pattern")
     object SetPin           : Screen("set_pin")
-    object PhoneOTP        : Screen("phone_otp/{phone}") {
-        fun createRoute(phone: String) = "phone_otp/$phone"
-    }
+    object PhoneVerify     : Screen("phone_verify")  // PHONE_CALL_V1
     object ConversationList: Screen("conversations")
     object BroadcastChannels: Screen("broadcast_channels")
     object Status           : Screen("status")
@@ -60,7 +58,7 @@ sealed class Screen(val route: String) {
     }
     object Chat            : Screen("chat/{uid}/{username}/{roomId}") {
         fun createRoute(uid: String, username: String, roomId: String) =
-            "chat/$uid/$username/$roomId"
+            "chat/$uid/${android.net.Uri.encode(username)}/$roomId"  // PHONE_CALL_V1: masked phone ids contain + * space
     }
     object Call             : Screen("call/{uid}/{username}/{callType}/{mode}") {
         fun createRoute(uid: String, username: String, callType: String, isIncoming: Boolean) =
@@ -347,9 +345,7 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
         composable(Screen.AppLock.route) { AppLockMethodsScreen(navController) }
         composable(Screen.SetPattern.route) { SetPatternScreen(navController) }
         composable(Screen.SetPin.route) { SetPinScreen(navController) }
-        composable(Screen.PhoneOTP.route) { back ->
-            PhoneOTPScreen(navController, back.arguments?.getString("phone") ?: "")
-        }
+        composable(Screen.PhoneVerify.route) { PhoneVerifyScreen(navController) }  // PHONE_CALL_V1
         composable(Screen.ConversationList.route) {
             MainTabScaffold(navController, Screen.ConversationList.route) {
                 ConversationListScreen(navController)
