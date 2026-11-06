@@ -308,6 +308,13 @@ fun ChatScreen(
             }
         } catch (_: Exception) {}
     }
+    LaunchedEffect(isGuest, roomId) {  // GUEST_ACT
+        if (isGuest) {
+            com.muwan.muwanchat.data.GuestPins.changed.collect {
+                pinnedMessages = com.muwan.muwanchat.data.GuestPins.load(context, roomId)
+            }
+        }
+    }
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
 
     fun exitSelectionMode() {
@@ -792,7 +799,14 @@ fun ChatScreen(
 
                 if (canPin) {
                     IconButton(onClick = {
-                        if (isGuest) { comingSoonFeature = "📌 Pin messages"; exitSelectionMode(); return@IconButton }  // GUEST_P2C
+                        if (isGuest) {  // GUEST_ACT
+                            val guestIds = selectedMessageIds.toList()
+                            exitSelectionMode()
+                            scope.launch {
+                                guestIds.forEach { com.muwan.muwanchat.data.GuestPins.setAndSend(context, roomId, receiverUid, it, true) }
+                            }
+                            return@IconButton
+                        }
                         val idsToPin = selectedMessageIds.toList()
                         scope.launch {
                             idsToPin.forEach { id ->
@@ -812,7 +826,6 @@ fun ChatScreen(
 
                 if (canForward) {
                     IconButton(onClick = {
-                        if (isGuest) { comingSoonFeature = "↪️ Forward messages"; exitSelectionMode(); return@IconButton }  // GUEST_P2C
                         val toForward = messages.filter { selectedMessageIds.contains(it.id) }
                         ForwardMessageSelection.set(toForward)
                         exitSelectionMode()
@@ -939,7 +952,8 @@ fun ChatScreen(
                         onClick = {
                             scope.launch {
                                 try {
-                                    RetrofitClient.chatApi.unpinMessage("Bearer $myToken", roomId, latestPinned.id)
+                                    if (isGuest) com.muwan.muwanchat.data.GuestPins.setAndSend(context, roomId, receiverUid, latestPinned.id, false)  // GUEST_ACT
+                                    else RetrofitClient.chatApi.unpinMessage("Bearer $myToken", roomId, latestPinned.id)
                                 } catch (_: Exception) {}
                             }
                         },
@@ -971,7 +985,8 @@ fun ChatScreen(
                                 IconButton(onClick = {
                                     scope.launch {
                                         try {
-                                            RetrofitClient.chatApi.unpinMessage("Bearer $myToken", roomId, pinned.id)
+                                            if (isGuest) com.muwan.muwanchat.data.GuestPins.setAndSend(context, roomId, receiverUid, pinned.id, false)  // GUEST_ACT
+                                            else RetrofitClient.chatApi.unpinMessage("Bearer $myToken", roomId, pinned.id)
                                         } catch (_: Exception) {}
                                     }
                                 }) {

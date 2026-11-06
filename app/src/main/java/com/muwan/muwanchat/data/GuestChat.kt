@@ -298,7 +298,8 @@ object GuestChat {
                     createdAt = d.createdAt,
                     myUid = myId,
                     otherUsername = shown,
-                    replyToId = d.body.optString("r").ifBlank { null }
+                    replyToId = d.body.optString("r").ifBlank { null },
+                    isForwarded = d.body.optInt("f") == 1  // GUEST_ACT
                 )
                 if (!GuestPush.visible) GuestPush.showMessage(app, roomId, shown, text)  // GUEST_P2F: decrypted notification
                 if (openRoomId == roomId && GuestPush.visible) markOpenRead(app, roomId, d.from)
@@ -345,6 +346,12 @@ object GuestChat {
             }
             "seen" -> db.messageDao().markMySentAsSeen(roomId, myId)
             "prof" -> GuestProfile.applyIncoming(db, roomId, d.from, d.body)  // GUEST_PROF
+            "pin" -> {  // GUEST_ACT
+                val pm = d.body.optString("m")
+                val target = db.messageDao().getById(pm) ?: return
+                if (target.roomId != roomId) return
+                GuestPins.set(app, roomId, pm, d.body.optInt("on") == 1)
+            }
             "media" -> {  // GUEST_MEDIA
                 if (db.messageDao().getById(d.mid) != null) return
                 val inc = GuestMedia.parseIncoming(d.mid, d.body) ?: return
@@ -511,6 +518,10 @@ object GuestChat {
             app.applicationContext, toUid, newMid("s-"), "seen",
             JSONObject().put("ts", System.currentTimeMillis())
         )
+
+    // GUEST_ACT
+    suspend fun sendKind(app: Context, toUid: String, mid: String, kind: String, body: JSONObject): Boolean =
+        sendEnvelope(app.applicationContext, toUid, mid, kind, body)
 
     // GUEST_MEDIA
     suspend fun sendMedia(app: Context, toUid: String, mid: String, body: JSONObject): Boolean =

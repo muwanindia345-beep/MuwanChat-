@@ -192,7 +192,14 @@ fun ForwardScreen(navController: NavController) {
                     scope.launch {
                         targets.forEach { target ->
                             toForward.forEach { msg ->
-                                forwardOneMessage(db, myUid, myToken, target, msg)
+                                if (com.muwan.muwanchat.data.GuestStore.isGuestActive(context)) {  // GUEST_ACT
+                                    com.muwan.muwanchat.data.GuestForward.forward(
+                                        context, myUid, target.uid, target.roomId, target.username,
+                                        msg.type, msg.text, msg.mediaUrl, msg.fileName, msg.mimeType
+                                    )
+                                } else {
+                                    forwardOneMessage(db, myUid, myToken, target, msg)
+                                }
                             }
                         }
                         ForwardMessageSelection.clear()
