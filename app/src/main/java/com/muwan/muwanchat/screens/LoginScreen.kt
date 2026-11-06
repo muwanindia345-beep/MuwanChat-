@@ -228,7 +228,7 @@ fun LoginScreen(navController: NavController) {
                                     } 
                                  }
                                  is GuestSession.Result.Fail -> {
-                                     android.widget.Toast.makeTest(
+                                     android.widget.Toast.makeText(
                                          context, "Coudn't connect: " + r.reason,
                                          android.widget.Toast.LENGTH_LONG
                                       ).show()
