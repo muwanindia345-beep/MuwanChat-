@@ -89,6 +89,16 @@ fun AddFromContactsScreen(
     LaunchedEffect(Unit) {
         isLoading = true
         errorMsg = ""
+        if (com.muwan.muwanchat.data.GuestStore.isGuestActive(context)) {  // GUEST_GROUP_UI
+            // guest ke contacts = local DB ki 1:1 conversations jinki key (GuestPeers) hamare paas hai
+            val myId = com.muwan.muwanchat.data.GuestStore.activeGuestId(context)
+            val gidRe = Regex("^g_[0-9a-f]{32}$")
+            users = com.muwan.muwanchat.data.MuwanChatDb.get(context, myId).conversationDao().getAll()
+                .filter { !it.isGroup && gidRe.matches(it.uid) && com.muwan.muwanchat.data.GuestPeers.get(context, it.uid) != null }
+                .map { UserItem(uid = it.uid, username = it.username, avatar = it.avatar) }
+            isLoading = false
+            return@LaunchedEffect
+        }
         try {
             val token = AuthDataStore.getToken(context).first()
             if (token == null) {

@@ -50,6 +50,7 @@ fun CreateGroupScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isCreating by remember { mutableStateOf(false) }
+    val isGuest = remember { com.muwan.muwanchat.data.GuestStore.isGuestActive(context) }  // GUEST_GROUP_UI
 
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
     val croppedAvatarFlow = remember(savedStateHandle) {
@@ -143,6 +144,7 @@ fun CreateGroupScreen(navController: NavController) {
                     shape = RoundedCornerShape(12.dp)
                 )
 
+                if (!isGuest) {  // GUEST_GROUP_UI: guest group ka description nahi hota
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
@@ -161,6 +163,7 @@ fun CreateGroupScreen(navController: NavController) {
                     colors = groupFieldColors(),
                     shape = RoundedCornerShape(12.dp)
                 )
+                }
 
                 Spacer(modifier = Modifier.height(28.dp))
 
@@ -181,6 +184,7 @@ fun CreateGroupScreen(navController: NavController) {
                     onClick = { navController.navigate(Screen.AddFromContacts.route) }
                 )
 
+                if (!isGuest) {  // GUEST_GROUP_UI: guests search mein nahi aate
                 Spacer(modifier = Modifier.height(10.dp))
 
                 AddMemberRow(
@@ -189,6 +193,7 @@ fun CreateGroupScreen(navController: NavController) {
                     subtitle = "Search for anyone and add them",
                     onClick = { navController.navigate(Screen.SearchMembersForGroup.route) }
                 )
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -247,6 +252,24 @@ fun CreateGroupScreen(navController: NavController) {
                         isCreating = true
                         scope.launch {
                             try {
+                                if (isGuest) {  // GUEST_GROUP_UI
+                                    val r = com.muwan.muwanchat.data.GuestGroups.create(
+                                        context,
+                                        groupName.ifBlank { "New Group" },
+                                        avatarBase64,
+                                        selectedMembers.map { it.uid }
+                                    )
+                                    if (r.groupId != null) {
+                                        GroupMemberSelection.clear()
+                                        val msg = if (r.notSent.isEmpty()) "Group created"
+                                        else "Group created, but couldn't reach ${r.notSent.size} member(s) yet"
+                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                        navController.popBackStack(Screen.ConversationList.route, false)
+                                    } else {
+                                        Toast.makeText(context, r.error ?: "Couldn't create group", Toast.LENGTH_LONG).show()
+                                    }
+                                    return@launch
+                                }
                                 val token = AuthDataStore.getToken(context).first()
                                 val myUid = AuthDataStore.getUid(context).first() ?: ""
                                 if (token == null) {

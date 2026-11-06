@@ -382,9 +382,9 @@ fun NavGraph(openUpdateScreen: Boolean = false) {
             }
         }
         composable(Screen.AvatarCrop.route) { AvatarCropScreen(navController) }
-        composable(Screen.CreateGroup.route) { GuestGate(navController, "👥 Create Group") { CreateGroupScreen(navController) } }  // GUEST_P2A
+        composable(Screen.CreateGroup.route) { CreateGroupScreen(navController) }  // GUEST_GROUP_UI: guest bhi use karta hai
         composable(Screen.CreateChannel.route) { GuestGate(navController, "📢 Create Channel") { CreateChannelScreen(navController) } }  // GUEST_P2A
-        composable(Screen.AddFromContacts.route) { GuestGate(navController, "📇 Add from Contacts") { AddFromContactsScreen(navController) } }  // GUEST_P2A
+        composable(Screen.AddFromContacts.route) { AddFromContactsScreen(navController) }  // GUEST_GROUP_UI: guest bhi use karta hai
         composable(Screen.AddMembersForChannel.route) { back ->
             AddFromContactsScreen(
                 navController = navController,
