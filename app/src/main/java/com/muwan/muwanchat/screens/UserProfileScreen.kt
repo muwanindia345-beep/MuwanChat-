@@ -81,7 +81,7 @@ fun UserProfileScreen(navController: NavController, uid: String, fromChat: Boole
                 }
             }
             isLoading = false
-            db.CachedUserProfileDao().observe(uid).collect { cached
+            db.cachedUserProfileDao().observe(uid).collect { cached ->
                 if (cached != null) user = cached.toModel()
             }
             return@LaunchedEffect
