@@ -82,7 +82,6 @@ object BackendKeepAlive {
         try {
             val req = Request.Builder()
                 .url(healthUrl)
-                .header("ngrok-skip-browser-warning", "1")
                 .get()
                 .build()
             client.newCall(req).execute().use { /* response ignore */ }

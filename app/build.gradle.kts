@@ -70,7 +70,7 @@ android {
             dimension = "channel"
             buildConfigField("String", "UPDATE_PAGE_URL", "\"https://muwanindia345-beep.github.io/talkwave-download/\"")
             buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
-            buildConfigField("String", "BACKEND_URL", "\"https://irritably-payable-womanhood.ngrok-free.dev\"")
+            buildConfigField("String", "BACKEND_URL", "\"https://b576b19d918adae5-27-97-171-192.serveousercontent.com\"")
             signingConfig = signingConfigs.getByName("release")
         }
         // Pre-release/beta build — separate applicationId so it installs alongside
@@ -82,7 +82,7 @@ android {
             versionNameSuffix = "-beta"
             resValue("string", "app_name", "TalkWave Beta")
             buildConfigField("boolean", "ENABLE_NEW_NAV", "true")
-            buildConfigField("String", "BACKEND_URL", "\"https://irritably-payable-womanhood.ngrok-free.dev\"")
+            buildConfigField("String", "BACKEND_URL", "\"https://b576b19d918adae5-27-97-171-192.serveousercontent.com\"")
             signingConfig = signingConfigs.getByName("betaRelease")
         }
     }
